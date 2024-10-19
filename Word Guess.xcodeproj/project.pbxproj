@@ -1,0 +1,681 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		4FD6D2882CB9A2C000755D03 /* FirebaseAnalyticsOnDeviceConversion in Frameworks */ = {isa = PBXBuildFile; productRef = 4FD6D2872CB9A2C000755D03 /* FirebaseAnalyticsOnDeviceConversion */; };
+		4FD6D28A2CB9A2C000755D03 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 4FD6D2892CB9A2C000755D03 /* FirebaseAuth */; };
+		4FD6D28C2CB9A2C000755D03 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = 4FD6D28B2CB9A2C000755D03 /* FirebaseCore */; };
+		4FD6D28E2CB9A2C000755D03 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 4FD6D28D2CB9A2C000755D03 /* FirebaseFirestore */; };
+		4FD6D2912CB9A2DA00755D03 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = 4FD6D2902CB9A2DA00755D03 /* GoogleSignIn */; };
+		4FD6D2942CB9A2F200755D03 /* FacebookCore in Frameworks */ = {isa = PBXBuildFile; productRef = 4FD6D2932CB9A2F200755D03 /* FacebookCore */; };
+		4FD6D2962CB9A2F200755D03 /* FacebookLogin in Frameworks */ = {isa = PBXBuildFile; productRef = 4FD6D2952CB9A2F200755D03 /* FacebookLogin */; };
+		4FEC01B92CC2F6990086EFEC /* Alamofire in Frameworks */ = {isa = PBXBuildFile; productRef = 4FEC01B82CC2F6990086EFEC /* Alamofire */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		4FD6D24E2CB9A1F700755D03 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 4FD6D2302CB9A1F400755D03 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 4FD6D2372CB9A1F400755D03;
+			remoteInfo = "Word Guess";
+		};
+		4FD6D2582CB9A1F700755D03 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 4FD6D2302CB9A1F400755D03 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 4FD6D2372CB9A1F400755D03;
+			remoteInfo = "Word Guess";
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		4FD6D2382CB9A1F400755D03 /* Word Guess.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Word Guess.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		4FD6D24D2CB9A1F700755D03 /* Word GuessTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Word GuessTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		4FD6D2572CB9A1F700755D03 /* Word GuessUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Word GuessUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		4FD6D23A2CB9A1F400755D03 /* Word Guess */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "Word Guess";
+			sourceTree = "<group>";
+		};
+		4FD6D2502CB9A1F700755D03 /* Word GuessTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "Word GuessTests";
+			sourceTree = "<group>";
+		};
+		4FD6D25A2CB9A1F700755D03 /* Word GuessUITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "Word GuessUITests";
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		4FD6D2352CB9A1F400755D03 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				4FD6D2912CB9A2DA00755D03 /* GoogleSignIn in Frameworks */,
+				4FEC01B92CC2F6990086EFEC /* Alamofire in Frameworks */,
+				4FD6D2942CB9A2F200755D03 /* FacebookCore in Frameworks */,
+				4FD6D2882CB9A2C000755D03 /* FirebaseAnalyticsOnDeviceConversion in Frameworks */,
+				4FD6D28E2CB9A2C000755D03 /* FirebaseFirestore in Frameworks */,
+				4FD6D28C2CB9A2C000755D03 /* FirebaseCore in Frameworks */,
+				4FD6D2962CB9A2F200755D03 /* FacebookLogin in Frameworks */,
+				4FD6D28A2CB9A2C000755D03 /* FirebaseAuth in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4FD6D24A2CB9A1F700755D03 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4FD6D2542CB9A1F700755D03 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		4FD6D22F2CB9A1F400755D03 = {
+			isa = PBXGroup;
+			children = (
+				4FD6D23A2CB9A1F400755D03 /* Word Guess */,
+				4FD6D2502CB9A1F700755D03 /* Word GuessTests */,
+				4FD6D25A2CB9A1F700755D03 /* Word GuessUITests */,
+				4FD6D2392CB9A1F400755D03 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		4FD6D2392CB9A1F400755D03 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				4FD6D2382CB9A1F400755D03 /* Word Guess.app */,
+				4FD6D24D2CB9A1F700755D03 /* Word GuessTests.xctest */,
+				4FD6D2572CB9A1F700755D03 /* Word GuessUITests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		4FD6D2372CB9A1F400755D03 /* Word Guess */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 4FD6D2612CB9A1F700755D03 /* Build configuration list for PBXNativeTarget "Word Guess" */;
+			buildPhases = (
+				4FD6D2342CB9A1F400755D03 /* Sources */,
+				4FD6D2352CB9A1F400755D03 /* Frameworks */,
+				4FD6D2362CB9A1F400755D03 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				4FD6D23A2CB9A1F400755D03 /* Word Guess */,
+			);
+			name = "Word Guess";
+			packageProductDependencies = (
+				4FD6D2872CB9A2C000755D03 /* FirebaseAnalyticsOnDeviceConversion */,
+				4FD6D2892CB9A2C000755D03 /* FirebaseAuth */,
+				4FD6D28B2CB9A2C000755D03 /* FirebaseCore */,
+				4FD6D28D2CB9A2C000755D03 /* FirebaseFirestore */,
+				4FD6D2902CB9A2DA00755D03 /* GoogleSignIn */,
+				4FD6D2932CB9A2F200755D03 /* FacebookCore */,
+				4FD6D2952CB9A2F200755D03 /* FacebookLogin */,
+				4FEC01B82CC2F6990086EFEC /* Alamofire */,
+			);
+			productName = "Word Guess";
+			productReference = 4FD6D2382CB9A1F400755D03 /* Word Guess.app */;
+			productType = "com.apple.product-type.application";
+		};
+		4FD6D24C2CB9A1F700755D03 /* Word GuessTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 4FD6D2642CB9A1F700755D03 /* Build configuration list for PBXNativeTarget "Word GuessTests" */;
+			buildPhases = (
+				4FD6D2492CB9A1F700755D03 /* Sources */,
+				4FD6D24A2CB9A1F700755D03 /* Frameworks */,
+				4FD6D24B2CB9A1F700755D03 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				4FD6D24F2CB9A1F700755D03 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				4FD6D2502CB9A1F700755D03 /* Word GuessTests */,
+			);
+			name = "Word GuessTests";
+			packageProductDependencies = (
+			);
+			productName = "Word GuessTests";
+			productReference = 4FD6D24D2CB9A1F700755D03 /* Word GuessTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		4FD6D2562CB9A1F700755D03 /* Word GuessUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 4FD6D2672CB9A1F700755D03 /* Build configuration list for PBXNativeTarget "Word GuessUITests" */;
+			buildPhases = (
+				4FD6D2532CB9A1F700755D03 /* Sources */,
+				4FD6D2542CB9A1F700755D03 /* Frameworks */,
+				4FD6D2552CB9A1F700755D03 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				4FD6D2592CB9A1F700755D03 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				4FD6D25A2CB9A1F700755D03 /* Word GuessUITests */,
+			);
+			name = "Word GuessUITests";
+			packageProductDependencies = (
+			);
+			productName = "Word GuessUITests";
+			productReference = 4FD6D2572CB9A1F700755D03 /* Word GuessUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		4FD6D2302CB9A1F400755D03 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1600;
+				LastUpgradeCheck = 1600;
+				TargetAttributes = {
+					4FD6D2372CB9A1F400755D03 = {
+						CreatedOnToolsVersion = 16.0;
+					};
+					4FD6D24C2CB9A1F700755D03 = {
+						CreatedOnToolsVersion = 16.0;
+						TestTargetID = 4FD6D2372CB9A1F400755D03;
+					};
+					4FD6D2562CB9A1F700755D03 = {
+						CreatedOnToolsVersion = 16.0;
+						TestTargetID = 4FD6D2372CB9A1F400755D03;
+					};
+				};
+			};
+			buildConfigurationList = 4FD6D2332CB9A1F400755D03 /* Build configuration list for PBXProject "Word Guess" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+				he,
+			);
+			mainGroup = 4FD6D22F2CB9A1F400755D03;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				4FD6D2862CB9A2C000755D03 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+				4FD6D28F2CB9A2DA00755D03 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */,
+				4FD6D2922CB9A2F200755D03 /* XCRemoteSwiftPackageReference "facebook-ios-sdk" */,
+				4FEC01B72CC2F6990086EFEC /* XCRemoteSwiftPackageReference "Alamofire" */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 4FD6D2392CB9A1F400755D03 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				4FD6D2372CB9A1F400755D03 /* Word Guess */,
+				4FD6D24C2CB9A1F700755D03 /* Word GuessTests */,
+				4FD6D2562CB9A1F700755D03 /* Word GuessUITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		4FD6D2362CB9A1F400755D03 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4FD6D24B2CB9A1F700755D03 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4FD6D2552CB9A1F700755D03 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		4FD6D2342CB9A1F400755D03 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4FD6D2492CB9A1F700755D03 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4FD6D2532CB9A1F700755D03 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		4FD6D24F2CB9A1F700755D03 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 4FD6D2372CB9A1F400755D03 /* Word Guess */;
+			targetProxy = 4FD6D24E2CB9A1F700755D03 /* PBXContainerItemProxy */;
+		};
+		4FD6D2592CB9A1F700755D03 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 4FD6D2372CB9A1F400755D03 /* Word Guess */;
+			targetProxy = 4FD6D2582CB9A1F700755D03 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		4FD6D25F2CB9A1F700755D03 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		4FD6D2602CB9A1F700755D03 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		4FD6D2622CB9A1F700755D03 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_ASSET_PATHS = "\"Word Guess/Preview Content\"";
+				DEVELOPMENT_TEAM = D6DN86P8S8;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Word-Guess-Info.plist";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = Barak.ben.hur.WordGuess;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		4FD6D2632CB9A1F700755D03 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_ASSET_PATHS = "\"Word Guess/Preview Content\"";
+				DEVELOPMENT_TEAM = D6DN86P8S8;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Word-Guess-Info.plist";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = Barak.ben.hur.WordGuess;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		4FD6D2652CB9A1F700755D03 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = D6DN86P8S8;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "Barak.ben.hur.Word-GuessTests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Word Guess.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Word Guess";
+			};
+			name = Debug;
+		};
+		4FD6D2662CB9A1F700755D03 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = D6DN86P8S8;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "Barak.ben.hur.Word-GuessTests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Word Guess.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Word Guess";
+			};
+			name = Release;
+		};
+		4FD6D2682CB9A1F700755D03 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = D6DN86P8S8;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "Barak.ben.hur.Word-GuessUITests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = "Word Guess";
+			};
+			name = Debug;
+		};
+		4FD6D2692CB9A1F700755D03 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = D6DN86P8S8;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "Barak.ben.hur.Word-GuessUITests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = "Word Guess";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		4FD6D2332CB9A1F400755D03 /* Build configuration list for PBXProject "Word Guess" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				4FD6D25F2CB9A1F700755D03 /* Debug */,
+				4FD6D2602CB9A1F700755D03 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		4FD6D2612CB9A1F700755D03 /* Build configuration list for PBXNativeTarget "Word Guess" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				4FD6D2622CB9A1F700755D03 /* Debug */,
+				4FD6D2632CB9A1F700755D03 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		4FD6D2642CB9A1F700755D03 /* Build configuration list for PBXNativeTarget "Word GuessTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				4FD6D2652CB9A1F700755D03 /* Debug */,
+				4FD6D2662CB9A1F700755D03 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		4FD6D2672CB9A1F700755D03 /* Build configuration list for PBXNativeTarget "Word GuessUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				4FD6D2682CB9A1F700755D03 /* Debug */,
+				4FD6D2692CB9A1F700755D03 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		4FD6D2862CB9A2C000755D03 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/firebase/firebase-ios-sdk.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 11.3.0;
+			};
+		};
+		4FD6D28F2CB9A2DA00755D03 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/google/GoogleSignIn-iOS";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 8.0.0;
+			};
+		};
+		4FD6D2922CB9A2F200755D03 /* XCRemoteSwiftPackageReference "facebook-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/facebook/facebook-ios-sdk.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 14.1.0;
+			};
+		};
+		4FEC01B72CC2F6990086EFEC /* XCRemoteSwiftPackageReference "Alamofire" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/Alamofire/Alamofire.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 5.10.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		4FD6D2872CB9A2C000755D03 /* FirebaseAnalyticsOnDeviceConversion */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4FD6D2862CB9A2C000755D03 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAnalyticsOnDeviceConversion;
+		};
+		4FD6D2892CB9A2C000755D03 /* FirebaseAuth */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4FD6D2862CB9A2C000755D03 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAuth;
+		};
+		4FD6D28B2CB9A2C000755D03 /* FirebaseCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4FD6D2862CB9A2C000755D03 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseCore;
+		};
+		4FD6D28D2CB9A2C000755D03 /* FirebaseFirestore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4FD6D2862CB9A2C000755D03 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseFirestore;
+		};
+		4FD6D2902CB9A2DA00755D03 /* GoogleSignIn */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4FD6D28F2CB9A2DA00755D03 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */;
+			productName = GoogleSignIn;
+		};
+		4FD6D2932CB9A2F200755D03 /* FacebookCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4FD6D2922CB9A2F200755D03 /* XCRemoteSwiftPackageReference "facebook-ios-sdk" */;
+			productName = FacebookCore;
+		};
+		4FD6D2952CB9A2F200755D03 /* FacebookLogin */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4FD6D2922CB9A2F200755D03 /* XCRemoteSwiftPackageReference "facebook-ios-sdk" */;
+			productName = FacebookLogin;
+		};
+		4FEC01B82CC2F6990086EFEC /* Alamofire */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4FEC01B72CC2F6990086EFEC /* XCRemoteSwiftPackageReference "Alamofire" */;
+			productName = Alamofire;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 4FD6D2302CB9A1F400755D03 /* Project object */;
+}

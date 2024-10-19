@@ -1,0 +1,556 @@
+//
+//  ContentView.swift
+//  WordGuess
+//
+//  Created by Barak Ben Hur on 11/10/2024.
+//
+
+import SwiftUI
+import CoreData
+
+enum FieldFocus: Int {
+    case one
+    case two
+    case trhee
+    case four
+    case five
+    case six
+}
+
+struct GameView<VM: ViewModel>: View {
+    @EnvironmentObject private var coreData: PersistenceController
+    @EnvironmentObject private var loginHandeler: LoginHandeler
+    @EnvironmentObject private var router: Router
+    @EnvironmentObject private var local: LanguageSetting
+    
+    private let queue = DispatchQueue.main
+    private let rows: Int = 5
+    private let diffculty: DifficultyType
+    private var length: Int { return diffculty.getLength() }
+    private var email: String? { return loginHandeler.model?.email }
+    
+    @State private var current: Int = 0 { didSet { vm.current = current } }
+    @State private var score: Int = 0
+    @State private var scoreAnimation: (value: Int, opticity: CGFloat, scale: CGFloat, offset: CGFloat, animate: Bool) = (0, CGFloat(0), CGFloat(0), CGFloat(80), false)
+    @State private var matrix: [[String]]
+    @State private var colors: [[CharColor]]
+    @State private var vm = VM()
+    @State private var keyboard = KeyboardHeightHelper()
+    @State private var timeAttackAnimation = false
+    @State private var timeAttackAnimationDone = true
+    
+    private var language: String? { return local.locale.identifier.components(separatedBy: "_").first }
+    
+    init(diffculty: DifficultyType) {
+        self.diffculty = diffculty
+        self.matrix = [[String]](repeating: [String](repeating: "",
+                                                     count: diffculty.getLength()),
+                                 count: rows)
+        self.colors = [[CharColor]](repeating: [CharColor](repeating: .noGuess,
+                                                           count: diffculty.getLength()),
+                                    count: rows)
+        self.current = 0
+    }
+    
+    var body: some View {
+        GeometryReader { proxy in
+            Image("background")
+                .resizable()
+                .scaledToFill()
+                .ignoresSafeArea()
+                .frame(height: proxy.size.height)
+                .frame(width: proxy.size.width)
+                .opacity(0.4)
+            ZStack(alignment: .topLeading) {
+                ZStack(alignment: .topLeading) {
+                    Button {
+                        router.navigateBack()
+                    } label: {
+                        Image(systemName: "\(language == "he" ? "forward" : "backward").end.fill")
+                            .resizable()
+                            .foregroundStyle(Color.black)
+                            .frame(height: 40)
+                            .frame(width: 40)
+                            .padding(.leading, 10)
+                            .padding(.top, 10)
+                    }
+                    
+                    if !vm.isError && vm.word != .emapty && timeAttackAnimationDone {
+                        VStack {
+                            ZStack(alignment: .bottom) {
+                                ZStack(alignment: .top) {
+                                    Color.white.opacity(0.2)
+                                    VStack {
+                                        Text("Score")
+                                            .multilineTextAlignment(.center)
+                                            .font(.largeTitle.bold())
+                                        
+                                        ZStack {
+                                            Text("\(vm.word.score)")
+                                                .multilineTextAlignment(.center)
+                                                .foregroundStyle(Color.green)
+                                                .font(.largeTitle.bold())
+                                            
+                                            Text("+ \(scoreAnimation.value)")
+                                                .font(.largeTitle)
+                                                .multilineTextAlignment(.center)
+                                                .foregroundStyle(scoreAnimation.value > 0 ? .green : .red)
+                                                .opacity(scoreAnimation.opticity)
+                                                .scaleEffect(.init(width: scoreAnimation.scale, height: scoreAnimation.scale))
+                                                .offset(x: 10,
+                                                        y: scoreAnimation.offset)
+                                        }
+                                    }
+                                    .padding()
+                                }
+                                .clipShape(RoundedRectangle(cornerRadius: 20))
+                                .padding(.bottom, 10)
+                                .shadow(radius: 2)
+                                .fixedSize()
+                                
+                                var attr: AttributedString {
+                                    let string = "\("words".localized()): \(vm.word.number)"
+                                    let values = string.components(separatedBy: " ")
+                                    
+                                    var text = AttributedString(values[0])
+                                    var number = AttributedString(values[1])
+                                    
+                                    text.font = .title2.weight(.thin)
+                                    number.font = .title2.weight(.semibold)
+                                    
+                                    return text + " " + number
+                                }
+                                
+                                HStack {
+                                    ZStack(alignment: .bottomLeading) {
+                                        Color.white.opacity(0.2)
+                                        Text(attr)
+                                            .padding()
+                                    }
+                                    .clipShape(RoundedRectangle(cornerRadius: 20))
+                                    .shadow(radius: 2)
+                                    .fixedSize()
+                                    Spacer()
+                                }
+                            }
+                            
+                            ForEach(0..<rows, id: \.self) { i in
+                                ZStack {
+                                    WordView(length: length,
+                                             word: $matrix[i],
+                                             gainFocus: .constant(true),
+                                             colors: $colors[i]) {
+                                        guard i == current else { return }
+                                        nextLine(i: i)
+                                    }
+                                             .disabled(current != i)
+                                             .environmentObject(vm)
+                                             .shadow(radius: 2)
+                                    
+                                    if keyboard.show && vm.word.isTimeAttack && current == i {
+                                        let start = Date()
+                                        let end = start.addingTimeInterval(diffculty == .easy ? 20 : 15)
+                                        ProgressBarView(length: length,
+                                                        total: end.timeIntervalSinceNow - start.timeIntervalSinceNow,
+                                                        done: { nextLine(i: i) })
+                                        .opacity(0.2)
+                                    }
+                                }
+                            }
+                            
+                            Text("Word Guess")
+                                .font(.system(size: 40))
+                                .multilineTextAlignment(.center)
+                                .frame(height: keyboard.keyboardHeight >= 30 ? keyboard.keyboardHeight - 30 : 0)
+                        }
+                        .padding(.horizontal, 20)
+                        .frame(maxHeight: .infinity)
+                        .ignoresSafeArea(.keyboard)
+                    }
+                }
+                .opacity(keyboard.show ? 1 : 0)
+                .ignoresSafeArea(.keyboard)
+                .onAppear { Task { await vm.word(diffculty: diffculty,
+                                                 email: loginHandeler.model!.email) } }
+                .onChange(of: vm.isError) {
+                    guard vm.isError else { return }
+                    keyboard.show = true
+                }
+                .onChange(of: vm.word.word.guesswork) {
+                    //                guard !vm.word.isTimeAttack else { return }
+                    let guesswork = vm.word.word.guesswork
+                    for i in 0..<guesswork.count {
+                        for j in 0..<guesswork[i].count {
+                            matrix[i][j] = guesswork[i][j]
+                        }
+                        colors[i] = calcGuess(word: matrix[i])
+                    }
+                    
+                    current = guesswork.count
+                }
+                .onChange(of: vm.word.isTimeAttack) {
+                    guard vm.word.isTimeAttack else { return }
+                    timeAttackAnimationDone = false
+                    withAnimation(.interpolatingSpring(.snappy)) { timeAttackAnimation = true }
+                    queue.asyncAfter(deadline: .now() + 2) {
+                        withAnimation(.easeOut(duration: 0.5)) { timeAttackAnimation = false }
+                        queue.asyncAfter(deadline: .now() + 0.5) {
+                            timeAttackAnimationDone = true
+                            current = vm.word.word.guesswork.count
+                        }
+                    }
+                }
+                .ignoresSafeArea(.keyboard)
+                
+                if vm.word.isTimeAttack {
+                    VStack {
+                        Spacer()
+                        Image("clock")
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .frame(height: 80)
+                            .frame(width: 80)
+                            .padding(.bottom, 10)
+                        Text("Time Attack")
+                            .font(.largeTitle)
+                            .foregroundStyle(Color.primary)
+                            .frame(maxWidth: .infinity)
+                            .padding(.bottom, 4)
+                        Text("double points")
+                            .font(.title)
+                            .foregroundStyle(Color.secondary)
+                            .frame(maxWidth: .infinity)
+                        Spacer()
+                    }
+                    .scaleEffect(.init(1.2))
+                    .background(Color.white.ignoresSafeArea())
+                    .opacity(timeAttackAnimation ? 1 : 0)
+                    .offset(x: timeAttackAnimation ? 0 : proxy.size.width)
+                }
+                else if !vm.isError && vm.word == .emapty {
+                    VStack {
+                        Spacer()
+                        Text("Fatching Word")
+                            .font(.largeTitle)
+                            .foregroundStyle(Color.primary)
+                            .frame(maxWidth: .infinity)
+                            .font(.largeTitle)
+                            .phaseAnimator([0, 1, 2]) { view, phase in
+                                view
+                                    .scaleEffect(phase)
+                                    .opacity(phase == 1 ? 1 : 0)
+                            }
+                        Spacer()
+                    }
+                }
+            }
+        }
+        .ignoresSafeArea(.keyboard)
+    }
+    
+    private func nextLine(i: Int)  {
+        colors[i] = calcGuess(word: matrix[i])
+        
+        let guess = matrix[i].joined()
+        
+        if guess.lowercased() == vm.word.word.value.lowercased() || i == rows - 1 {
+            current = .max
+            guard let email else { return }
+            var addGuess = true
+            
+            if guess.lowercased() == vm.word.word.value.lowercased() {
+                addGuess = false
+                let points = vm.word.isTimeAttack ? 40 : 20
+                score(value: rows * points - i * points)
+            }
+            else {
+                score(value: 0)
+            }
+            
+            Task {
+                if addGuess {
+                    await vm.addGuess(diffculty: diffculty, email: email, guess: guess)
+                }
+                queue.asyncAfter(deadline: .now() + 2.2) {
+                    Task {
+                        await vm.score(diffculty: diffculty, email: email)
+                        await MainActor.run { initMatrixState() }
+                        await vm.word(diffculty: diffculty, email: email)
+                        await MainActor.run { if !vm.word.isTimeAttack { current = 0 } }
+                    }
+                }
+            }
+        }
+        else if !guess.isEmpty && i + 1 > vm.word.word.guesswork.count && current < i + 1 {
+            guard let email else { return }
+            current = i + 1
+            Task {
+                await vm.addGuess(diffculty: diffculty, email: email, guess: guess)
+            }
+        }
+    }
+    
+    private func initMatrixState() {
+        matrix = [[String]](repeating: [String](repeating: "",
+                                                count: length),
+                            count: rows)
+        colors = [[CharColor]](repeating: [CharColor](repeating: .noGuess,
+                                                      count: length),
+                               count: rows)
+    }
+    
+    private func score(value: Int) {
+        scoreAnimation.value = value
+        withAnimation(.linear(duration: 1.4)) {
+            scoreAnimation.offset = 0
+            scoreAnimation.opticity = 1
+            scoreAnimation.scale = 1
+            scoreAnimation.animate = true
+        }
+        
+        queue.asyncAfter(deadline: .now() + 1.6) {
+            withAnimation(.easeOut(duration: 0.5)) {
+                scoreAnimation.opticity = 0
+                scoreAnimation.scale = 0
+            }
+            
+            queue.asyncAfter(deadline: .now() + 0.5) {
+                scoreAnimation.value = 0
+                scoreAnimation.offset = 80
+                withAnimation(.linear(duration: 0.1)) {
+                    vm.word.score += value
+                    vm.word.number += 1
+                }
+            }
+        }
+    }
+    
+    private func calcGuess(word: [String]) -> [CharColor] {
+        var colors = [CharColor](repeating: .noMatch,
+                                 count: length)
+        var containd = [String: Int]()
+        
+        for char in vm.word.word.value.lowercased() {
+            let key = String(char).returnChar(isFinal: false)
+            if containd[key] == nil {
+                containd[key] = 1
+            }
+            else {
+                containd[key]! += 1
+            }
+        }
+        
+        for i in 0..<word.count {
+            if word[i].lowercased().isEquel(vm.word.word.value[i].lowercased()) {
+                containd[word[i].lowercased().returnChar(isFinal: false)]! -= 1
+                colors[i] = .extectMatch
+            }
+        }
+        
+        for i in 0..<word.count {
+            guard !word[i].lowercased().isEquel(vm.word.word.value[i].lowercased()) else { continue }
+            if vm.word.word.value.lowercased().toSuffixChars().contains(word[i].lowercased().returnChar(isFinal: true)) && containd[word[i].lowercased().returnChar(isFinal: false)]! > 0 {
+                containd[word[i].lowercased().returnChar(isFinal: false)]! -= 1
+                colors[i] = .partialMatch
+            }
+            else {
+                colors[i] = .noMatch
+            }
+        }
+        
+        return colors
+    }
+}
+
+#Preview {
+    GameView(diffculty: .regular)
+        .environment(\.managedObjectContext, PersistenceController.preview.container.viewContext)
+}
+
+extension String {
+    subscript(offset: Int) -> String { String(self[index(startIndex, offsetBy: offset)]) }
+    subscript(range: Range<Int>) -> SubSequence {
+        let startIndex = index(self.startIndex, offsetBy: range.lowerBound)
+        return self[startIndex..<index(startIndex, offsetBy: range.count)]
+    }
+    subscript(range: ClosedRange<Int>) -> SubSequence {
+        let startIndex = index(self.startIndex, offsetBy: range.lowerBound)
+        return self[startIndex..<index(startIndex, offsetBy: range.count)]
+    }
+    subscript(range: PartialRangeFrom<Int>) -> SubSequence { self[index(startIndex, offsetBy: range.lowerBound)...] }
+    subscript(range: PartialRangeThrough<Int>) -> SubSequence { self[...index(startIndex, offsetBy: range.upperBound)] }
+    subscript(range: PartialRangeUpTo<Int>) -> SubSequence { self[..<index(startIndex, offsetBy: range.upperBound)] }
+    
+    func localized() -> String {
+        return NSLocalizedString(self, comment: "")
+    }
+}
+
+extension View {
+    /// Presents an alert with a message when a given condition is true, using a localized string key for a title.
+    /// - Parameters:
+    ///   - titleKey: The key for the localized string that describes the title of the alert.
+    ///   - isPresented: A binding to a Boolean value that determines whether to present the alert.
+    ///   - data: An optional binding of generic type T value, this data will populate the fields of an alert that will be displayed to the user.
+    ///   - actionText: The key for the localized string that describes the text of alert's action button.
+    ///   - action: The alert’s action given the currently available data.
+    ///   - message: A ViewBuilder returning the message for the alert given the currently available data.
+    func customAlert<M, T: Any>(
+        _ titleKey: LocalizedStringKey,
+        type: AlertType,
+        isPresented: Binding<Bool>,
+        returnedValue data: T?,
+        actionText: LocalizedStringKey,
+        cancelButtonText: LocalizedStringKey? = nil,
+        action: @escaping (T) -> (),
+        @ViewBuilder message: @escaping (T?) -> M
+    ) -> some View where M: View {
+        fullScreenCover(isPresented: isPresented) {
+            CustomAlertView(
+                type: type,
+                titleKey,
+                isPresented,
+                returnedValue: data,
+                actionTextKey: actionText,
+                cancelButtonTextKey: cancelButtonText,
+                action: action,
+                message: message
+            )
+            .presentationBackground(.clear)
+        }
+        .transaction { transaction in
+            if isPresented.wrappedValue {
+                // disable the default FullScreenCover animation
+                transaction.disablesAnimations = true
+                
+                // add custom animation for presenting and dismissing the FullScreenCover
+                transaction.animation = .linear(duration: 0.1)
+            }
+        }
+    }
+    
+    /// Presents an alert with a message when a given condition is true, using a localized string key for a title.
+    /// - Parameters:
+    ///   - titleKey: The key for the localized string that describes the title of the alert.
+    ///   - isPresented: A binding to a Boolean value that determines whether to present the alert.
+    ///   - actionText: The key for the localized string that describes the text of alert's action button.
+    ///   - action: Returning the alert’s actions.
+    ///   - message: A ViewBuilder returning the message for the alert.
+    func customAlert<M>(
+        _ titleKey: LocalizedStringKey,
+        type: AlertType,
+        isPresented: Binding<Bool>,
+        actionText: LocalizedStringKey,
+        cancelButtonText: LocalizedStringKey? = nil,
+        action: (() -> ())? = nil,
+        @ViewBuilder message: @escaping () -> M
+    ) -> some View where M: View {
+        fullScreenCover(isPresented: isPresented) {
+            CustomAlertView(
+                type: type,
+                titleKey,
+                isPresented,
+                actionTextKey: actionText,
+                cancelButtonTextKey: cancelButtonText,
+                action: action,
+                message: message
+            )
+            .presentationBackground(.clear)
+        }
+        .transaction { transaction in
+            if isPresented.wrappedValue {
+                // disable the default FullScreenCover animation
+                transaction.disablesAnimations = true
+                
+                // add custom animation for presenting and dismissing the FullScreenCover
+                transaction.animation = .linear(duration: 0.1)
+            }
+        }
+    }
+}
+
+@Observable
+class KeyboardHeightHelper: ObservableObject {
+    var keyboardHeight: CGFloat = 0
+    var show: Bool = false
+    
+    init() {
+        listenForKeyboardNotifications()
+    }
+    
+    private func listenForKeyboardNotifications() {
+        NotificationCenter.default.addObserver(forName: UIResponder.keyboardDidShowNotification,
+                                               object: nil,
+                                               queue: .main) { notification in
+            guard let userInfo = notification.userInfo,
+                  let keyboardRect = userInfo[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect else { return }
+            
+            self.keyboardHeight = keyboardRect.height
+            self.show = true
+        }
+        
+        NotificationCenter.default.addObserver(forName: UIResponder.keyboardDidHideNotification,
+                                               object: nil,
+                                               queue: .main) { (notification) in
+            //            self.keyboardHeight = 0
+        }
+    }
+}
+
+
+struct ProgressBarView: View {
+    @State private var value: CGFloat = 0
+    let length: Int
+    let total: CGFloat
+    var colors: [Color] = [.blue, .blue]
+    let done: () -> ()
+    
+    @State private var current = 0
+    
+    private let timer = Timer.publish(every: 0.1, on: .main, in: .common).autoconnect()
+    
+    var body: some View {
+        HStack {
+            ForEach(0..<length, id: \.self) { i in
+                if i == current {
+                    progressView(total: total / CGFloat(length), value: value.truncatingRemainder(dividingBy: (total / CGFloat(length))))
+                }
+                else if i > current {
+                    progressView(total: total / CGFloat(length), value: 0)
+                }
+                else {
+                    progressView(total: total / CGFloat(length), value: total / CGFloat(length))
+                }
+            }
+        }
+        .onReceive(timer) { input in
+            value += 0.1
+            current = Int(value / total * CGFloat(length))
+            
+            if value >= total {
+                timer.upstream.connect().cancel()
+                done()
+            }
+        }
+    }
+    
+    @ViewBuilder private func progressView(total: CGFloat, value: CGFloat) -> some View {
+        GeometryReader { geometry in
+            let progress = (geometry.size.width / total) * value
+            ZStack(alignment: .leading) {
+                RoundedRectangle(cornerRadius: 4)
+                    .fill(Color(uiColor: .systemGray5))
+                    .frame(maxHeight: .infinity)
+                    .frame(maxWidth: .infinity)
+                
+                RoundedRectangle(cornerRadius: 4)
+                    .fill(
+                        LinearGradient(gradient: Gradient(colors: colors),
+                                       startPoint: .leading,
+                                       endPoint: .trailing)
+                    )
+                    .frame(width: progress)
+            }
+        }
+    }
+}
