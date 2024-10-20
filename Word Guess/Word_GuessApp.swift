@@ -20,6 +20,7 @@ struct WordGuessApp: App {
     
     private let persistenceController = PersistenceController.shared
     private let loginHaneler = LoginHandeler()
+    private let audio = AudioPlayer()
     private let local = LanguageSetting()
     private let router = Router()
     
@@ -47,6 +48,7 @@ struct WordGuessApp: App {
             }
         }
         .environmentObject(router)
+        .environmentObject(audio)
         .environmentObject(persistenceController)
         .environment(local)
         .environment(\.managedObjectContext, persistenceController.container.viewContext)

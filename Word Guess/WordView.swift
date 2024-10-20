@@ -57,6 +57,7 @@ struct WordView<VM: ViewModel>: View {
                 .focused($fieldFocus, equals: FieldFocus(rawValue: i)!)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
+                .onSubmit { fieldFocus = FieldFocus(rawValue: i)! }
                 .background(colors[i].color)
                 .onTapGesture { fieldFocus = FieldFocus(rawValue: i)! }
                 .clipShape(RoundedRectangle(cornerRadius: 4))

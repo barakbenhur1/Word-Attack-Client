@@ -20,6 +20,7 @@ enum FieldFocus: Int {
 struct GameView<VM: ViewModel>: View {
     @EnvironmentObject private var coreData: PersistenceController
     @EnvironmentObject private var loginHandeler: LoginHandeler
+    @EnvironmentObject private var audio: AudioPlayer
     @EnvironmentObject private var router: Router
     @EnvironmentObject private var local: LanguageSetting
     
@@ -63,6 +64,7 @@ struct GameView<VM: ViewModel>: View {
                 .opacity(0.4)
             ZStack(alignment: .topLeading) {
                 Button {
+                    audio.stop()
                     router.navigateBack()
                 } label: {
                     Image(systemName: "\(language == "he" ? "forward" : "backward").end.fill")
@@ -149,10 +151,11 @@ struct GameView<VM: ViewModel>: View {
                                              .environmentObject(vm)
                                              .shadow(radius: 2)
                                     
-                                    if keyboard.show && vm.word.isTimeAttack && current == i {
+                                    if keyboard.show && vm.word.isTimeAttack && timeAttackAnimationDone && current == i {
                                         let start = Date()
                                         let end = start.addingTimeInterval(diffculty == .easy ? 20 : 15)
                                         ProgressBarView(length: length,
+                                                        value: 0,
                                                         total: end.timeIntervalSinceNow - start.timeIntervalSinceNow,
                                                         done: { nextLine(i: i) })
                                         .opacity(0.2)
@@ -199,12 +202,41 @@ struct GameView<VM: ViewModel>: View {
                         queue.asyncAfter(deadline: .now() + 0.5) {
                             timeAttackAnimationDone = true
                             current = vm.word.word.guesswork.count
+                            audio.playSound(sound: "tick",
+                                            type: "wav",
+                                            loop: true)
                         }
                     }
                 }
                 .ignoresSafeArea(.keyboard)
                 
-                if vm.word.isTimeAttack {
+                if !vm.isError && vm.word == .emapty {
+                    VStack {
+                        Spacer()
+                        Image("fatch")
+                            .resizable()
+                            .frame(height: 200)
+                            .frame(width: 200)
+                            .phaseAnimator([0, 1, 2]) { view, phase in
+                                view
+                                    .opacity(phase > 0 ? 1 : 0)
+                            }
+                        
+                        Text("Fatching Word")
+                            .font(.largeTitle)
+                            .foregroundStyle(Color.primary)
+                            .frame(maxWidth: .infinity)
+                            .font(.largeTitle)
+                            .phaseAnimator([0, 1, 2]) { view, phase in
+                                view
+                                    .scaleEffect(phase)
+                                    .opacity(phase == 1 ? 1 : 0)
+                            } animation: { phase in .linear }
+                        Spacer()
+                    }
+                    .offset(y: -40)
+                }
+                else if vm.word.isTimeAttack {
                     VStack {
                         Spacer()
                         Image("clock")
@@ -229,22 +261,6 @@ struct GameView<VM: ViewModel>: View {
                     .opacity(timeAttackAnimation ? 1 : 0)
                     .offset(x: timeAttackAnimation ? 0 : proxy.size.width)
                 }
-                else if !vm.isError && vm.word == .emapty {
-                    VStack {
-                        Spacer()
-                        Text("Fatching Word")
-                            .font(.largeTitle)
-                            .foregroundStyle(Color.primary)
-                            .frame(maxWidth: .infinity)
-                            .font(.largeTitle)
-                            .phaseAnimator([0, 1, 2]) { view, phase in
-                                view
-                                    .scaleEffect(phase)
-                                    .opacity(phase == 1 ? 1 : 0)
-                            }
-                        Spacer()
-                    }
-                }
             }
         }
         .ignoresSafeArea(.keyboard)
@@ -258,6 +274,9 @@ struct GameView<VM: ViewModel>: View {
         if guess.lowercased() == vm.word.word.value.lowercased() || i == rows - 1 {
             current = .max
             guard let email else { return }
+            
+            audio.stop()
+            
             let correct = guess.lowercased() == vm.word.word.value.lowercased()
             
             if correct {
@@ -269,7 +288,7 @@ struct GameView<VM: ViewModel>: View {
             Task {
                 if !correct { await vm.addGuess(diffculty: diffculty, email: email, guess: guess) }
                 await vm.score(diffculty: diffculty, email: email)
-//                await MainActor.run { initMatrixState() }
+                //                await MainActor.run { initMatrixState() }
                 await vm.word(diffculty: diffculty, email: email)
                 await MainActor.run {
                     withAnimation(.easeOut(duration: 0.5)) {
@@ -316,6 +335,9 @@ struct GameView<VM: ViewModel>: View {
         }
         
         queue.asyncAfter(deadline: .now() + 1.6) {
+            let sound = value > 0 ? "success" : "fail"
+            audio.playSound(sound: sound,
+                            type: "wav")
             guard scoreAnimation.opticity == 1 else { return }
             withAnimation(.linear(duration: 0.2)) {
                 scoreAnimation.opticity = 0
@@ -505,8 +527,8 @@ class KeyboardHeightHelper: ObservableObject {
 
 
 struct ProgressBarView: View {
-    @State private var value: CGFloat = 0
     let length: Int
+    @State var value: CGFloat
     let total: CGFloat
     var colors: [Color] = [.blue, .blue]
     let done: () -> ()
