@@ -28,20 +28,21 @@ struct CharView: View {
 }
 
 extension String {
-    static let suffixs = ["צ" : "ץ",
-                        "מ" : "ם",
-                        "נ" : "ן",
-                        "כ" : "ך",
-                        "פ" : "ף",]
+    static private let suffixs = [
+        "צ" : "ץ",
+        "מ" : "ם",
+        "נ" : "ן",
+        "כ" : "ך",
+        "פ" : "ף"
+    ]
     
     func asClassName() -> String {
         return replacingOccurrences(of: "Word_Guess.", with: "")
     }
     
     mutating func limitText(_ upper: Int) {
-        if count > upper {
-            self = String(prefix(upper))
-        }
+        guard count > upper else { return }
+        self = String(prefix(upper))
     }
     
     mutating func limitToAllowedCharacters(language: String?) {
@@ -59,7 +60,7 @@ extension String {
     
     func returnChar(isFinal: Bool) -> String {
         if isFinal { return String.suffixs[self] ?? self }
-        else { return String.suffixs.first(where: { suffix in suffix.value == self})?.key ?? self }
+        else { return String.suffixs.first(where: { _, value in value == self})?.key ?? self }
     }
     
     func isEquel(_ key: String) -> Bool {
@@ -68,11 +69,7 @@ extension String {
     }
     
     func toSuffixChars() -> String {
-        var s = ""
-        for c in self {
-            s += String.suffixs[String(c)] ?? String(c)
-        }
-        return s
+        return map { String.suffixs[String($0)] ?? String($0) }.joined()
     }
 }
 
