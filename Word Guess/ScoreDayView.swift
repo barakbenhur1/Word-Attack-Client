@@ -78,7 +78,8 @@ struct ScoreDayView: View {
                               didTap: { _ in })
                     .frame(maxWidth: .infinity)
                 }
-                .padding()
+                .padding(.horizontal, 8)
+                .padding(.vertical)
             }
             .clipShape(RoundedRectangle(cornerRadius: 10))
             .overlay {

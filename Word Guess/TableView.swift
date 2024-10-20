@@ -69,17 +69,18 @@ struct TableView<Cell: Hashable>: View {
         switch Cell.self {
         case is ScoreboardCell.Type:
             if let item = item as? ScoreboardCell {
+                let index = (items as! [[ScoreboardCell]]).firstIndex(of: [item])!
                 VStack {
                     ZStack {
                         HStack {
-                            Text("\((items as! [[ScoreboardCell]]).firstIndex(of: [item])! + 1)")
+                            Text("\(index + 1)")
                                 .multilineTextAlignment(.center)
-                                .frame(maxWidth: .infinity)
-                                .font(.title2.weight(.light))
-                                .frame(width: 50)
+                                .font(.subheadline.weight(.thin))
+                                .padding(.leading, 14)
+                                .padding(.trailing, 9)
+                                .frame(width: 56)
                             
                             saparator(diraction: .vertical)
-                                .padding(.vertical, 4)
                             
                             Text(item.name.initals().lowercased())
                                 .multilineTextAlignment(.center)
@@ -91,29 +92,30 @@ struct TableView<Cell: Hashable>: View {
                                 .multilineTextAlignment(.center)
                                 .foregroundStyle(.secondary)
                                 .frame(maxWidth: .infinity)
-                                .font(.title2.weight(.medium))
+                                .font(.headline.weight(.medium))
                             
                             Text(item.numberOfWords)
                                 .multilineTextAlignment(.center)
                                 .foregroundStyle(.secondary)
                                 .frame(maxWidth: .infinity)
-                                .font(.title2.weight(.medium))
+                                .font(.headline.weight(.medium))
                             
                             Text(item.totalNumberOfWords)
                                 .multilineTextAlignment(.center)
                                 .foregroundStyle(.secondary)
                                 .frame(maxWidth: .infinity)
-                                .font(.title2.weight(.medium))
+                                .font(.headline.weight(.medium))
                         }
-                        .padding(.vertical, 8)
+                        .padding(.vertical, 14)
                     }
-                    .background(item.email == loginHandeler.model?.email ? .yellow.opacity(0.4) : .white)
-                    .clipShape(Capsule())
-                    .padding(.vertical, 4)
+                    .frame(maxWidth: .infinity)
+                    .background(item.email == loginHandeler.model?.email ? .yellow.opacity(0.4) : .clear)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
                     
-                    saparator(diraction: .horizontal)
+                    if index < items.count - 1 { saparator(diraction: .horizontal) }
                 }
                 .frame(maxWidth: .infinity)
+                .padding(.vertical, 4)
                 .environment(\.layoutDirection, language == "he" ? .rightToLeft : .leftToRight)
                 .onTapGesture { didTap(item as! Cell) }
             }
