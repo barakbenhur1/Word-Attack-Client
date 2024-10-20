@@ -65,6 +65,7 @@ struct WordView<VM: ViewModel>: View {
                         .stroke(Color.black,
                                 lineWidth: 1)
                 )
+                .shadow(radius: 2)
             }
         }
         .onChange(of: vm.current) {

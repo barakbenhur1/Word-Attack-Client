@@ -11,7 +11,11 @@
         }
       }
     },
+    "?" : {
+
+    },
     "*" : {
+      "extractionState" : "stale",
       "localizations" : {
         "he" : {
           "stringUnit" : {

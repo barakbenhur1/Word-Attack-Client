@@ -36,6 +36,8 @@ internal enum HttpMethod: String {
 
 // MARK: Network
 class Network: Networkble {
+    static private var base: String = ""
+    
     // MARK: responedQueue
     fileprivate let responedQueue: DispatchQueue = DispatchQueue.main
     
@@ -51,8 +53,9 @@ class Network: Networkble {
     }
     
     // MARK: init
-    internal init(root: String) {
+    internal init(root: String, base: String = "https://word-attack.onrender.com") {
         self.root = root
+        Network.base = base
     }
     
     // MARK: send - to network
@@ -147,8 +150,8 @@ extension Network {
         static var value: String {
             get {
 #if DEBUG
-                //                                return "http://localhost:3000"
-                return "https://word-attack.onrender.com"
+                //                return "http://localhost:3000"
+                return Network.base
 #else
                 return "https://word-attack.onrender.com"
 #endif

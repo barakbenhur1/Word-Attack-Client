@@ -16,7 +16,7 @@ struct CharView: View {
     private var language: String? { return local.locale.identifier.components(separatedBy: "_").first }
     
     var body: some View {
-        TextField("*",
+        TextField("?",
                   text: $text)
         .frame(maxHeight: .infinity)
         .multilineTextAlignment(.center)
@@ -46,7 +46,7 @@ extension String {
     
     mutating func limitToAllowedCharacters(language: String?) {
         guard let language else { return }
-        let characterSet: CharacterSet = language == "he" ? .hebrewCharacters : .englishLetters
+        let characterSet: CharacterSet = language == "he" ? .hebrewLetters : .englishLetters
         self = filter {
             guard let scalar = $0.unicodeScalars.first else { return false }
             return characterSet.contains(scalar)
@@ -77,7 +77,7 @@ extension String {
 }
 
 extension CharacterSet {
-    static let hebrewCharacters: CharacterSet = {
+    static let hebrewLetters: CharacterSet = {
         var characterSet = CharacterSet()
         
         // Unicode values for Hebrew letters Aleph (א) to Tav (ת)
