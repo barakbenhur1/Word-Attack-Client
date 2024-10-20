@@ -18,6 +18,7 @@ struct CharView: View {
     var body: some View {
         TextField("?",
                   text: $text)
+        .accentColor(.black.opacity(0.2))
         .frame(maxHeight: .infinity)
         .multilineTextAlignment(.center)
         .onReceive(Just(text)) { _ in
