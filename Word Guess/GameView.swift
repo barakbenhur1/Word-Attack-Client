@@ -31,7 +31,7 @@ struct GameView<VM: ViewModel>: View {
     
     @State private var current: Int = 0 { didSet { vm.current = current } }
     @State private var score: Int = 0
-    @State private var scoreAnimation: (value: Int, opticity: CGFloat, scale: CGFloat, offset: CGFloat, animate: Bool) = (0, CGFloat(0), CGFloat(0), CGFloat(80), false)
+    @State private var scoreAnimation: (value: Int, opticity: CGFloat, scale: CGFloat, offset: CGFloat) = (0, CGFloat(0), CGFloat(0), CGFloat(80))
     @State private var matrix: [[String]]
     @State private var colors: [[CharColor]]
     @State private var vm = VM()
@@ -62,19 +62,18 @@ struct GameView<VM: ViewModel>: View {
                 .frame(width: proxy.size.width)
                 .opacity(0.4)
             ZStack(alignment: .topLeading) {
+                Button {
+                    router.navigateBack()
+                } label: {
+                    Image(systemName: "\(language == "he" ? "forward" : "backward").end.fill")
+                        .resizable()
+                        .foregroundStyle(Color.black)
+                        .frame(height: 40)
+                        .frame(width: 40)
+                        .padding(.leading, 10)
+                        .padding(.top, 10)
+                }
                 ZStack(alignment: .topLeading) {
-                    Button {
-                        router.navigateBack()
-                    } label: {
-                        Image(systemName: "\(language == "he" ? "forward" : "backward").end.fill")
-                            .resizable()
-                            .foregroundStyle(Color.black)
-                            .frame(height: 40)
-                            .frame(width: 40)
-                            .padding(.leading, 10)
-                            .padding(.top, 10)
-                    }
-                    
                     if !vm.isError && vm.word != .emapty && timeAttackAnimationDone {
                         VStack {
                             ZStack(alignment: .bottom) {
@@ -94,11 +93,14 @@ struct GameView<VM: ViewModel>: View {
                                             Text("+ \(scoreAnimation.value)")
                                                 .font(.largeTitle)
                                                 .multilineTextAlignment(.center)
+                                                .frame(maxWidth: .infinity)
                                                 .foregroundStyle(scoreAnimation.value > 0 ? .green : .red)
                                                 .opacity(scoreAnimation.opticity)
-                                                .scaleEffect(.init(width: scoreAnimation.scale, height: scoreAnimation.scale))
-                                                .offset(x: 10,
+                                                .scaleEffect(.init(width: scoreAnimation.scale,
+                                                                   height: scoreAnimation.scale))
+                                                .offset(x: scoreAnimation.scale > 0 ? 11.5 : 0,
                                                         y: scoreAnimation.offset)
+                                                .fixedSize()
                                         }
                                     }
                                     .padding()
@@ -176,8 +178,8 @@ struct GameView<VM: ViewModel>: View {
                     guard vm.isError else { return }
                     keyboard.show = true
                 }
+                .onChange(of: vm.word.word) { initMatrixState() }
                 .onChange(of: vm.word.word.guesswork) {
-                    //                guard !vm.word.isTimeAttack else { return }
                     let guesswork = vm.word.word.guesswork
                     for i in 0..<guesswork.count {
                         for j in 0..<guesswork[i].count {
@@ -256,28 +258,34 @@ struct GameView<VM: ViewModel>: View {
         if guess.lowercased() == vm.word.word.value.lowercased() || i == rows - 1 {
             current = .max
             guard let email else { return }
-            var addGuess = true
+            let correct = guess.lowercased() == vm.word.word.value.lowercased()
             
-            if guess.lowercased() == vm.word.word.value.lowercased() {
-                addGuess = false
+            if correct {
                 let points = vm.word.isTimeAttack ? 40 : 20
                 score(value: rows * points - i * points)
             }
-            else {
-                score(value: 0)
-            }
+            else { score(value: 0) }
             
             Task {
-                if addGuess {
-                    await vm.addGuess(diffculty: diffculty, email: email, guess: guess)
-                }
-                queue.asyncAfter(deadline: .now() + 2.2) {
-                    Task {
-                        await vm.score(diffculty: diffculty, email: email)
-                        await MainActor.run { initMatrixState() }
-                        await vm.word(diffculty: diffculty, email: email)
-                        await MainActor.run { if !vm.word.isTimeAttack { current = 0 } }
+                if !correct { await vm.addGuess(diffculty: diffculty, email: email, guess: guess) }
+                await vm.score(diffculty: diffculty, email: email)
+//                await MainActor.run { initMatrixState() }
+                await vm.word(diffculty: diffculty, email: email)
+                await MainActor.run {
+                    withAnimation(.easeOut(duration: 0.5)) {
+                        scoreAnimation.opticity = 0
+                        scoreAnimation.scale = 0
                     }
+                    queue.asyncAfter(wallDeadline: .now() + 0.5) {
+                        Task {
+                            await MainActor.run {
+                                scoreAnimation.value = 0
+                                scoreAnimation.offset = 80
+                            }
+                        }
+                    }
+                    guard !vm.word.isTimeAttack else { return }
+                    current = 0
                 }
             }
         }
@@ -304,23 +312,21 @@ struct GameView<VM: ViewModel>: View {
         withAnimation(.linear(duration: 1.4)) {
             scoreAnimation.offset = 0
             scoreAnimation.opticity = 1
-            scoreAnimation.scale = 1
-            scoreAnimation.animate = true
+            scoreAnimation.scale = 0.9
         }
         
         queue.asyncAfter(deadline: .now() + 1.6) {
-            withAnimation(.easeOut(duration: 0.5)) {
+            guard scoreAnimation.opticity == 1 else { return }
+            withAnimation(.linear(duration: 0.2)) {
                 scoreAnimation.opticity = 0
                 scoreAnimation.scale = 0
+                vm.word.score += value
+                vm.word.number += 1
             }
             
-            queue.asyncAfter(deadline: .now() + 0.5) {
+            queue.asyncAfter(deadline: .now() + 0.2) {
                 scoreAnimation.value = 0
                 scoreAnimation.offset = 80
-                withAnimation(.linear(duration: 0.1)) {
-                    vm.word.score += value
-                    vm.word.number += 1
-                }
             }
         }
     }
@@ -362,10 +368,10 @@ struct GameView<VM: ViewModel>: View {
     }
 }
 
-#Preview {
-    GameView(diffculty: .regular)
-        .environment(\.managedObjectContext, PersistenceController.preview.container.viewContext)
-}
+//#Preview {
+//    GameView(diffculty: .regular)
+//        .environment(\.managedObjectContext, PersistenceController.preview.container.viewContext)
+//}
 
 extension String {
     subscript(offset: Int) -> String { String(self[index(startIndex, offsetBy: offset)]) }
