@@ -102,11 +102,11 @@ struct GameView<VM: ViewModel>: View {
                                             
                                             let attr: AttributedString = {
                                                 if current < 3 || current == .max {
-                                                    return AttributedString("Guess The 4 Letters Word")
+                                                    return AttributedString("Guess The 4 Letters Word".localized())
                                                 }
                                                 else {
                                                    let theWord = vm.word.word.value
-                                                    var attr = AttributedString("the word is \"\(theWord)\" try it, or not ;)")
+                                                    var attr = AttributedString("\("the word is".localized()) \"\(theWord)\" \("try it, or not ;)".localized())")
                                                     let range = attr.range(of: theWord)!
                                                     attr[range].foregroundColor = .orange
                                                     return attr
