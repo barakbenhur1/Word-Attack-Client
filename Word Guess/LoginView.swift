@@ -11,15 +11,14 @@ struct LoginView<VM: LoginViewModel>: View {
     @EnvironmentObject private var loginHandeler: LoginHandeler
    
     private let auth = Authentication()
-    private var loginVm = VM()
+    private let loginVm = VM()
     
     var body: some View {
         VStack {
-            Text("Word Guess")
-                .font(.largeTitle)
-                .padding(.bottom, 20)
+            AppTitle()
+                .padding(.bottom, 80)
             googleSignInButton
-                .padding(.bottom, 140)
+                .padding(.bottom, 240)
         }
         .padding(.horizontal, 40)
     }
@@ -30,25 +29,30 @@ struct LoginView<VM: LoginViewModel>: View {
             Task {
                 auth.googleAuth(complition: { model in
                     Task {
-                        guard await loginVm.login(email: model.email,
-                                                  name: "\(model.givenName) \(model.lastName)")  else { return }
+                        let name = "\(model.givenName) \(model.lastName)"
+                        let email = model.email
+                        guard await loginVm.login(email: email,
+                                                  name: name)  else { return }
                         loginHandeler.model = model
                     }
-                },
-                                error: { error in print(error) })
+                }, error: { error in print(error) })
             }
         }, label: {
-            ZStack(alignment: .center) {
+            HStack {
+                Spacer()
                 Image("google")
                     .resizable()
-                    .frame(width: 25,
-                           height: 25)
-                    .padding(.trailing, 195)
+                    .frame(width: 40)
+                    .frame( height: 40)
                 
                 Text("Google Login")
-                    .frame(maxWidth: .infinity)
-                    .frame(maxHeight: .infinity)
+                    .font(.largeTitle)
+                    .padding(.trailing, 195)
+                Spacer()
             }
+            .frame(maxWidth: .infinity)
+            .frame(maxHeight: .infinity)
+            .padding(.all, 30)
         })
             .buttonStyle(LoginButtonStyle())
             .font(.title2.weight(.medium))

@@ -62,18 +62,32 @@ struct GameView<VM: ViewModel>: View {
                 .frame(height: proxy.size.height)
                 .frame(width: proxy.size.width)
                 .opacity(0.4)
+            
             ZStack(alignment: .topLeading) {
                 Button {
                     audio.stop()
-                    router.navigateBack()
+                    if diffculty == .tutorial {
+                        coreData.new()
+                        router.navigateBack()
+                    }
+                    else { router.navigateBack() }
                 } label: {
-                    Image(systemName: "\(language == "he" ? "forward" : "backward").end.fill")
-                        .resizable()
-                        .foregroundStyle(Color.black)
-                        .frame(height: 40)
-                        .frame(width: 40)
-                        .padding(.leading, 10)
-                        .padding(.top, 10)
+                    if diffculty == .tutorial {
+                        Text("Skip")
+                            .font(.title)
+                            .foregroundStyle(.black)
+                            .padding(.leading, 10)
+                            .padding(.top, 10)
+                    }
+                    else {
+                        Image(systemName: "\(language == "he" ? "forward" : "backward").end.fill")
+                            .resizable()
+                            .foregroundStyle(Color.black)
+                            .frame(height: 40)
+                            .frame(width: 40)
+                            .padding(.leading, 10)
+                            .padding(.top, 10)
+                    }
                 }
                 ZStack(alignment: .topLeading) {
                     if !vm.isError && vm.word != .emapty && timeAttackAnimationDone {
@@ -81,60 +95,88 @@ struct GameView<VM: ViewModel>: View {
                             ZStack(alignment: .bottom) {
                                 ZStack(alignment: .top) {
                                     Color.white.opacity(0.2)
-                                    VStack {
-                                        Text("Score")
-                                            .multilineTextAlignment(.center)
-                                            .font(.largeTitle.bold())
-                                        
-                                        ZStack {
-                                            Text("\(vm.word.score)")
+                                    if diffculty == .tutorial {
+                                        VStack {
+                                            Text("Tutorial")
+                                                .font(.largeTitle)
+                                            
+                                            let attr: AttributedString = {
+                                                if current < 3 || current == .max {
+                                                    return AttributedString("Guess The 4 Letters Word")
+                                                }
+                                                else {
+                                                   let theWord = vm.word.word.value
+                                                    var attr = AttributedString("the word is \"\(theWord)\" try it, or not ;)")
+                                                    let range = attr.range(of: theWord)!
+                                                    attr[range].foregroundColor = .orange
+                                                    return attr
+                                                }
+                                            }()
+                                            
+                                            Text(attr)
+                                                .font(.callout.weight(.heavy))
+                                                .foregroundStyle(.black.opacity(0.5))
+                                        }
+                                        .padding()
+                                    }
+                                    else {
+                                        VStack {
+                                            Text("Score")
                                                 .multilineTextAlignment(.center)
-                                                .foregroundStyle(Color.green)
                                                 .font(.largeTitle.bold())
                                             
-                                            Text("+ \(scoreAnimation.value)")
-                                                .font(.largeTitle)
-                                                .multilineTextAlignment(.center)
-                                                .frame(maxWidth: .infinity)
-                                                .foregroundStyle(scoreAnimation.value > 0 ? .green : .red)
-                                                .opacity(scoreAnimation.opticity)
-                                                .scaleEffect(.init(width: scoreAnimation.scale,
-                                                                   height: scoreAnimation.scale))
-                                                .offset(x: scoreAnimation.scale > 0 ? 11.5 : 0,
-                                                        y: scoreAnimation.offset)
-                                                .fixedSize()
+                                            ZStack {
+                                                Text("\(vm.word.score)")
+                                                    .multilineTextAlignment(.center)
+                                                    .foregroundStyle(Color.green)
+                                                    .font(.largeTitle.bold())
+                                                
+                                                Text("+ \(scoreAnimation.value)")
+                                                    .font(.largeTitle)
+                                                    .multilineTextAlignment(.center)
+                                                    .frame(maxWidth: .infinity)
+                                                    .foregroundStyle(scoreAnimation.value > 0 ? .green : .red)
+                                                    .opacity(scoreAnimation.opticity)
+                                                    .scaleEffect(.init(width: scoreAnimation.scale,
+                                                                       height: scoreAnimation.scale))
+                                                    .offset(x: scoreAnimation.scale > 0 ? language == "he" ? 12 : -12 : 0,
+                                                            y: scoreAnimation.offset)
+                                                    .fixedSize()
+                                            }
                                         }
+                                        .padding()
                                     }
-                                    .padding()
                                 }
                                 .clipShape(RoundedRectangle(cornerRadius: 20))
                                 .padding(.bottom, 10)
                                 .shadow(radius: 2)
                                 .fixedSize()
                                 
-                                var attr: AttributedString {
-                                    let string = "\("words".localized()): \(vm.word.number)"
-                                    let values = string.components(separatedBy: " ")
-                                    
-                                    var text = AttributedString(values[0])
-                                    var number = AttributedString(values[1])
-                                    
-                                    text.font = .title2.weight(.thin)
-                                    number.font = .title2.weight(.semibold)
-                                    
-                                    return text + " " + number
-                                }
-                                
-                                HStack {
-                                    ZStack(alignment: .bottomLeading) {
-                                        Color.white.opacity(0.2)
-                                        Text(attr)
-                                            .padding()
+                                if diffculty != .tutorial {
+                                    var attr: AttributedString {
+                                        let string = "\("words".localized()): \(vm.word.number)"
+                                        let values = string.components(separatedBy: " ")
+                                        
+                                        var text = AttributedString(values[0])
+                                        var number = AttributedString(values[1])
+                                        
+                                        text.font = .title2.weight(.thin)
+                                        number.font = .title2.weight(.semibold)
+                                        
+                                        return text + " " + number
                                     }
-                                    .clipShape(RoundedRectangle(cornerRadius: 20))
-                                    .shadow(radius: 2)
-                                    .fixedSize()
-                                    Spacer()
+                                    
+                                    HStack {
+                                        ZStack(alignment: .bottomLeading) {
+                                            Color.white.opacity(0.2)
+                                            Text(attr)
+                                                .padding()
+                                        }
+                                        .clipShape(RoundedRectangle(cornerRadius: 20))
+                                        .shadow(radius: 2)
+                                        .fixedSize()
+                                        Spacer()
+                                    }
                                 }
                             }
                             
@@ -163,10 +205,8 @@ struct GameView<VM: ViewModel>: View {
                                 }
                             }
                             
-                            Text("Word Guess")
-                                .font(.system(size: 40))
-                                .multilineTextAlignment(.center)
-                                .frame(height: keyboard.keyboardHeight >= 30 ? keyboard.keyboardHeight - 30 : 0)
+                            AppTitle()
+                                .frame(height: keyboard.keyboardHeight > 30 ? keyboard.keyboardHeight - 30 : 0)
                         }
                         .padding(.horizontal, 20)
                         .frame(maxHeight: .infinity)
@@ -210,33 +250,7 @@ struct GameView<VM: ViewModel>: View {
                 }
                 .ignoresSafeArea(.keyboard)
                 
-                if !vm.isError && vm.word == .emapty {
-                    VStack {
-                        Spacer()
-                        Image("fatch")
-                            .resizable()
-                            .frame(height: 200)
-                            .frame(width: 200)
-                            .phaseAnimator([0, 1, 2]) { view, phase in
-                                view
-                                    .opacity(phase > 0 ? 1 : 0)
-                            }
-                        
-                        Text("Fatching Word")
-                            .font(.largeTitle)
-                            .foregroundStyle(Color.primary)
-                            .frame(maxWidth: .infinity)
-                            .font(.largeTitle)
-                            .phaseAnimator([0, 1, 2]) { view, phase in
-                                view
-                                    .scaleEffect(phase)
-                                    .opacity(phase == 1 ? 1 : 0)
-                            } animation: { phase in .linear }
-                        Spacer()
-                    }
-                    .offset(y: -40)
-                }
-                else if vm.word.isTimeAttack {
+                if vm.word.isTimeAttack {
                     VStack {
                         Spacer()
                         Image("clock")
@@ -261,6 +275,20 @@ struct GameView<VM: ViewModel>: View {
                     .opacity(timeAttackAnimation ? 1 : 0)
                     .offset(x: timeAttackAnimation ? 0 : proxy.size.width)
                 }
+                else if !vm.isError && !keyboard.show && diffculty != .tutorial {
+                    VStack {
+                        Spacer()
+                        
+                        TextAnimation(text: "Fatching Word".localized())
+                            .opacity(vm.word == .emapty ? 1 : 0)
+                            .padding(.bottom, 24)
+                        
+                        AppTitle()
+                        
+                        Spacer()
+                    }
+                    .offset(y: vm.word == .emapty ? -80 : 340)
+                }
             }
         }
         .ignoresSafeArea(.keyboard)
@@ -278,6 +306,19 @@ struct GameView<VM: ViewModel>: View {
             audio.stop()
             
             let correct = guess.lowercased() == vm.word.word.value.lowercased()
+            
+            guard diffculty != .tutorial else {
+                return queue.asyncAfter(wallDeadline: .now() + 0.2) {
+                    let sound = correct ? "success" : "fail"
+                    audio.playSound(sound: sound,
+                                    type: "wav")
+                    
+                    return queue.asyncAfter(wallDeadline: .now() + 1) {
+                        coreData.new()
+                        router.navigateBack()
+                    }
+                }
+            }
             
             if correct {
                 let points = vm.word.isTimeAttack ? 40 : 20
@@ -311,9 +352,8 @@ struct GameView<VM: ViewModel>: View {
         else if !guess.isEmpty && i + 1 > vm.word.word.guesswork.count && current < i + 1 {
             guard let email else { return }
             current = i + 1
-            Task {
-                await vm.addGuess(diffculty: diffculty, email: email, guess: guess)
-            }
+            guard diffculty != .tutorial else { return }
+            Task { await vm.addGuess(diffculty: diffculty, email: email, guess: guess) }
         }
     }
     

@@ -41,6 +41,10 @@ extension String {
         return replacingOccurrences(of: "Word_Guess.", with: "")
     }
     
+    func toArray() -> [String] {
+        return map { String($0) }
+    }
+    
     mutating func limitText(_ upper: Int) {
         guard count > upper else { return }
         self = String(prefix(upper))

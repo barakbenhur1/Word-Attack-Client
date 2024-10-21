@@ -29,15 +29,22 @@ class ViewModel: ObservableObject {
     }
     
     func word(diffculty: DifficultyType, email: String) async {
+        guard diffculty != .tutorial else {
+            let local = LanguageSetting()
+            let language = local.locale.identifier.components(separatedBy: "_").first
+            return word = .init(score: 0,
+                                word: .init(value: language == "he" ? "שלום" : "Cool",
+                                            guesswork: []),
+                                number: 0,
+                                isTimeAttack: false)
+        }
         let value: WordData? = await network.send(route: "getWord",
                                                   parameters: ["diffculty": diffculty.rawValue,
                                                                "email": email])
         queue.async { [weak self] in
             guard let self else { return }
-            guard let value else {
-                return isError = true
-            }
-            word = value
+            guard let value else { return isError = true }
+            withAnimation { self.word = value }
         }
     }
     

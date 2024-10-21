@@ -117,6 +117,7 @@ class Authentication {
     
     func logout() {
         try? Auth.auth().signOut()
+        GIDSignIn.sharedInstance.signOut()
     }
 }
 
