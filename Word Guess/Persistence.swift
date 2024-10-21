@@ -14,10 +14,6 @@ class PersistenceController: ObservableObject {
     static let preview: PersistenceController = {
         let result = PersistenceController(inMemory: true)
         let viewContext = result.container.viewContext
-        for _ in 0..<10 {
-            let newItem = EasyItem(context: viewContext)
-            newItem.timestamp = Date()
-        }
         do {
             try viewContext.save()
         } catch {
@@ -55,36 +51,8 @@ class PersistenceController: ObservableObject {
         container.viewContext.automaticallyMergesChangesFromParent = true
     }
     
-    func set(item: EasyItem?, current: Int, guesses: Guesses) {
-        delete(item: item)
-        let item = EasyItem(context: container.viewContext)
-        item.timestamp = Date()
-        item.current = Int32(current)
-        item.guesses = guesses
-        save()
-    }
-    
-    func set(item: RegularItem?, current: Int, guesses: Guesses) {
-        delete(item: item)
-        let item = RegularItem(context: container.viewContext)
-        item.timestamp = Date()
-        item.current = Int32(current)
-        item.guesses = guesses
-        save()
-    }
-    
-    func set(item: HardItem?, current: Int, guesses: Guesses) {
-        delete(item: item)
-        let item = HardItem(context: container.viewContext)
-        item.timestamp = Date()
-        item.current = Int32(current)
-        item.guesses = guesses
-        save()
-    }
-    
-    func delete(item: NSManagedObject?) {
-        guard let item else { return }
-        container.viewContext.delete(item)
+    func new() {
+        _ = TutorialItem(context: container.viewContext)
         save()
     }
     

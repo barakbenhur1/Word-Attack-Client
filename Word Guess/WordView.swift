@@ -55,7 +55,7 @@ struct WordView<VM: ViewModel>: View {
                 })
                 .frame(maxHeight: .infinity)
                 .focused($fieldFocus, equals: FieldFocus(rawValue: i)!)
-                .textInputAutocapitalization(.never)
+                .textInputAutocapitalization(i == 0 ? .sentences : .never)
                 .autocorrectionDisabled()
                 .onSubmit { fieldFocus = FieldFocus(rawValue: i)! }
                 .background(colors[i].color)

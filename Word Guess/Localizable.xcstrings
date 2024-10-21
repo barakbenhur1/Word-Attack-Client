@@ -12,15 +12,11 @@
       }
     },
     "?" : {
-
-    },
-    "*" : {
-      "extractionState" : "stale",
       "localizations" : {
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "*"
+            "value" : "?"
           }
         }
       }
@@ -93,6 +89,7 @@
       }
     },
     "Fatching Word" : {
+      "extractionState" : "manual",
       "localizations" : {
         "he" : {
           "stringUnit" : {
@@ -103,6 +100,7 @@
       }
     },
     "Google Login" : {
+      "extractionState" : "manual",
       "localizations" : {
         "he" : {
           "stringUnit" : {
@@ -206,6 +204,16 @@
         }
       }
     },
+    "Skip" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "דלג"
+          }
+        }
+      }
+    },
     "Time Attack" : {
       "localizations" : {
         "he" : {
@@ -232,18 +240,29 @@
         }
       }
     },
+    "Tutorial" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הדרכה"
+          }
+        }
+      }
+    },
     "Word Guess" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Word Attack"
+            "value" : "WordZap"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "מלחמת מילים"
+            "value" : "WordZap"
           }
         }
       }
