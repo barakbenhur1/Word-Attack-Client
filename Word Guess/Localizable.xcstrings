@@ -110,6 +110,17 @@
         }
       }
     },
+    "Guess The 4 Letters Word" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "נחש את המילה בעלת 4 האותיות"
+          }
+        }
+      }
+    },
     "Hard" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -214,6 +225,17 @@
         }
       }
     },
+    "the word is" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "המילה היא"
+          }
+        }
+      }
+    },
     "Time Attack" : {
       "localizations" : {
         "he" : {
@@ -236,6 +258,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "כל המילים"
+          }
+        }
+      }
+    },
+    "try it, or not ;)" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "תנסה אותה, או לא ;)"
           }
         }
       }

@@ -33,6 +33,7 @@ struct AppTitle: View {
                     }
                 }
             }
+            .environment(\.layoutDirection, .leftToRight)
             
             HStack(spacing: 0) {
                 let array = end.toArray()
@@ -53,6 +54,7 @@ struct AppTitle: View {
                     }
                 }
             }
+            .environment(\.layoutDirection, .leftToRight)
         }
         .scaleEffect(.init(width: 1.4,
                            height: 1.4))
