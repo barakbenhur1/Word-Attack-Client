@@ -51,6 +51,17 @@
         }
       }
     },
+    "change language" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "שינוי שפה"
+          }
+        }
+      }
+    },
     "Difficulty" : {
       "localizations" : {
         "en" : {
@@ -88,24 +99,24 @@
         }
       }
     },
-    "Fatching Word" : {
+    "English" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אנגלית"
+          }
+        }
+      }
+    },
+    "Fetching Word" : {
       "extractionState" : "manual",
       "localizations" : {
         "he" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "שולף מילה"
-          }
-        }
-      }
-    },
-    "Google Login" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "התחברות עם גוגל"
           }
         }
       }
@@ -128,6 +139,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "קשה"
+          }
+        }
+      }
+    },
+    "Hebrew" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "עברית"
           }
         }
       }
@@ -215,7 +237,33 @@
         }
       }
     },
-    "Skip" : {
+    "Settings" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "SETTINGS"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הגדרות"
+          }
+        }
+      }
+    },
+    "Sign in with Google" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "התחברות עם גוגל"
+          }
+        }
+      }
+    },
+    "skip" : {
       "localizations" : {
         "he" : {
           "stringUnit" : {

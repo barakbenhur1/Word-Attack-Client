@@ -13,11 +13,19 @@ class Router: ObservableObject {
     enum Route: Codable, Hashable {
         case login
         case difficulty
+        case settings
         case score
         case game(diffculty: DifficultyType)
     }
     
     var path: NavigationPath = NavigationPath()
+    
+    private var navigationAnimation: Bool = false {
+        didSet {
+            UINavigationBar.setAnimationsEnabled(navigationAnimation)
+        }
+    }
+    
     
     // Builds the views
     @ViewBuilder func view(for route: Route) -> some View {
@@ -26,6 +34,8 @@ class Router: ObservableObject {
             LoginView()
         case .difficulty:
             DifficultyView()
+        case .settings:
+            SettingsView()
         case .score:
             Scoreboard()
         case .game(let value):
@@ -35,6 +45,7 @@ class Router: ObservableObject {
     
     // Used by views to navigate to another view
     func navigateTo(_ appRoute: Route) {
+        navigationAnimation = appRoute != .game(diffculty: .tutorial)
         path.append(appRoute)
     }
     

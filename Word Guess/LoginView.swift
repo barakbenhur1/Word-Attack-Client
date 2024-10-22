@@ -9,22 +9,29 @@ import SwiftUI
 
 struct LoginView<VM: LoginViewModel>: View {
     @EnvironmentObject private var loginHandeler: LoginHandeler
-   
+    
     private let auth = Authentication()
     private let loginVm = VM()
     
     var body: some View {
-        VStack {
-            AppTitle()
-                .padding(.bottom, 80)
-            googleSignInButton
-                .padding(.bottom, 240)
+        ZStack {
+            LinearGradient(colors: [.red, .yellow, .green, .blue],
+                           startPoint: .topLeading,
+                           endPoint: .bottomTrailing)
+            .opacity(0.1)
+            .ignoresSafeArea()
+            VStack {
+                AppTitle()
+                    .padding(.bottom, 40)
+                googleSignInButton
+                    .padding(.bottom, 40)
+            }
+            .padding(.horizontal, 40)
         }
-        .padding(.horizontal, 40)
     }
     
     @ViewBuilder fileprivate var googleSignInButton: some View {
-        let button = Button(action: {
+        GoogleLoginButton {
             hideKeyboard()
             Task {
                 auth.googleAuth(complition: { model in
@@ -37,34 +44,59 @@ struct LoginView<VM: LoginViewModel>: View {
                     }
                 }, error: { error in print(error) })
             }
-        }, label: {
-            HStack {
-                Spacer()
-                Image("google")
-                    .resizable()
-                    .frame(width: 40)
-                    .frame( height: 40)
-                
-                Text("Google Login")
-                    .font(.largeTitle)
-                    .padding(.trailing, 195)
-                Spacer()
-            }
-            .frame(maxWidth: .infinity)
-            .frame(maxHeight: .infinity)
-            .padding(.all, 30)
-        })
-            .buttonStyle(LoginButtonStyle())
-            .font(.title2.weight(.medium))
-            .foregroundStyle(.black)
-        
-        makeLoginButton(view: button)
+        }
     }
     
     @ViewBuilder private func makeLoginButton(view: some View) -> some View {
         view
             .clipShape(Capsule())
             .frame(height: 56)
+    }
+}
+
+struct GoogleLoginButton: View {
+    let didTap: () -> ()
+    
+    var body: some View {
+        ZStack {
+            LinearGradient(colors: [.white, .gray.opacity(0.1)],
+                           startPoint: .topTrailing,
+                           endPoint: .bottomLeading)
+            
+            VStack(spacing: 30) {
+                VStack(spacing: 8) {
+                    Image("google")
+                        .resizable()
+                        .frame(width: 60, height: 60)
+                        .foregroundColor(.blue)
+                        .shadow(radius: 4)
+                    
+                    Text("Sign in with Google")
+                        .font(.headline)
+                }
+                
+                Button(action: { didTap() }) {
+                    Text("Sign in with Google")
+                        .font(.headline)
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                }
+                .background {
+                    LinearGradient(colors: [.green.opacity(0.4), .green],
+                                   startPoint: .topTrailing,
+                                   endPoint: .bottomLeading)
+                }
+                .frame(width: 280)
+                .clipShape(Capsule())
+                .shadow(radius: 4)
+                .padding(.bottom, 14)
+                .padding(.horizontal, 30)
+            }
+        }
+        .shadow(radius: 4)
+        .clipShape(RoundedRectangle(cornerRadius: 60))
+        .frame(height: 320)
     }
 }
 

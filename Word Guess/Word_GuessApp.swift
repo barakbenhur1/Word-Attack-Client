@@ -51,6 +51,7 @@ struct WordGuessApp: App {
         .environmentObject(audio)
         .environmentObject(persistenceController)
         .environment(local)
+        .environment(\.locale, local.locale)
         .environment(\.managedObjectContext, persistenceController.container.viewContext)
     }
 }

@@ -43,67 +43,118 @@ struct DifficultyView: View {
     ]
     
     var body: some View {
-        ZStack(alignment: .top) {
-            HStack {
-                Spacer()
-                Button {
-                    router.navigateTo(.score)
-                } label: {
-                    VStack {
-                        Image(systemName: "person.3.fill")
-                            .resizable()
-                            .aspectRatio(contentMode: .fit)
-                            .frame(height: 40)
-                        
-                        Text("Scoreboard")
-                    }
-                }
-                .foregroundStyle(.black)
-            }
-            .padding(.top, 30)
+        ZStack {
+            LinearGradient(colors: [.red, .yellow, .green, .blue],
+                           startPoint: .topLeading,
+                           endPoint: .bottomTrailing)
+            .opacity(0.1)
+            .ignoresSafeArea()
             
-            VStack(spacing: 40) {
-                Spacer()
-                Text("Difficulty")
-                    .font(.title.bold())
-                    .padding(.top, 80)
-                
-                ForEach(buttons) { button in
-                    Button {
-                        router.navigateTo(.game(diffculty: button.type))
-                    } label: {
-                        Text(button.type.rawValue.localized())
-                            .foregroundStyle(Color.black)
-                            .font(.headline)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 40)
-                    }
-                    .background(.white)
-                    .clipShape(RoundedRectangle(cornerRadius: 80))
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 80)
-                            .stroke(.black, lineWidth: 1)
-                    }
-                }
-                
-                Spacer()
-                
-                Button {
-                    loginHandeler.model = nil
-                    auth.logout()
-                } label: {
-                    Text("logout")
-                        .foregroundStyle(Color.white)
-                        .font(.headline)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 40)
-                }
-                .background(.red)
-                .clipShape(RoundedRectangle(cornerRadius: 80))
-                .padding(.bottom, 40)
-            }
+            contanet()
+                .onAppear { if tutorialItem == nil { router.navigateTo(.game(diffculty: .tutorial)) } }
         }
-        .padding(.horizontal, 40)
-        .onAppear { if tutorialItem == nil { router.navigateTo(.game(diffculty: .tutorial)) } }
+    }
+    
+    @ViewBuilder private func contanet() -> some View {
+        VStack {
+            AdView(adUnitID: "TopBanner".toKey())
+            ZStack(alignment: .top) {
+                topButtons()
+                buttonList()
+            }
+            .padding(.horizontal, 40)
+            AdView(adUnitID: "BottomBanner".toKey())
+        }
+    }
+    
+    @ViewBuilder private func topButtons() -> some View {
+        HStack {
+            Button {
+                router.navigateTo(.settings)
+            } label: {
+                VStack {
+                    Image(systemName: "gear")
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(height: 40)
+                    
+                    Text("Settings")
+                }
+            }
+            .foregroundStyle(.black)
+            
+            Spacer()
+            
+            Button {
+                router.navigateTo(.score)
+            } label: {
+                VStack {
+                    Image(systemName: "person.3.fill")
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(height: 40)
+                    
+                    Text("Scoreboard")
+                }
+            }
+            .foregroundStyle(.black)
+        }
+        .padding(.top, 30)
+    }
+    
+    @ViewBuilder private func buttonList() -> some View {
+        VStack {
+            Spacer()
+            title()
+                .padding(.vertical, 6)
+            ForEach(buttons) { button in
+                difficultyButton(type: button.type)
+                    .shadow(radius: 4)
+                Spacer()
+            }
+            logoutButton()
+                .shadow(radius: 4)
+                .padding(.top, 40)
+        }
+    }
+    
+    @ViewBuilder private func title() -> some View {
+        Text("Difficulty")
+            .font(.title.bold())
+            .padding(.top, 80)
+    }
+    
+    @ViewBuilder private func difficultyButton(type: DifficultyType) -> some View {
+        Button {
+            router.navigateTo(.game(diffculty: type))
+        } label: {
+            Text(type.rawValue.localized())
+                .foregroundStyle(Color.black)
+                .font(.headline)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 40)
+        }
+        .background(.white)
+        .clipShape(RoundedRectangle(cornerRadius: 80))
+        .overlay {
+            RoundedRectangle(cornerRadius: 80)
+                .stroke(.black, lineWidth: 1)
+        }
+    }
+    
+    @ViewBuilder private func logoutButton() -> some View {
+        Button {
+            loginHandeler.model = nil
+            auth.logout()
+        } label: {
+            Text("logout")
+                .foregroundStyle(Color.white)
+                .font(.headline)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 40)
+        }
+        .background(.red)
+        .clipShape(RoundedRectangle(cornerRadius: 80))
+        .padding(.bottom, 40)
     }
 }

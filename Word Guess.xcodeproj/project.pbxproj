@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		4F370C872CC6A5BF00632E10 /* GoogleUserMessagingPlatform in Frameworks */ = {isa = PBXBuildFile; productRef = 4F370C862CC6A5BF00632E10 /* GoogleUserMessagingPlatform */; };
+		4F370C8D2CC6A72F00632E10 /* GoogleMobileAds in Frameworks */ = {isa = PBXBuildFile; productRef = 4F370C8C2CC6A72F00632E10 /* GoogleMobileAds */; };
 		4FD6D2882CB9A2C000755D03 /* FirebaseAnalyticsOnDeviceConversion in Frameworks */ = {isa = PBXBuildFile; productRef = 4FD6D2872CB9A2C000755D03 /* FirebaseAnalyticsOnDeviceConversion */; };
 		4FD6D28A2CB9A2C000755D03 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 4FD6D2892CB9A2C000755D03 /* FirebaseAuth */; };
 		4FD6D28C2CB9A2C000755D03 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = 4FD6D28B2CB9A2C000755D03 /* FirebaseCore */; };
@@ -65,11 +67,13 @@
 			files = (
 				4FD6D2912CB9A2DA00755D03 /* GoogleSignIn in Frameworks */,
 				4FEC01B92CC2F6990086EFEC /* Alamofire in Frameworks */,
+				4F370C8D2CC6A72F00632E10 /* GoogleMobileAds in Frameworks */,
 				4FD6D2942CB9A2F200755D03 /* FacebookCore in Frameworks */,
 				4FD6D2882CB9A2C000755D03 /* FirebaseAnalyticsOnDeviceConversion in Frameworks */,
 				4FD6D28E2CB9A2C000755D03 /* FirebaseFirestore in Frameworks */,
 				4FD6D28C2CB9A2C000755D03 /* FirebaseCore in Frameworks */,
 				4FD6D2962CB9A2F200755D03 /* FacebookLogin in Frameworks */,
+				4F370C872CC6A5BF00632E10 /* GoogleUserMessagingPlatform in Frameworks */,
 				4FD6D28A2CB9A2C000755D03 /* FirebaseAuth in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -100,6 +104,7 @@
 				4FD6D2392CB9A1F400755D03 /* Products */,
 			);
 			sourceTree = "<group>";
+			usesTabs = 0;
 		};
 		4FD6D2392CB9A1F400755D03 /* Products */ = {
 			isa = PBXGroup;
@@ -139,6 +144,8 @@
 				4FD6D2932CB9A2F200755D03 /* FacebookCore */,
 				4FD6D2952CB9A2F200755D03 /* FacebookLogin */,
 				4FEC01B82CC2F6990086EFEC /* Alamofire */,
+				4F370C862CC6A5BF00632E10 /* GoogleUserMessagingPlatform */,
+				4F370C8C2CC6A72F00632E10 /* GoogleMobileAds */,
 			);
 			productName = "Word Guess";
 			productReference = 4FD6D2382CB9A1F400755D03 /* Word Guess.app */;
@@ -228,6 +235,8 @@
 				4FD6D28F2CB9A2DA00755D03 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */,
 				4FD6D2922CB9A2F200755D03 /* XCRemoteSwiftPackageReference "facebook-ios-sdk" */,
 				4FEC01B72CC2F6990086EFEC /* XCRemoteSwiftPackageReference "Alamofire" */,
+				4F370C852CC6A5BF00632E10 /* XCRemoteSwiftPackageReference "swift-package-manager-google-user-messaging-platform" */,
+				4F370C8B2CC6A72F00632E10 /* XCRemoteSwiftPackageReference "swift-package-manager-google-mobile-ads" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 4FD6D2392CB9A1F400755D03 /* Products */;
@@ -305,6 +314,8 @@
 /* Begin XCBuildConfiguration section */
 		4FD6D25F2CB9A1F700755D03 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReferenceAnchor = 4FD6D23A2CB9A1F400755D03 /* Word Guess */;
+			baseConfigurationReferenceRelativePath = Secrets.xcconfig;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
@@ -369,6 +380,8 @@
 		};
 		4FD6D2602CB9A1F700755D03 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReferenceAnchor = 4FD6D23A2CB9A1F400755D03 /* Word Guess */;
+			baseConfigurationReferenceRelativePath = Secrets.xcconfig;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
@@ -436,8 +449,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Word-Guess-Info.plist";
-				INFOPLIST_KEY_CFBundleDisplayName = WordZap;
-				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.word-games";
+				INFOPLIST_KEY_NSUserTrackingUsageDescription = "This identifier will be used to deliver personalized ads to you.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -449,6 +461,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 0;
+				"OTHER_LDFLAGS[arch=*]" = "-ObjC";
 				PRODUCT_BUNDLE_IDENTIFIER = Barak.ben.hur.WordGuess;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -469,8 +482,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Word-Guess-Info.plist";
-				INFOPLIST_KEY_CFBundleDisplayName = WordZap;
-				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.word-games";
+				INFOPLIST_KEY_NSUserTrackingUsageDescription = "This identifier will be used to deliver personalized ads to you.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -604,6 +616,22 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		4F370C852CC6A5BF00632E10 /* XCRemoteSwiftPackageReference "swift-package-manager-google-user-messaging-platform" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/googleads/swift-package-manager-google-user-messaging-platform.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.6.0;
+			};
+		};
+		4F370C8B2CC6A72F00632E10 /* XCRemoteSwiftPackageReference "swift-package-manager-google-mobile-ads" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/googleads/swift-package-manager-google-mobile-ads.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 11.10.0;
+			};
+		};
 		4FD6D2862CB9A2C000755D03 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/firebase/firebase-ios-sdk.git";
@@ -639,6 +667,16 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		4F370C862CC6A5BF00632E10 /* GoogleUserMessagingPlatform */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4F370C852CC6A5BF00632E10 /* XCRemoteSwiftPackageReference "swift-package-manager-google-user-messaging-platform" */;
+			productName = GoogleUserMessagingPlatform;
+		};
+		4F370C8C2CC6A72F00632E10 /* GoogleMobileAds */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4F370C8B2CC6A72F00632E10 /* XCRemoteSwiftPackageReference "swift-package-manager-google-mobile-ads" */;
+			productName = GoogleMobileAds;
+		};
 		4FD6D2872CB9A2C000755D03 /* FirebaseAnalyticsOnDeviceConversion */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 4FD6D2862CB9A2C000755D03 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;

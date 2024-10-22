@@ -25,6 +25,7 @@ struct GameView<VM: ViewModel>: View {
     @EnvironmentObject private var local: LanguageSetting
     
     private let queue = DispatchQueue.main
+    private let InterstitialAdInterval: Int = 7
     private let rows: Int = 5
     private let diffculty: DifficultyType
     private var length: Int { return diffculty.getLength() }
@@ -32,13 +33,15 @@ struct GameView<VM: ViewModel>: View {
     
     @State private var current: Int = 0 { didSet { vm.current = current } }
     @State private var score: Int = 0
-    @State private var scoreAnimation: (value: Int, opticity: CGFloat, scale: CGFloat, offset: CGFloat) = (0, CGFloat(0), CGFloat(0), CGFloat(80))
+    @State private var scoreAnimation: (value: Int, opticity: CGFloat, scale: CGFloat, offset: CGFloat) = (0, CGFloat(0), CGFloat(0), CGFloat(30))
     @State private var matrix: [[String]]
     @State private var colors: [[CharColor]]
     @State private var vm = VM()
     @State private var keyboard = KeyboardHeightHelper()
     @State private var timeAttackAnimation = false
     @State private var timeAttackAnimationDone = true
+    @State private var endFetchAnimation = false
+    @State private var interstitialAdManager = InterstitialAdsManager()
     
     private var language: String? { return local.locale.identifier.components(separatedBy: "_").first }
     
@@ -54,165 +57,168 @@ struct GameView<VM: ViewModel>: View {
     }
     
     var body: some View {
+        conatnet()
+    }
+    
+    @ViewBuilder private func conatnet() -> some View {
         GeometryReader { proxy in
+            background(proxy: proxy)
+            ZStack(alignment: .top) {
+                AdView(adUnitID: "GameBanner".toKey())
+                game(proxy: proxy)
+                    .padding(.top, 48)
+                overlayViews(proxy: proxy)
+            }
+        }
+        .ignoresSafeArea(.keyboard)
+        .onChange(of: interstitialAdManager.interstitialAdLoaded) {
+            guard interstitialAdManager.interstitialAdLoaded else { return }
+            interstitialAdManager.displayInterstitialAd { initalConfigirationForWord() }
+        }
+    }
+    
+    @ViewBuilder private func background(proxy: GeometryProxy) -> some View {
+        ZStack {
             Image("background")
                 .resizable()
                 .scaledToFill()
                 .ignoresSafeArea()
                 .frame(height: proxy.size.height)
                 .frame(width: proxy.size.width)
-                .opacity(0.4)
-            
-            ZStack(alignment: .topLeading) {
-                Button {
-                    audio.stop()
-                    if diffculty == .tutorial {
-                        coreData.new()
-                        router.navigateBack()
-                    }
-                    else { router.navigateBack() }
-                } label: {
-                    if diffculty == .tutorial {
-                        Text("Skip")
-                            .font(.title)
-                            .foregroundStyle(.black)
-                            .padding(.leading, 10)
-                            .padding(.top, 10)
-                    }
-                    else {
-                        Image(systemName: "\(language == "he" ? "forward" : "backward").end.fill")
-                            .resizable()
-                            .foregroundStyle(Color.black)
-                            .frame(height: 40)
-                            .frame(width: 40)
-                            .padding(.leading, 10)
-                            .padding(.top, 10)
-                    }
-                }
-                ZStack(alignment: .topLeading) {
-                    if !vm.isError && vm.word != .emapty && timeAttackAnimationDone {
-                        VStack {
-                            ZStack(alignment: .bottom) {
-                                ZStack(alignment: .top) {
-                                    Color.white.opacity(0.2)
-                                    if diffculty == .tutorial {
-                                        VStack {
-                                            Text("Tutorial")
-                                                .font(.largeTitle)
-                                            
-                                            let attr: AttributedString = {
-                                                if current < 3 || current == .max {
-                                                    return AttributedString("Guess The 4 Letters Word".localized())
-                                                }
-                                                else {
-                                                   let theWord = vm.word.word.value
-                                                    var attr = AttributedString("\("the word is".localized()) \"\(theWord)\" \("try it, or not ;)".localized())")
-                                                    let range = attr.range(of: theWord)!
-                                                    attr[range].foregroundColor = .orange
-                                                    return attr
-                                                }
-                                            }()
-                                            
-                                            Text(attr)
-                                                .font(.callout.weight(.heavy))
-                                                .foregroundStyle(.black.opacity(0.5))
-                                        }
-                                        .padding()
+                .opacity(0.5)
+            Color.white.opacity(0.3)
+        }
+    }
+    
+    @ViewBuilder private func gameBody(proxy: GeometryProxy) -> some View {
+        if !vm.isError && vm.word != .emapty && timeAttackAnimationDone {
+            VStack {
+                ZStack(alignment: .bottom) {
+                    ZStack(alignment: .top) {
+                        if diffculty == .tutorial {
+                            VStack {
+                                Text("Tutorial")
+                                    .font(.largeTitle)
+                                
+                                let attr: AttributedString = {
+                                    if current < 3 || current == .max {
+                                        return AttributedString("Guess The 4 Letters Word".localized())
                                     }
                                     else {
-                                        VStack {
-                                            Text("Score")
+                                        let theWord = vm.word.word.value
+                                        var attr = AttributedString("\("the word is".localized()) \"\(theWord)\" \("try it, or not ;)".localized())")
+                                        let range = attr.range(of: theWord)!
+                                        attr[range].foregroundColor = .orange
+                                        return attr
+                                    }
+                                }()
+                                
+                                Text(attr)
+                                    .font(.callout.weight(.heavy))
+                                    .foregroundStyle(.black.opacity(0.5))
+                            }
+                            .padding()
+                        }
+                        else {
+                            ZStack(alignment: .trailing) {
+                                HStack {
+                                    Spacer()
+                                    VStack {
+                                        Text("Score")
+                                            .multilineTextAlignment(.center)
+                                            .font(.largeTitle.bold())
+                                        
+                                        ZStack(alignment: .top) {
+                                            Text("\(vm.word.score)")
                                                 .multilineTextAlignment(.center)
+                                                .foregroundStyle(Color.green)
                                                 .font(.largeTitle.bold())
                                             
-                                            ZStack {
-                                                Text("\(vm.word.score)")
-                                                    .multilineTextAlignment(.center)
-                                                    .foregroundStyle(Color.green)
-                                                    .font(.largeTitle.bold())
-                                                
-                                                Text("+ \(scoreAnimation.value)")
-                                                    .font(.largeTitle)
-                                                    .multilineTextAlignment(.center)
-                                                    .frame(maxWidth: .infinity)
-                                                    .foregroundStyle(scoreAnimation.value > 0 ? .green : .red)
-                                                    .opacity(scoreAnimation.opticity)
-                                                    .scaleEffect(.init(width: scoreAnimation.scale,
-                                                                       height: scoreAnimation.scale))
-                                                    .offset(x: scoreAnimation.scale > 0 ? language == "he" ? 12 : -12 : 0,
-                                                            y: scoreAnimation.offset)
-                                                    .fixedSize()
-                                            }
+                                            Text("+ \(scoreAnimation.value)")
+                                                .font(.largeTitle)
+                                                .multilineTextAlignment(.center)
+                                                .frame(maxWidth: .infinity)
+                                                .foregroundStyle(scoreAnimation.value > 0 ? .green : .red)
+                                                .opacity(scoreAnimation.opticity)
+                                                .scaleEffect(.init(width: scoreAnimation.scale,
+                                                                   height: scoreAnimation.scale))
+                                                .offset(x: scoreAnimation.scale > 0 ? language == "he" ? 12 : -12 : 0,
+                                                        y: scoreAnimation.offset)
+                                                .shadow(radius: 2)
+                                                .fixedSize()
                                         }
-                                        .padding()
                                     }
+                                    .padding(.top, -10)
+                                    Spacer()
                                 }
-                                .clipShape(RoundedRectangle(cornerRadius: 20))
-                                .padding(.bottom, 10)
-                                .shadow(radius: 2)
-                                .fixedSize()
                                 
-                                if diffculty != .tutorial {
-                                    var attr: AttributedString {
-                                        let string = "\("words".localized()): \(vm.word.number)"
-                                        let values = string.components(separatedBy: " ")
-                                        
-                                        var text = AttributedString(values[0])
-                                        var number = AttributedString(values[1])
-                                        
-                                        text.font = .title2.weight(.thin)
-                                        number.font = .title2.weight(.semibold)
-                                        
-                                        return text + " " + number
-                                    }
+                                var attr: AttributedString {
+                                    let string = "\("words".localized()): \(vm.word.number)"
+                                    let values = string.components(separatedBy: " ")
                                     
-                                    HStack {
-                                        ZStack(alignment: .bottomLeading) {
-                                            Color.white.opacity(0.2)
-                                            Text(attr)
-                                                .padding()
-                                        }
-                                        .clipShape(RoundedRectangle(cornerRadius: 20))
-                                        .shadow(radius: 2)
-                                        .fixedSize()
-                                        Spacer()
+                                    var text = AttributedString(values[0])
+                                    var number = AttributedString(values[1])
+                                    
+                                    text.font = .title2.weight(.light)
+                                    number.font = .title2.weight(.light)
+                                    
+                                    return text + " " + number
+                                }
+                                
+                                HStack {
+                                    Spacer()
+                                    VStack {
+                                        Text(attr)
+                                            .multilineTextAlignment(.center)
                                     }
                                 }
                             }
-                            
-                            ForEach(0..<rows, id: \.self) { i in
-                                ZStack {
-                                    WordView(length: length,
-                                             word: $matrix[i],
-                                             gainFocus: .constant(true),
-                                             colors: $colors[i]) {
-                                        guard i == current else { return }
-                                        nextLine(i: i)
-                                    }
-                                             .disabled(current != i)
-                                             .environmentObject(vm)
-                                             .shadow(radius: 2)
-                                    
-                                    if keyboard.show && vm.word.isTimeAttack && timeAttackAnimationDone && current == i {
-                                        let start = Date()
-                                        let end = start.addingTimeInterval(diffculty == .easy ? 20 : 15)
-                                        ProgressBarView(length: length,
-                                                        value: 0,
-                                                        total: end.timeIntervalSinceNow - start.timeIntervalSinceNow,
-                                                        done: { nextLine(i: i) })
-                                        .opacity(0.2)
-                                    }
-                                }
-                            }
-                            
-                            AppTitle()
-                                .frame(height: keyboard.keyboardHeight > 30 ? keyboard.keyboardHeight - 30 : 0)
+                            .padding()
                         }
-                        .padding(.horizontal, 20)
-                        .frame(maxHeight: .infinity)
-                        .ignoresSafeArea(.keyboard)
+                    }
+                    .clipShape(RoundedRectangle(cornerRadius: 20))
+                    .shadow(radius: 2)
+                }
+                .padding(.bottom, -15)
+                
+                ForEach(0..<rows, id: \.self) { i in
+                    ZStack {
+                        WordView(length: length,
+                                 word: $matrix[i],
+                                 gainFocus: .constant(true),
+                                 colors: $colors[i]) {
+                            guard i == current else { return }
+                            nextLine(i: i)
+                        }
+                                 .disabled(current != i)
+                                 .environmentObject(vm)
+                                 .shadow(radius: 2)
+                        
+                        if keyboard.show && vm.word.isTimeAttack && timeAttackAnimationDone && current == i {
+                            let start = Date()
+                            let end = start.addingTimeInterval(diffculty == .easy ? 20 : 15)
+                            ProgressBarView(length: length,
+                                            value: 0,
+                                            total: end.timeIntervalSinceNow - start.timeIntervalSinceNow,
+                                            done: { nextLine(i: i) })
+                            .opacity(0.2)
+                        }
                     }
                 }
+                
+                AppTitle()
+                    .padding(.top, 90)
+                    .padding(.bottom, 140)
+            }
+            .padding(.horizontal, 10)
+            .frame(maxHeight: .infinity)
+            .ignoresSafeArea(.keyboard)
+        }
+    }
+    
+    @ViewBuilder private func game(proxy: GeometryProxy) -> some View {
+        ZStack(alignment: .topLeading) {
+            ZStack(alignment: .topLeading) { gameBody(proxy: proxy) }
                 .opacity(keyboard.show ? 1 : 0)
                 .ignoresSafeArea(.keyboard)
                 .onAppear { Task { await vm.word(diffculty: diffculty,
@@ -221,7 +227,11 @@ struct GameView<VM: ViewModel>: View {
                     guard vm.isError else { return }
                     keyboard.show = true
                 }
-                .onChange(of: vm.word.word) { initMatrixState() }
+                .onChange(of: vm.word.word) {
+                    initMatrixState()
+                    guard !keyboard.show || vm.word.number == 0 || vm.word.number % InterstitialAdInterval != 0 else { return interstitialAdManager.loadInterstitialAd() }
+                    current = vm.word.word.guesswork.count
+                }
                 .onChange(of: vm.word.word.guesswork) {
                     let guesswork = vm.word.word.guesswork
                     for i in 0..<guesswork.count {
@@ -231,67 +241,112 @@ struct GameView<VM: ViewModel>: View {
                         colors[i] = calcGuess(word: matrix[i])
                     }
                     
+                    guard !keyboard.show || vm.word.number == 0 || vm.word.number % InterstitialAdInterval != 0 else { return }
+                    guard vm.word.isTimeAttack else { return }
                     current = guesswork.count
                 }
                 .onChange(of: vm.word.isTimeAttack) {
-                    guard vm.word.isTimeAttack else { return }
-                    timeAttackAnimationDone = false
-                    withAnimation(.interpolatingSpring(.snappy)) { timeAttackAnimation = true }
-                    queue.asyncAfter(deadline: .now() + 2) {
-                        withAnimation(.easeOut(duration: 0.5)) { timeAttackAnimation = false }
-                        queue.asyncAfter(deadline: .now() + 0.5) {
-                            timeAttackAnimationDone = true
-                            current = vm.word.word.guesswork.count
-                            audio.playSound(sound: "tick",
-                                            type: "wav",
-                                            loop: true)
-                        }
-                    }
+                    guard !keyboard.show || vm.word.number == 0 || vm.word.number % InterstitialAdInterval != 0 else { return }
+                    initalConfigirationForWord()
                 }
                 .ignoresSafeArea(.keyboard)
-                
-                if vm.word.isTimeAttack {
-                    VStack {
-                        Spacer()
-                        Image("clock")
-                            .resizable()
-                            .aspectRatio(contentMode: .fit)
-                            .frame(height: 80)
-                            .frame(width: 80)
-                            .padding(.bottom, 10)
-                        Text("Time Attack")
-                            .font(.largeTitle)
-                            .foregroundStyle(Color.primary)
-                            .frame(maxWidth: .infinity)
-                            .padding(.bottom, 4)
-                        Text("double points")
-                            .font(.title)
-                            .foregroundStyle(Color.secondary)
-                            .frame(maxWidth: .infinity)
-                        Spacer()
-                    }
-                    .scaleEffect(.init(1.2))
-                    .background(Color.white.ignoresSafeArea())
-                    .opacity(timeAttackAnimation ? 1 : 0)
-                    .offset(x: timeAttackAnimation ? 0 : proxy.size.width)
-                }
-                else if !vm.isError && !keyboard.show && diffculty != .tutorial {
-                    VStack {
-                        Spacer()
-                        
-                        TextAnimation(text: "Fatching Word".localized())
-                            .opacity(vm.word == .emapty ? 1 : 0)
-                            .padding(.bottom, 24)
-                        
-                        AppTitle()
-                        
-                        Spacer()
-                    }
-                    .offset(y: vm.word == .emapty ? -80 : 340)
+            
+            HStack {
+                backButton()
+                Spacer()
+            }
+        }
+    }
+    
+    private func initalConfigirationForWord() {
+        guard vm.word.isTimeAttack else { return current = vm.word.word.guesswork.count }
+        timeAttackAnimationDone = false
+        queue.asyncAfter(deadline: .now() + (keyboard.show ? 0 : 0.5)) {
+            endFetchAnimation = true
+            withAnimation(.interpolatingSpring(.smooth)) { timeAttackAnimation = true }
+            queue.asyncAfter(deadline: .now() + 1) {
+                timeAttackAnimationDone = true
+                timeAttackAnimation = false
+                queue.asyncAfter(deadline: .now() + 0.3) {
+                    current = vm.word.word.guesswork.count
+                    audio.playSound(sound: "tick",
+                                    type: "wav",
+                                    loop: true)
                 }
             }
         }
-        .ignoresSafeArea(.keyboard)
+    }
+    
+    @ViewBuilder private func overlayViews(proxy: GeometryProxy) -> some View {
+        if !vm.isError && !endFetchAnimation && !keyboard.show && diffculty != .tutorial { fetchingView() }
+        else if vm.word.isTimeAttack { timeAttackView(proxy: proxy) }
+    }
+    
+    @ViewBuilder private func fetchingView() -> some View {
+        VStack {
+            Spacer()
+            if vm.word == .emapty {
+                TextAnimation(text: "Fetching Word".localized())
+                    .padding(.bottom, 24)
+            }
+            AppTitle()
+            Spacer()
+        }
+        .offset(y: vm.word == .emapty ? -80 : 340)
+    }
+    
+    @ViewBuilder private func timeAttackView(proxy: GeometryProxy) -> some View {
+        VStack {
+            Spacer()
+            Image("clock")
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(height: 80)
+                .frame(width: 80)
+                .padding(.bottom, 10)
+            Text("Time Attack")
+                .font(.largeTitle)
+                .foregroundStyle(Color.primary)
+                .frame(maxWidth: .infinity)
+                .padding(.bottom, 4)
+            Text("double points")
+                .font(.title)
+                .foregroundStyle(Color.secondary)
+                .frame(maxWidth: .infinity)
+            Spacer()
+        }
+        .scaleEffect(.init(1.2))
+        .background(Color.white.ignoresSafeArea())
+        .opacity(timeAttackAnimation ? 1 : 0)
+        .offset(x: timeAttackAnimation ? 0 : proxy.size.width)
+    }
+    
+    @ViewBuilder func backButton() -> some View {
+        Button {
+            audio.stop()
+            if diffculty == .tutorial {
+                hideKeyboard()
+                coreData.new()
+            }
+            router.navigateBack()
+        } label: {
+            if diffculty == .tutorial {
+                Text("skip")
+                    .font(.title)
+                    .foregroundStyle(.black)
+                    .padding(.leading, 10)
+                    .padding(.top, 10)
+            }
+            else {
+                Image(systemName: "\(language == "he" ? "forward" : "backward").end.fill")
+                    .resizable()
+                    .foregroundStyle(Color.black)
+                    .frame(height: 40)
+                    .frame(width: 40)
+                    .padding(.leading, 10)
+                    .padding(.top, 10)
+            }
+        }
     }
     
     private func nextLine(i: Int)  {
@@ -329,7 +384,6 @@ struct GameView<VM: ViewModel>: View {
             Task {
                 if !correct { await vm.addGuess(diffculty: diffculty, email: email, guess: guess) }
                 await vm.score(diffculty: diffculty, email: email)
-                //                await MainActor.run { initMatrixState() }
                 await vm.word(diffculty: diffculty, email: email)
                 await MainActor.run {
                     withAnimation(.easeOut(duration: 0.5)) {
@@ -340,16 +394,14 @@ struct GameView<VM: ViewModel>: View {
                         Task {
                             await MainActor.run {
                                 scoreAnimation.value = 0
-                                scoreAnimation.offset = 80
+                                scoreAnimation.offset = 30
                             }
                         }
                     }
-                    guard !vm.word.isTimeAttack else { return }
-                    current = 0
                 }
             }
         }
-        else if !guess.isEmpty && i + 1 > vm.word.word.guesswork.count && current < i + 1 {
+        else if i == current && i + 1 > vm.word.word.guesswork.count {
             guard let email else { return }
             current = i + 1
             guard diffculty != .tutorial else { return }
@@ -388,7 +440,7 @@ struct GameView<VM: ViewModel>: View {
             
             queue.asyncAfter(deadline: .now() + 0.2) {
                 scoreAnimation.value = 0
-                scoreAnimation.offset = 80
+                scoreAnimation.offset = 30
             }
         }
     }
@@ -542,9 +594,7 @@ class KeyboardHeightHelper: ObservableObject {
     var keyboardHeight: CGFloat = 0
     var show: Bool = false
     
-    init() {
-        listenForKeyboardNotifications()
-    }
+    init() { listenForKeyboardNotifications() }
     
     private func listenForKeyboardNotifications() {
         NotificationCenter.default.addObserver(forName: UIResponder.keyboardDidShowNotification,
