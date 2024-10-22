@@ -21,7 +21,9 @@ struct TextAnimation: View {
             Text(text)
                 .multilineTextAlignment(.trailing)
                 .font(.largeTitle)
-                .foregroundStyle(Color.primary)
+                .foregroundStyle(.linearGradient(colors: [.black, .black.opacity(0.8), .black.opacity(0.6)],
+                                                 startPoint: .leading,
+                                                 endPoint: .trailing))
                 .frame(maxWidth: .infinity)
                 .font(.largeTitle)
                 .fixedSize()
@@ -29,7 +31,9 @@ struct TextAnimation: View {
             Text(points)
                 .multilineTextAlignment(.leading)
                 .font(.largeTitle)
-                .foregroundStyle(Color.primary)
+                .foregroundStyle(.linearGradient(colors: [.black.opacity(0.4), .black.opacity(0.3), .black.opacity(0.2)],
+                                                 startPoint: .leading,
+                                                 endPoint: .trailing))
                 .frame(maxWidth: .infinity)
                 .font(.largeTitle)
                 .frame(width: 30)

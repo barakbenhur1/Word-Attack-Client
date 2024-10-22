@@ -7,6 +7,7 @@
 
 import SwiftUI
 import CoreData
+import Combine
 
 enum FieldFocus: Int {
     case one
@@ -41,7 +42,7 @@ struct GameView<VM: ViewModel>: View {
     @State private var timeAttackAnimation = false
     @State private var timeAttackAnimationDone = true
     @State private var endFetchAnimation = false
-    @State private var interstitialAdManager = InterstitialAdsManager()
+    @State private var interstitialAdManager = InterstitialAdsManager(adUnitID: "GmaeInterstitial")
     
     private var language: String? { return local.locale.identifier.components(separatedBy: "_").first }
     
@@ -64,7 +65,7 @@ struct GameView<VM: ViewModel>: View {
         GeometryReader { proxy in
             background(proxy: proxy)
             ZStack(alignment: .top) {
-                AdView(adUnitID: "GameBanner".toKey())
+                AdView(adUnitID: "GameBanner")
                 game(proxy: proxy)
                     .padding(.top, 48)
                 overlayViews(proxy: proxy)
@@ -78,21 +79,16 @@ struct GameView<VM: ViewModel>: View {
     }
     
     @ViewBuilder private func background(proxy: GeometryProxy) -> some View {
-        ZStack {
-            Image("background")
-                .resizable()
-                .scaledToFill()
-                .ignoresSafeArea()
-                .frame(height: proxy.size.height)
-                .frame(width: proxy.size.width)
-                .opacity(0.5)
-            Color.white.opacity(0.3)
-        }
+        LinearGradient(colors: [.red, .yellow, .green, .blue],
+                       startPoint: .topLeading,
+                       endPoint: .bottomTrailing)
+        .opacity(0.1)
+        .ignoresSafeArea()
     }
     
     @ViewBuilder private func gameBody(proxy: GeometryProxy) -> some View {
         if !vm.isError && vm.word != .emapty && timeAttackAnimationDone {
-            VStack {
+            VStack(spacing: 8) {
                 ZStack(alignment: .bottom) {
                     ZStack(alignment: .top) {
                         if diffculty == .tutorial {
@@ -108,6 +104,7 @@ struct GameView<VM: ViewModel>: View {
                                         let theWord = vm.word.word.value
                                         var attr = AttributedString("\("the word is".localized()) \"\(theWord)\" \("try it, or not ;)".localized())")
                                         let range = attr.range(of: theWord)!
+                                        attr.foregroundColor = .black.opacity(0.5)
                                         attr[range].foregroundColor = .orange
                                         return attr
                                     }
@@ -115,7 +112,7 @@ struct GameView<VM: ViewModel>: View {
                                 
                                 Text(attr)
                                     .font(.callout.weight(.heavy))
-                                    .foregroundStyle(.black.opacity(0.5))
+                                    .shadow(radius: 4)
                             }
                             .padding()
                         }
@@ -126,13 +123,21 @@ struct GameView<VM: ViewModel>: View {
                                     VStack {
                                         Text("Score")
                                             .multilineTextAlignment(.center)
-                                            .font(.largeTitle.bold())
+                                            .font(.title3.weight(.heavy))
+                                            .shadow(radius: 4)
+                                            .foregroundStyle(.black)
                                         
                                         ZStack(alignment: .top) {
                                             Text("\(vm.word.score)")
                                                 .multilineTextAlignment(.center)
-                                                .foregroundStyle(Color.green)
-                                                .font(.largeTitle.bold())
+                                                .font(.largeTitle.weight(.heavy))
+                                                .shadow(radius: 4)
+                                                .foregroundStyle(.angularGradient(colors: [.red,
+                                                                                           .yellow,
+                                                                                           .green],
+                                                                                  center: .center,
+                                                                                  startAngle: .zero,
+                                                                                  endAngle: .degrees(360)))
                                             
                                             Text("+ \(scoreAnimation.value)")
                                                 .font(.largeTitle)
@@ -144,40 +149,36 @@ struct GameView<VM: ViewModel>: View {
                                                                    height: scoreAnimation.scale))
                                                 .offset(x: scoreAnimation.scale > 0 ? language == "he" ? 12 : -12 : 0,
                                                         y: scoreAnimation.offset)
-                                                .shadow(radius: 2)
                                                 .fixedSize()
                                         }
                                     }
                                     .padding(.top, -10)
+                                    .fixedSize(horizontal: false,
+                                               vertical: true)
                                     Spacer()
-                                }
-                                
-                                var attr: AttributedString {
-                                    let string = "\("words".localized()): \(vm.word.number)"
-                                    let values = string.components(separatedBy: " ")
-                                    
-                                    var text = AttributedString(values[0])
-                                    var number = AttributedString(values[1])
-                                    
-                                    text.font = .title2.weight(.light)
-                                    number.font = .title2.weight(.light)
-                                    
-                                    return text + " " + number
                                 }
                                 
                                 HStack {
                                     Spacer()
                                     VStack {
-                                        Text(attr)
+                                        Text("\(diffculty.rawValue.localized())")
                                             .multilineTextAlignment(.center)
+                                            .font(.title3.weight(.heavy))
+                                            .shadow(radius: 4)
+                                            .padding(.bottom, 2)
+                                        Text("words: \(vm.word.number)")
+                                            .multilineTextAlignment(.center)
+                                            .font(.title3.weight(.heavy))
+                                            .shadow(radius: 4)
+                                            .padding(.bottom, 8)
                                     }
+                                    .padding(.top, -10)
                                 }
                             }
-                            .padding()
+                            .padding(.vertical)
                         }
                     }
-                    .clipShape(RoundedRectangle(cornerRadius: 20))
-                    .shadow(radius: 2)
+                    .shadow(radius: 4)
                 }
                 .padding(.bottom, -15)
                 
@@ -192,7 +193,7 @@ struct GameView<VM: ViewModel>: View {
                         }
                                  .disabled(current != i)
                                  .environmentObject(vm)
-                                 .shadow(radius: 2)
+                                 .shadow(radius: 4)
                         
                         if keyboard.show && vm.word.isTimeAttack && timeAttackAnimationDone && current == i {
                             let start = Date()
@@ -209,6 +210,7 @@ struct GameView<VM: ViewModel>: View {
                 AppTitle()
                     .padding(.top, 90)
                     .padding(.bottom, 140)
+                    .shadow(radius: 4)
             }
             .padding(.horizontal, 10)
             .frame(maxHeight: .infinity)
@@ -219,7 +221,6 @@ struct GameView<VM: ViewModel>: View {
     @ViewBuilder private func game(proxy: GeometryProxy) -> some View {
         ZStack(alignment: .topLeading) {
             ZStack(alignment: .topLeading) { gameBody(proxy: proxy) }
-                .opacity(keyboard.show ? 1 : 0)
                 .ignoresSafeArea(.keyboard)
                 .onAppear { Task { await vm.word(diffculty: diffculty,
                                                  email: loginHandeler.model!.email) } }
@@ -230,7 +231,7 @@ struct GameView<VM: ViewModel>: View {
                 .onChange(of: vm.word.word) {
                     initMatrixState()
                     guard !keyboard.show || vm.word.number == 0 || vm.word.number % InterstitialAdInterval != 0 else { return interstitialAdManager.loadInterstitialAd() }
-                    current = vm.word.word.guesswork.count
+                    initalConfigirationForWord()
                 }
                 .onChange(of: vm.word.word.guesswork) {
                     let guesswork = vm.word.word.guesswork
@@ -259,7 +260,14 @@ struct GameView<VM: ViewModel>: View {
     }
     
     private func initalConfigirationForWord() {
-        guard vm.word.isTimeAttack else { return current = vm.word.word.guesswork.count }
+        guard vm.word.isTimeAttack else {
+            queue.asyncAfter(deadline: .now() + (keyboard.show ? 0 : 0.5)) {
+                audio.playSound(sound: "backround",
+                                type: "mp3",
+                                loop: true)
+            }
+            return current = vm.word.word.guesswork.count
+        }
         timeAttackAnimationDone = false
         queue.asyncAfter(deadline: .now() + (keyboard.show ? 0 : 0.5)) {
             endFetchAnimation = true
@@ -293,6 +301,7 @@ struct GameView<VM: ViewModel>: View {
             Spacer()
         }
         .offset(y: vm.word == .emapty ? -80 : 340)
+        .shadow(radius: 4)
     }
     
     @ViewBuilder private func timeAttackView(proxy: GeometryProxy) -> some View {
@@ -620,41 +629,73 @@ struct ProgressBarView: View {
     let length: Int
     @State var value: CGFloat
     let total: CGFloat
-    var colors: [Color] = [.blue, .blue]
+    var colors: [Color] =  [.green,
+                            .yellow,
+                            .orange,
+                            .red]
     let done: () -> ()
-    
+
     @State private var current = 0
     
-    private let timer = Timer.publish(every: 0.1, on: .main, in: .common).autoconnect()
+    private var every: CGFloat = 0.01
+    
+    private let timer: Publishers.Autoconnect<Timer.TimerPublisher>
+    
+    init(length: Int, value: CGFloat, total: CGFloat, done: @escaping () -> Void) {
+        self.length = length
+        self.value = value
+        self.total = total
+        self.done = done
+        self.timer = Timer.publish(every: every,
+                                     on: .current,
+                                     in: .default).autoconnect()
+    }
     
     var body: some View {
-        HStack {
+        HStack(spacing: 4) {
             ForEach(0..<length, id: \.self) { i in
-                if i == current {
-                    progressView(total: total / CGFloat(length), value: value.truncatingRemainder(dividingBy: (total / CGFloat(length))))
-                }
-                else if i > current {
-                    progressView(total: total / CGFloat(length), value: 0)
-                }
-                else {
-                    progressView(total: total / CGFloat(length), value: total / CGFloat(length))
+                let total = total / CGFloat(length)
+                let scope = CGFloat(colors.count) / CGFloat(length)
+                let start = Int(scope * CGFloat(i))
+                let end = scope <= 1 ? 1 : Int(scope)
+                if let range = Range(.init(location: start,
+                                           length: end < colors.count ? end : colors.count - 1)) {
+                    
+                    if i == current {
+                        progressView(total: total,
+                                     value: value.truncatingRemainder(dividingBy: total),
+                                     range: range)
+                    }
+                    else if i > current {
+                        progressView(total: total,
+                                     value: 0,
+                                     range: range)
+                    }
+                    else {
+                        progressView(total: total,
+                                     value: total,
+                                     range: range)
+                    }
                 }
             }
         }
         .onReceive(timer) { input in
-            value += 0.1
+            value += every
             current = Int(value / total * CGFloat(length))
             
             if value >= total {
-                timer.upstream.connect().cancel()
+                timer
+                    .upstream
+                    .connect()
+                    .cancel()
                 done()
             }
         }
     }
     
-    @ViewBuilder private func progressView(total: CGFloat, value: CGFloat) -> some View {
+    @ViewBuilder private func progressView(total: CGFloat, value: CGFloat, range: Range<Int>) -> some View {
         GeometryReader { geometry in
-            let progress = (geometry.size.width / total) * value
+            let progress = geometry.size.width / total * value
             ZStack(alignment: .leading) {
                 RoundedRectangle(cornerRadius: 4)
                     .fill(Color(uiColor: .systemGray5))
@@ -663,12 +704,53 @@ struct ProgressBarView: View {
                 
                 RoundedRectangle(cornerRadius: 4)
                     .fill(
-                        LinearGradient(gradient: Gradient(colors: colors),
+                        LinearGradient(gradient: Gradient(colors: Array(colors[range])),
                                        startPoint: .leading,
                                        endPoint: .trailing)
                     )
                     .frame(width: progress)
             }
         }
+    }
+}
+
+extension Color {
+    static let tBlue: Color = Color(hex: "#0C8CE9")
+    static let tGray: Color = Color(hex: "#ACACAC")
+    static let saperatorGrey: Color = Color(hex: "#D9D9D9")
+    static let lightText: Color = Color(hex: "#FAFAFA")
+    static let darkText: Color = Color(hex: "#131313")
+    static let infoText: Color = Color(hex: "#7B7B7B")
+    static let progressStart: Color = Color(hex: "#6CC1FF")
+    static let progressEnd: Color = Color(hex: "#0094FF")
+    static let inputFiled: Color = Color(hex: "#727272")
+    static let tYellow: Color = Color(hex: "#FFC100")
+    static let gBlack: Color = Color(hex: "#292929")
+    static let gWhite: Color = Color(hex: "#FAFAFA")
+    static let gBlue: Color = Color(hex: "#D4ECFE")
+    
+    init(hex: String) {
+        let hex = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
+        var int: UInt64 = 0
+        Scanner(string: hex).scanHexInt64(&int)
+        let a, r, g, b: UInt64
+        switch hex.count {
+        case 3: // RGB (12-bit)
+            (a, r, g, b) = (255, (int >> 8) * 17, (int >> 4 & 0xF) * 17, (int & 0xF) * 17)
+        case 6: // RGB (24-bit)
+            (a, r, g, b) = (255, int >> 16, int >> 8 & 0xFF, int & 0xFF)
+        case 8: // ARGB (32-bit)
+            (a, r, g, b) = (int >> 24, int >> 16 & 0xFF, int >> 8 & 0xFF, int & 0xFF)
+        default:
+            (a, r, g, b) = (1, 1, 1, 0)
+        }
+
+        self.init(
+            .sRGB,
+            red: Double(r) / 255,
+            green: Double(g) / 255,
+            blue:  Double(b) / 255,
+            opacity: Double(a) / 255
+        )
     }
 }

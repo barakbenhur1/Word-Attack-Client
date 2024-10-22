@@ -16,15 +16,17 @@ class InterstitialAdsManager: NSObject, GADFullScreenContentDelegate, Observable
     var interstitialAdLoaded: Bool = false
     private var interstitialAd: GADInterstitialAd?
     
+    private let adUnitID: String
     private var didDismiss: () -> () = {}
     
-    override init() {
+    init(adUnitID: String) {
+        self.adUnitID = adUnitID.toKey()
         super.init()
     }
     
     // Load InterstitialAd
     func loadInterstitialAd(){
-        GADInterstitialAd.load(withAdUnitID: "GmaeInterstitial".toKey(), request: GADRequest()) { [weak self] add, error in
+        GADInterstitialAd.load(withAdUnitID: adUnitID, request: GADRequest()) { [weak self] add, error in
             guard let self = self else {return}
             if let error = error {
                 print("🔴: \(error.localizedDescription)")

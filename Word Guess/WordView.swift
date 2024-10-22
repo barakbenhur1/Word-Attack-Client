@@ -8,12 +8,20 @@
 import SwiftUI
 
 struct CharColor {
-    let color: Color
+    let color: LinearGradient
     
-    static let noGuess: CharColor = .init(color: .white)
-    static let noMatch: CharColor = .init(color: .gray)
-    static let partialMatch: CharColor = .init(color: .yellow)
-    static let extectMatch: CharColor = .init(color: .green)
+    static let noGuess: CharColor = .init(color: .linearGradient(colors: [.white.opacity(0.6), .white],
+                                                                 startPoint: .leading,
+                                                                 endPoint: .trailing))
+    static let noMatch: CharColor = .init(color: .linearGradient(colors: [.gray.opacity(0.6), .gray],
+                                                                 startPoint: .leading,
+                                                                 endPoint: .trailing))
+    static let partialMatch: CharColor = .init(color: .linearGradient(colors: [.yellow.opacity(0.6), .yellow],
+                                                                      startPoint: .leading,
+                                                                      endPoint: .trailing))
+    static let extectMatch: CharColor = .init(color: .linearGradient(colors: [.green.opacity(0.6), .green],
+                                                                     startPoint: .leading,
+                                                                     endPoint: .trailing))
 }
 
 struct WordView<VM: ViewModel>: View {
@@ -41,7 +49,7 @@ struct WordView<VM: ViewModel>: View {
     }
     
     var body: some View {
-        HStack {
+        HStack(spacing: 4) {
             ForEach(0..<length, id: \.self) { i in
                 CharView(text: $word[i],
                          didType: { text in
@@ -66,7 +74,7 @@ struct WordView<VM: ViewModel>: View {
                         .stroke(Color.black,
                                 lineWidth: 1)
                 )
-                .shadow(radius: 2)
+                .shadow(radius: 4)
             }
         }
         .onChange(of: vm.current) {

@@ -228,6 +228,8 @@
 			<string>3qcr597p9d.skadnetwork</string>
 		</dict>
 	</array>
+	<key>ScoreBanner</key>
+	<string>$(ScoreBanner)</string>
 	<key>TopBanner</key>
 	<string>$(TopBanner)</string>
 </dict>
