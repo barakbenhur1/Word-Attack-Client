@@ -89,6 +89,7 @@ struct ScoreDayView: View {
             .shadow(radius: 2)
             .frame(maxHeight: .infinity)
             
+            AdView(adUnitID: "ScoreBanner")
         }
         .frame(maxWidth: .infinity)
         .onChange(of: item) { currentDiffculty = 0 }

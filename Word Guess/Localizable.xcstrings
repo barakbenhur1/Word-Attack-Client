@@ -21,6 +21,16 @@
         }
       }
     },
+    "%@" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@"
+          }
+        }
+      }
+    },
     "%lld" : {
       "localizations" : {
         "he" : {
@@ -54,6 +64,12 @@
     "change language" : {
       "extractionState" : "manual",
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Change Language"
+          }
+        },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
@@ -73,13 +89,19 @@
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "קושי"
+            "value" : "דרגת קושי"
           }
         }
       }
     },
     "double points" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Double Points"
+          }
+        },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
@@ -95,17 +117,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "קל"
-          }
-        }
-      }
-    },
-    "English" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "אנגלית"
           }
         }
       }
@@ -143,19 +154,14 @@
         }
       }
     },
-    "Hebrew" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "עברית"
-          }
-        }
-      }
-    },
     "logout" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Logout"
+          }
+        },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
@@ -265,6 +271,12 @@
     },
     "skip" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Skip"
+          }
+        },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
@@ -273,9 +285,32 @@
         }
       }
     },
+    "sound" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sound"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "סאונד"
+          }
+        }
+      }
+    },
     "the word is" : {
       "extractionState" : "manual",
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The word is"
+          }
+        },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
@@ -351,10 +386,32 @@
     "words" : {
       "extractionState" : "manual",
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Words"
+          }
+        },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "מילים"
+          }
+        }
+      }
+    },
+    "words: %lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Words: %lld"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מילים: %lld"
           }
         }
       }

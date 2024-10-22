@@ -27,7 +27,7 @@ struct BannerView: UIViewControllerRepresentable {
     private let bannerView = GADBannerView(adSize: GADAdSizeBanner)
     
     init(adUnitID: String) {
-        self.adUnitID = adUnitID
+        self.adUnitID = adUnitID.toKey()
     }
     
     func makeUIViewController(context: Context) -> UIViewController {

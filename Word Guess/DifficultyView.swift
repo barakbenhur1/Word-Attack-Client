@@ -44,7 +44,10 @@ struct DifficultyView: View {
     
     var body: some View {
         ZStack {
-            LinearGradient(colors: [.red, .yellow, .green, .blue],
+            LinearGradient(colors: [.red,
+                                    .yellow,
+                                    .green,
+                                    .blue],
                            startPoint: .topLeading,
                            endPoint: .bottomTrailing)
             .opacity(0.1)
@@ -57,13 +60,14 @@ struct DifficultyView: View {
     
     @ViewBuilder private func contanet() -> some View {
         VStack {
-            AdView(adUnitID: "TopBanner".toKey())
-            ZStack(alignment: .top) {
+            AdView(adUnitID: "TopBanner")
+            VStack {
                 topButtons()
+                    .padding(.vertical, 10)
                 buttonList()
             }
-            .padding(.horizontal, 40)
-            AdView(adUnitID: "BottomBanner".toKey())
+            .padding(.horizontal, 20)
+            AdView(adUnitID: "BottomBanner")
         }
     }
     
@@ -82,6 +86,7 @@ struct DifficultyView: View {
                 }
             }
             .foregroundStyle(.black)
+            .shadow(radius: 4)
             
             Spacer()
             
@@ -93,35 +98,53 @@ struct DifficultyView: View {
                         .resizable()
                         .aspectRatio(contentMode: .fit)
                         .frame(height: 40)
+                        .foregroundStyle(.linearGradient(colors: [.red.opacity(0.6),
+                                                                  .green.opacity(0.6),
+                                                                  .yellow.opacity(0.6)],
+                                                         startPoint: .leading,
+                                                         endPoint: .trailing))
                     
                     Text("Scoreboard")
                 }
             }
             .foregroundStyle(.black)
+            .shadow(radius: 4)
         }
-        .padding(.top, 30)
     }
     
     @ViewBuilder private func buttonList() -> some View {
         VStack {
-            Spacer()
-            title()
-                .padding(.vertical, 6)
-            ForEach(buttons) { button in
-                difficultyButton(type: button.type)
-                    .shadow(radius: 4)
-                Spacer()
+            ZStack {
+                LinearGradient(colors: [.white,
+                                        .gray.opacity(0.2)],
+                               startPoint: .topTrailing,
+                               endPoint: .bottomLeading)
+                .opacity(0.4)
+                VStack {
+                    title()
+                        .padding(.top, 10)
+                        .padding(.bottom, 15)
+                    ForEach(buttons) { button in
+                        difficultyButton(type: button.type)
+                            .shadow(radius: 4)
+                        Spacer()
+                    }
+                }
+                .padding()
             }
+            .shadow(radius: 4)
+            .clipShape(RoundedRectangle(cornerRadius: 60))
+            
             logoutButton()
+                .padding(.all, 20)
                 .shadow(radius: 4)
-                .padding(.top, 40)
         }
     }
     
     @ViewBuilder private func title() -> some View {
         Text("Difficulty")
             .font(.title.bold())
-            .padding(.top, 80)
+            .shadow(radius: 4)
     }
     
     @ViewBuilder private func difficultyButton(type: DifficultyType) -> some View {
@@ -129,16 +152,36 @@ struct DifficultyView: View {
             router.navigateTo(.game(diffculty: type))
         } label: {
             Text(type.rawValue.localized())
-                .foregroundStyle(Color.black)
+                .foregroundStyle(Color.white)
                 .font(.headline)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 40)
         }
-        .background(.white)
-        .clipShape(RoundedRectangle(cornerRadius: 80))
+        .background {
+            switch type {
+            case .easy:
+                LinearGradient(colors: [.black.opacity(0.9), .green],
+                               startPoint: .bottomLeading,
+                               endPoint: .topTrailing)
+                .opacity(0.6)
+            case .regular:
+                LinearGradient(colors: [.black.opacity(0.9), .yellow],
+                               startPoint: .bottomLeading,
+                               endPoint: .topTrailing)
+                .opacity(0.6)
+            case .hard:
+                LinearGradient(colors: [.black.opacity(0.9), .orange],
+                               startPoint: .bottomLeading,
+                               endPoint: .topTrailing)
+                .opacity(0.6)
+            default:
+                Color.clear
+            }
+        }
+        .clipShape(Capsule())
         .overlay {
-            RoundedRectangle(cornerRadius: 80)
-                .stroke(.black, lineWidth: 1)
+            Capsule()
+                .stroke(.gray, lineWidth: 0.1)
         }
     }
     
@@ -148,13 +191,21 @@ struct DifficultyView: View {
             auth.logout()
         } label: {
             Text("logout")
-                .foregroundStyle(Color.white)
+                .foregroundStyle(Color.red)
                 .font(.headline)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 40)
         }
-        .background(.red)
-        .clipShape(RoundedRectangle(cornerRadius: 80))
-        .padding(.bottom, 40)
+        .background {
+            LinearGradient(colors: [.white, .black],
+                           startPoint: .topLeading,
+                           endPoint: .bottomTrailing)
+            .opacity(0.6)
+        }
+        .clipShape(Capsule())
+        .overlay {
+            Capsule()
+                .stroke(.gray, lineWidth: 0.1)
+        }
     }
 }
