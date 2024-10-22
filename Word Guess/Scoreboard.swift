@@ -36,6 +36,7 @@ struct Scoreboard<VM: ScoreboardViewModel>: View {
                     .frame(maxWidth: .infinity)
             }
             .padding(.bottom, 20)
+            .environment(\.layoutDirection, language == "he" ? .rightToLeft : .leftToRight)
             
             if current < vm.data.count {
                 let day = vm.data[current]
@@ -64,29 +65,32 @@ struct Scoreboard<VM: ScoreboardViewModel>: View {
                     if !cell.title.isEmpty {
                         HStack {
                             Button {
-                                guard current > 0 else { return }
-                                withAnimation(.smooth) { current -= 1 }
+                                guard language == "he" ? current < vm.data.count : current > 0 else { return }
+                                if language == "he" { withAnimation(.smooth) { current += 1 } }
+                                else { withAnimation(.smooth) { current -= 1 } }
                             } label: {
                                 Text("->")
-                                    .foregroundStyle(current > 0 ? .black : .gray)
+                                    .foregroundStyle((language == "he" ? current < vm.data.count : current > 0) ? .black : .gray)
                                     .font(.largeTitle).fontWeight(.medium)
                             }
-                            .disabled(current == 0)
+                            .disabled(language == "he" ? current == vm.data.count - 1 : current == 0)
                             .padding(.leading, 60)
                             
                             Spacer()
                             
                             Button {
-                                guard current < vm.data.count - 1 else { return }
-                                withAnimation(.smooth) { current += 1 }
+                                guard language == "he" ? current > 0 : current < vm.data.count - 1 else { return }
+                                if language == "he" { withAnimation(.smooth) { current -= 1 } }
+                                else { withAnimation(.smooth) { current += 1 } }
                             } label: {
                                 Text("<-")
-                                    .foregroundStyle(current < vm.data.count - 1 ? .black : .gray)
+                                    .foregroundStyle((language == "he" ? current > 0 : current < vm.data.count - 1) ? .black : .gray)
                                     .font(.largeTitle).fontWeight(.medium)
                             }
-                            .disabled(current == vm.data.count - 1)
+                            .disabled(language == "he" ? current == 0 : current == vm.data.count - 1)
                             .padding(.trailing, 60)
                         }
+                        .environment(\.layoutDirection, .rightToLeft)
                     }
                 }
                 

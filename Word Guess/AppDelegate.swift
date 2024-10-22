@@ -9,6 +9,7 @@ import SwiftUI
 import FacebookLogin
 import FirebaseCore
 import FirebaseAuth
+import GoogleMobileAds
 
 class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
     func application(_ application: UIApplication,didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
@@ -16,15 +17,19 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
                                                didFinishLaunchingWithOptions: launchOptions)
         
         UNUserNotificationCenter.current().delegate = self
-
+        
         let authOptions: UNAuthorizationOptions = [.alert, .badge, .sound]
         UNUserNotificationCenter.current().requestAuthorization(
-          options: authOptions,
-          completionHandler: { _, _ in }
+            options: authOptions,
+            completionHandler: { _, _ in }
         )
         
         FirebaseApp.configure()
-
+        
+        GADMobileAds.sharedInstance().start(completionHandler: nil)
+        
+        GADMobileAds.sharedInstance().requestConfiguration.testDeviceIdentifiers = ["bb89a5de06dcfb7fad22837648455185", "c76030813578328369b797a6939baf04"]
+        
         application.registerForRemoteNotifications()
         
         return true

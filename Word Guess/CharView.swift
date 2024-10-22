@@ -37,6 +37,10 @@ extension String {
         "פ" : "ף"
     ]
     
+    func toKey() -> String {
+        return Bundle.main.infoDictionary?[self] as? String ?? self
+    }
+    
     func asClassName() -> String {
         return replacingOccurrences(of: "Word_Guess.", with: "")
     }
