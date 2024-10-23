@@ -66,7 +66,7 @@ struct WordView<VM: ViewModel>: View {
                 .textInputAutocapitalization(i == 0 ? .sentences : .never)
                 .autocorrectionDisabled()
                 .onSubmit { fieldFocus = FieldFocus(rawValue: i)! }
-                .background(colors[i].color)
+                .background(colors[i].color.blur(radius: 4))
                 .onTapGesture { fieldFocus = FieldFocus(rawValue: i)! }
                 .clipShape(RoundedRectangle(cornerRadius: 4))
                 .overlay(

@@ -25,6 +25,7 @@ struct Scoreboard<VM: ScoreboardViewModel>: View {
                                     .blue],
                            startPoint: .topLeading,
                            endPoint: .bottomTrailing)
+            .blur(radius: 4)
             .opacity(0.1)
             .ignoresSafeArea()
             

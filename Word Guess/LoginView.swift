@@ -15,16 +15,21 @@ struct LoginView<VM: LoginViewModel>: View {
     
     var body: some View {
         ZStack {
-            LinearGradient(colors: [.red, .yellow, .green, .blue],
+            LinearGradient(colors: [.red,
+                                    .yellow,
+                                    .green,
+                                    .blue],
                            startPoint: .topLeading,
                            endPoint: .bottomTrailing)
+            .blur(radius: 4)
             .opacity(0.1)
             .ignoresSafeArea()
+            
             VStack {
                 AppTitle()
                     .padding(.bottom, 40)
                 googleSignInButton
-                    .padding(.bottom, 40)
+                    .padding(.bottom, 160)
             }
             .padding(.horizontal, 40)
         }
@@ -59,44 +64,55 @@ struct GoogleLoginButton: View {
     
     var body: some View {
         ZStack {
-            LinearGradient(colors: [.white, .gray.opacity(0.1)],
+            LinearGradient(colors: [.white.opacity(0.4), .gray.opacity(0.1)],
                            startPoint: .topTrailing,
                            endPoint: .bottomLeading)
+            .blur(radius: 4)
             
             VStack(spacing: 30) {
                 VStack(spacing: 8) {
                     Image("google")
                         .resizable()
-                        .frame(width: 60, height: 60)
-                        .foregroundColor(.blue)
+                        .frame(width: 120,
+                               height: 120)
                         .shadow(radius: 4)
                     
                     Text("Sign in with Google")
-                        .font(.headline)
+                        .font(.largeTitle)
                 }
                 
                 Button(action: { didTap() }) {
-                    Text("Sign in with Google")
-                        .font(.headline)
+                    Text("Sign in")
+                        .font(.largeTitle)
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
                         .padding()
                 }
                 .background {
-                    LinearGradient(colors: [.green.opacity(0.4), .green],
-                                   startPoint: .topTrailing,
-                                   endPoint: .bottomLeading)
+                    AngularGradient(colors: [.init(hex: "#4285F4"),
+                                             .init(hex: "#34A853"),
+                                             .init(hex: "#FBBC04"),
+                                             .init(hex: "#EA4335")],
+                                    center: .topTrailing,
+                                    startAngle: .degrees(40),
+                                    endAngle: .degrees(290))
+                    .blur(radius: 4)
                 }
                 .frame(width: 280)
                 .clipShape(Capsule())
-                .shadow(radius: 4)
-                .padding(.bottom, 14)
+                .overlay {
+                    Capsule()
+                        .stroke(.black.opacity(0.6), lineWidth: 0.1)
+                }
+                .padding(.bottom, 30)
                 .padding(.horizontal, 30)
+                .shadow(color: .black.opacity(0.6),
+                        radius: 4)
             }
         }
-        .shadow(radius: 4)
         .clipShape(RoundedRectangle(cornerRadius: 60))
-        .frame(height: 320)
+        .shadow(radius: 4)
+        .frame(height: 360)
     }
 }
 

@@ -61,23 +61,6 @@
         }
       }
     },
-    "change language" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Change Language"
-          }
-        },
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "שינוי שפה"
-          }
-        }
-      }
-    },
     "Difficulty" : {
       "localizations" : {
         "en" : {
@@ -121,6 +104,16 @@
         }
       }
     },
+    "English" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אנגלית"
+          }
+        }
+      }
+    },
     "Fetching Word" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -150,6 +143,33 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "קשה"
+          }
+        }
+      }
+    },
+    "Hebrew" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "עברית"
+          }
+        }
+      }
+    },
+    "language" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Language"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "שפה"
           }
         }
       }
@@ -255,6 +275,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "הגדרות"
+          }
+        }
+      }
+    },
+    "Sign in" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "התחברות"
           }
         }
       }
