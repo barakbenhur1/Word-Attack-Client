@@ -30,6 +30,7 @@ enum DifficultyType: String, Codable {
 struct DifficultyView: View {
     @FetchRequest(sortDescriptors: []) var tutorialItems: FetchedResults<TutorialItem>
     @EnvironmentObject private var router: Router
+    @EnvironmentObject private var audio: AudioPlayer
     @EnvironmentObject private var loginHandeler: LoginHandeler
     
     private var tutorialItem: TutorialItem? { return tutorialItems.first }
@@ -54,7 +55,11 @@ struct DifficultyView: View {
             .ignoresSafeArea()
             
             contanet()
-                .onAppear { if tutorialItem == nil { router.navigateTo(.game(diffculty: .tutorial)) } }
+                .onAppear {
+                    audio.stopAudio(true)
+                    guard tutorialItem != nil else { return router.navigateTo(.game(diffculty: .tutorial)) }
+                }
+                .onDisappear { audio.stopAudio(false)  }
         }
     }
     
@@ -115,7 +120,7 @@ struct DifficultyView: View {
     @ViewBuilder private func buttonList() -> some View {
         VStack {
             ZStack {
-                LinearGradient(colors: [.white,
+                LinearGradient(colors: [.white.opacity(0.2),
                                         .gray.opacity(0.2)],
                                startPoint: .topTrailing,
                                endPoint: .bottomLeading)

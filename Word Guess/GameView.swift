@@ -139,11 +139,14 @@ struct GameView<VM: ViewModel>: View {
                                                                                   startAngle: .zero,
                                                                                   endAngle: .degrees(360)))
                                             
+                                            let value = vm.word.isTimeAttack ? scoreAnimation.value / 2 : scoreAnimation.value
+                                            let color: Color = value == 0 ? .red : value < 80 ? .yellow : .green
+                                            
                                             Text("+ \(scoreAnimation.value)")
                                                 .font(.largeTitle)
                                                 .multilineTextAlignment(.center)
                                                 .frame(maxWidth: .infinity)
-                                                .foregroundStyle(scoreAnimation.value > 0 ? .green : .red)
+                                                .foregroundStyle(color)
                                                 .opacity(scoreAnimation.opticity)
                                                 .scaleEffect(.init(width: scoreAnimation.scale,
                                                                    height: scoreAnimation.scale))
@@ -262,6 +265,7 @@ struct GameView<VM: ViewModel>: View {
     private func initalConfigirationForWord() {
         guard vm.word.isTimeAttack else {
             queue.asyncAfter(deadline: .now() + (keyboard.show ? 0 : 0.5)) {
+                guard diffculty != .tutorial else { return }
                 audio.playSound(sound: "backround",
                                 type: "mp3",
                                 loop: true)
@@ -626,15 +630,21 @@ class KeyboardHeightHelper: ObservableObject {
 
 
 struct ProgressBarView: View {
+    @EnvironmentObject private var local: LanguageSetting
+    private var language: String? { return local.locale.identifier.components(separatedBy: "_").first }
+    
     let length: Int
     @State var value: CGFloat
+    @State private var trigger = 0
     let total: CGFloat
-    var colors: [Color] =  [.green,
-                            .yellow,
-                            .orange,
-                            .red]
+    var colors: [Color] = [.init(hex: "#599cc9"),
+                           .init(hex: "#437da3"),
+                           .init(hex: "#2c6185"),
+                           .init(hex: "#165178")]
     let done: () -> ()
-
+    
+    @State private var waveOffset: CGFloat = 0.0
+    
     @State private var current = 0
     
     private var every: CGFloat = 0.01
@@ -647,8 +657,8 @@ struct ProgressBarView: View {
         self.total = total
         self.done = done
         self.timer = Timer.publish(every: every,
-                                     on: .current,
-                                     in: .default).autoconnect()
+                                   on: .current,
+                                   in: .default).autoconnect()
     }
     
     var body: some View {
@@ -656,32 +666,31 @@ struct ProgressBarView: View {
             ForEach(0..<length, id: \.self) { i in
                 let total = total / CGFloat(length)
                 let scope = CGFloat(colors.count) / CGFloat(length)
-                let start = Int(scope * CGFloat(i))
-                let end = scope <= 1 ? 1 : Int(scope)
-                if let range = Range(.init(location: start,
-                                           length: end < colors.count ? end : colors.count - 1)) {
-                    
-                    if i == current {
-                        progressView(total: total,
-                                     value: value.truncatingRemainder(dividingBy: total),
-                                     range: range)
-                    }
-                    else if i > current {
-                        progressView(total: total,
-                                     value: 0,
-                                     range: range)
-                    }
-                    else {
-                        progressView(total: total,
-                                     value: total,
-                                     range: range)
-                    }
+                let index = Int(scope * CGFloat(i))
+                let color = colors[index]
+                let nextColor = colors[index < colors.count - 1 ? index + 1: colors.count - 1]
+                
+                if i == current {
+                    progressView(total: total,
+                                 value: value.truncatingRemainder(dividingBy: total),
+                                 colors: [color, nextColor])
+                }
+                else if i > current {
+                    progressView(total: total,
+                                 value: 0,
+                                 colors: [color, nextColor])
+                }
+                else {
+                    progressView(total: total,
+                                 value: total,
+                                 colors: [color, nextColor])
                 }
             }
         }
         .onReceive(timer) { input in
             value += every
             current = Int(value / total * CGFloat(length))
+            trigger += 1
             
             if value >= total {
                 timer
@@ -693,7 +702,7 @@ struct ProgressBarView: View {
         }
     }
     
-    @ViewBuilder private func progressView(total: CGFloat, value: CGFloat, range: Range<Int>) -> some View {
+    @ViewBuilder private func progressView(total: CGFloat, value: CGFloat, colors: [Color]) -> some View {
         GeometryReader { geometry in
             let progress = geometry.size.width / total * value
             ZStack(alignment: .leading) {
@@ -704,9 +713,9 @@ struct ProgressBarView: View {
                 
                 RoundedRectangle(cornerRadius: 4)
                     .fill(
-                        LinearGradient(gradient: Gradient(colors: Array(colors[range])),
-                                       startPoint: .leading,
-                                       endPoint: .trailing)
+                        LinearGradient(gradient: Gradient(colors: colors),
+                                       startPoint: language == "he" ? .trailing : .leading,
+                                       endPoint: language == "he" ? .leading : .trailing)
                     )
                     .frame(width: progress)
             }
@@ -744,7 +753,7 @@ extension Color {
         default:
             (a, r, g, b) = (1, 1, 1, 0)
         }
-
+        
         self.init(
             .sRGB,
             red: Double(r) / 255,
