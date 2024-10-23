@@ -53,6 +53,8 @@ class Network: Networkble {
     }
     
     // MARK: init
+//    "http://localhost:3000"
+//    "https://word-attack.onrender.com"
     internal init(root: String, base: String = "https://word-attack.onrender.com") {
         self.root = root
         Network.base = base
