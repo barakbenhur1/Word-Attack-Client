@@ -51,6 +51,7 @@ struct DifficultyView: View {
                                     .blue],
                            startPoint: .topLeading,
                            endPoint: .bottomTrailing)
+            .blur(radius: 4)
             .opacity(0.1)
             .ignoresSafeArea()
             
@@ -120,11 +121,11 @@ struct DifficultyView: View {
     @ViewBuilder private func buttonList() -> some View {
         VStack {
             ZStack {
-                LinearGradient(colors: [.white.opacity(0.2),
-                                        .gray.opacity(0.2)],
+                LinearGradient(colors: [.white.opacity(0.4), .gray.opacity(0.1)],
                                startPoint: .topTrailing,
                                endPoint: .bottomLeading)
-                .opacity(0.4)
+                .blur(radius: 4)
+               
                 VStack {
                     title()
                         .padding(.top, 10)
@@ -137,8 +138,8 @@ struct DifficultyView: View {
                 }
                 .padding()
             }
-            .shadow(radius: 4)
             .clipShape(RoundedRectangle(cornerRadius: 60))
+            .shadow(radius: 4)
             
             logoutButton()
                 .padding(.all, 20)
@@ -168,16 +169,19 @@ struct DifficultyView: View {
                 LinearGradient(colors: [.black.opacity(0.9), .green],
                                startPoint: .bottomLeading,
                                endPoint: .topTrailing)
+                .blur(radius: 4)
                 .opacity(0.6)
             case .regular:
                 LinearGradient(colors: [.black.opacity(0.9), .yellow],
                                startPoint: .bottomLeading,
                                endPoint: .topTrailing)
+                .blur(radius: 4)
                 .opacity(0.6)
             case .hard:
                 LinearGradient(colors: [.black.opacity(0.9), .orange],
                                startPoint: .bottomLeading,
                                endPoint: .topTrailing)
+                .blur(radius: 4)
                 .opacity(0.6)
             default:
                 Color.clear
@@ -196,15 +200,16 @@ struct DifficultyView: View {
             auth.logout()
         } label: {
             Text("logout")
-                .foregroundStyle(Color.red)
+                .foregroundStyle(Color.black)
                 .font(.headline)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 40)
         }
         .background {
-            LinearGradient(colors: [.white, .black],
-                           startPoint: .topLeading,
-                           endPoint: .bottomTrailing)
+            LinearGradient(colors: [.black.opacity(0.9), .red],
+                           startPoint: .bottomLeading,
+                           endPoint: .topTrailing)
+            .blur(radius: 4)
             .opacity(0.6)
         }
         .clipShape(Capsule())

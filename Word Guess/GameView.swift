@@ -79,9 +79,13 @@ struct GameView<VM: ViewModel>: View {
     }
     
     @ViewBuilder private func background(proxy: GeometryProxy) -> some View {
-        LinearGradient(colors: [.red, .yellow, .green, .blue],
+        LinearGradient(colors: [.red,
+                                .yellow,
+                                .green,
+                                .blue],
                        startPoint: .topLeading,
                        endPoint: .bottomTrailing)
+        .blur(radius: 4)
         .opacity(0.1)
         .ignoresSafeArea()
     }
@@ -131,19 +135,19 @@ struct GameView<VM: ViewModel>: View {
                                             Text("\(vm.word.score)")
                                                 .multilineTextAlignment(.center)
                                                 .font(.largeTitle.weight(.heavy))
-                                                .shadow(radius: 4)
                                                 .foregroundStyle(.angularGradient(colors: [.red,
                                                                                            .yellow,
                                                                                            .green],
                                                                                   center: .center,
                                                                                   startAngle: .zero,
                                                                                   endAngle: .degrees(360)))
+                                                .shadow(radius: 4)
                                             
                                             let value = vm.word.isTimeAttack ? scoreAnimation.value / 2 : scoreAnimation.value
                                             let color: Color = value == 0 ? .red : value < 80 ? .yellow : .green
                                             
                                             Text("+ \(scoreAnimation.value)")
-                                                .font(.largeTitle)
+                                                .font(.largeTitle.weight(.heavy))
                                                 .multilineTextAlignment(.center)
                                                 .frame(maxWidth: .infinity)
                                                 .foregroundStyle(color)
@@ -152,6 +156,7 @@ struct GameView<VM: ViewModel>: View {
                                                                    height: scoreAnimation.scale))
                                                 .offset(x: scoreAnimation.scale > 0 ? language == "he" ? 12 : -12 : 0,
                                                         y: scoreAnimation.offset)
+                                                .blur(radius: 0.5)
                                                 .fixedSize()
                                         }
                                     }

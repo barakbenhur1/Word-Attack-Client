@@ -8,7 +8,7 @@
 import SwiftUI
 
 enum SettingsOption: String {
-    case language = "change language", sound = "sound"
+    case language = "language", sound = "sound"
 }
 
 struct SettingsOptionButton: Identifiable {
@@ -34,6 +34,7 @@ struct SettingsView: View {
                                     .blue],
                            startPoint: .topLeading,
                            endPoint: .bottomTrailing)
+            .blur(radius: 4)
             .opacity(0.1)
             .ignoresSafeArea()
             
@@ -57,7 +58,7 @@ struct SettingsView: View {
                     
                     Text("Settings")
                         .font(.largeTitle)
-                        .padding(.bottom, 10)
+                        .padding(.vertical, 10)
                 }
                 .padding(.horizontal, 10)
                 
@@ -75,14 +76,21 @@ struct SettingsView: View {
                                 ZStack {
                                     switch item.type {
                                     case .language:
-                                        Text(item.type.rawValue.localized())
-                                            .font(.headline)
-                                            .foregroundStyle(.black)
+                                        HStack {
+                                            Text(item.type.rawValue.localized())
+                                                .font(.headline)
+                                                .foregroundStyle(.black)
+                                            
+                                            Spacer()
+                                            Text(language == "he" ? "Hebrew" : "English")
+                                                .font(.headline)
+                                                .foregroundStyle(.cyan)
+                                        }
                                     case .sound:
                                         Toggle(item.type.rawValue.localized(), isOn: $audio.isOn)
                                             .font(.headline)
                                             .foregroundStyle(.black)
-                                            .tint(.black)
+                                            .tint(.cyan)
                                             .toggleStyle(.switch)
                                     }
                                 }
