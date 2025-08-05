@@ -76,10 +76,10 @@ struct AIGameView<VM: ViewModel>: View {
                     
                     for i in 0..<colors[current].count {
                         if ai[i] < player[i] {
-                            text += matrix[current][i]
+                            text += matrix[current][i].returnChar(isFinal: i == colors[current].count - 1)
                             newColors.append(player[i].getColor())
                         } else {
-                            text += current > 0 ? aiMatrix[current - 1][i] : generateWord(length: 1)
+                            text += current > 0 ? aiMatrix[current - 1][i].returnChar(isFinal: i == colors[current].count - 1) : generateWord(length: 1, isHebrew: language == "he").returnChar(isFinal: i == colors[current].count - 1)
                             newColors.append(current > 0 ? ai[i].getColor() : .gray)
                         }
                     }
@@ -94,7 +94,7 @@ struct AIGameView<VM: ViewModel>: View {
                 try? await Task.sleep(nanoseconds: 1_000_000_000)
                 var arr = [String](repeating: "", count: aiWord.count)
                 for i in 0..<aiWord.count {
-                    arr[i] = aiWord[i]
+                    arr[i] = aiWord[i].returnChar(isFinal: i == aiWord.count - 1)
                     try? await Task.sleep(nanoseconds: 500_000_000)
                     aiMatrix[current] = arr
                 }
@@ -319,7 +319,10 @@ struct AIGameView<VM: ViewModel>: View {
                 .onChange(of: vm.word.word) {
                     initMatrixState()
                     wordNumber += 1
-                    guard wordNumber % InterstitialAdInterval != 0 else { return interstitialAdManager.loadInterstitialAd() }
+                    guard wordNumber % InterstitialAdInterval != 0 else {
+                        disabled = true
+                        return interstitialAdManager.loadInterstitialAd()
+                    }
                     initalConfigirationForWord()
                 }
                 .ignoresSafeArea(.keyboard)
@@ -337,6 +340,8 @@ struct AIGameView<VM: ViewModel>: View {
                             type: "mp3",
                             loop: true)
         }
+        ai.reset()
+        disabled = false
         return current = 0
     }
     
@@ -404,6 +409,7 @@ struct AIGameView<VM: ViewModel>: View {
         let guess = matrix[i].joined()
         
         if guess.lowercased() == vm.word.word.value.lowercased() || i == rows - 1 {
+            disabled = true
             audio.stop()
             
             let correct = guess.lowercased() == vm.word.word.value.lowercased()

@@ -71,8 +71,26 @@
         }
       }
     },
+    "⚔️ AI" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "⚔️ בינה מלאכותית"
+          }
+        }
+      }
+    },
     "🏆" : {
-
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "🏆"
+          }
+        }
+      }
     },
     "👋 logout" : {
       "localizations" : {
@@ -107,7 +125,14 @@
       }
     },
     "😞" : {
-
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "😞"
+          }
+        }
+      }
     },
     "😳 Regular" : {
       "extractionState" : "manual",
@@ -517,7 +542,14 @@
       }
     },
     "You %@" : {
-
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אתה %@"
+          }
+        }
+      }
     },
     "YOU vs AI" : {
       "extractionState" : "manual",
@@ -525,7 +557,7 @@
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "אתה נגד AI"
+            "value" : "אתה נגד בינה מלאכותית"
           }
         }
       }

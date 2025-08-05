@@ -17,6 +17,10 @@ class WordleViewModel: ObservableObject {
         solver = WordleSolver(isHebrew: isHebrew)
     }
     
+    func reset() {
+        solver.reset()
+    }
+    
     func submitFeedback(prv: GuessHistoryItem = ("     ", Array(repeating: .gray, count: 5))) -> String {
         solver.applyFeedback(guess: prv.guess, feedback: prv.feedback)
         return solver.bestGuess()
