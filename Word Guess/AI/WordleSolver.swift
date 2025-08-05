@@ -3,8 +3,8 @@ import Foundation
 import CoreML
 import Tokenizers
 
-func generateWord(length: Int) -> String {
-    let letters = "abcdefghijklmnopqrstuvwxyz"
+func generateWord(length: Int, isHebrew: Bool) -> String {
+    let letters = isHebrew ? "אבגדהוזחטיכלמנסעפצקרשתץףםךן" : "abcdefghijklmnopqrstuvwxyz"
     return String((0..<length).map { _ in letters.randomElement()! })
 }
 
@@ -18,13 +18,20 @@ class WordleSolver {
     private(set) var possibleAnswers: [String]
     private let allAnswers: [String]
     private let allGuesses: [String]
+    private let isHebrew: Bool
     private var lastGuess: String = ""
+    
     
     init(isHebrew: Bool) {
         let words = Self.loadWordList(from: isHebrew ? "words_he" : "words")
         self.allAnswers = words
         self.allGuesses = words
+        self.isHebrew = isHebrew
         self.possibleAnswers = allAnswers
+    }
+    
+    func reset() {
+        lastGuess = ""
     }
     
     static private func loadWordList(from file: String) -> [String] {
@@ -40,7 +47,13 @@ class WordleSolver {
     }
     
     func bestGuess() -> String {
-        guard !possibleAnswers.isEmpty else { return lastGuess.isEmpty ? generateWord(length: 5) : lastGuess }
+        guard !possibleAnswers.isEmpty else {
+            guard !lastGuess.isEmpty else {
+                lastGuess = generateWord(length: 5, isHebrew: isHebrew)
+                return lastGuess
+            }
+            return lastGuess
+        }
         
         var letterScores = [Character: Int]()
         for word in possibleAnswers {

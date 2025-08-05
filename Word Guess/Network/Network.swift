@@ -155,7 +155,7 @@ extension Network {
                 //                return "http://localhost:3000"
                 return Network.base
 #else
-                return "https://word-attack.onrender.com"
+                return Network.base
 #endif
             }
         }
