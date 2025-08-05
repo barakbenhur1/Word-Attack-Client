@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct AppTitle: View {
-    private let title = "Word Guess".localized()
+    private let title = "Word Guess".localized
     
     var body: some View {
         let start = String(title[0..<4])

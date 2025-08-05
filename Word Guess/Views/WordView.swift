@@ -7,21 +7,48 @@
 
 import SwiftUI
 
-struct CharColor {
+struct CharColor: Comparable {
+    static func == (lhs: CharColor, rhs: CharColor) -> Bool {
+        return lhs.id == rhs.id
+    }
+    
+    static func < (lhs: CharColor, rhs: CharColor) -> Bool {
+        switch lhs {
+        case .noGuess: return true
+        case .noMatch: return rhs == .partialMatch || rhs == .extectMatch
+        case .partialMatch: return rhs == .extectMatch
+        case .extectMatch: return false
+        default: return false
+        }
+    }
+    
+    let id: Int
     let color: LinearGradient
     
-    static let noGuess: CharColor = .init(color: .linearGradient(colors: [.white.opacity(0.6), .white],
+    static let noGuess: CharColor = .init(id: 0,
+                                          color: .linearGradient(colors: [.white.opacity(0.6), .white],
                                                                  startPoint: .leading,
                                                                  endPoint: .trailing))
-    static let noMatch: CharColor = .init(color: .linearGradient(colors: [.gray.opacity(0.6), .gray],
+    static let noMatch: CharColor = .init(id: 1,
+                                          color: .linearGradient(colors: [.gray.opacity(0.6), .gray],
                                                                  startPoint: .leading,
                                                                  endPoint: .trailing))
-    static let partialMatch: CharColor = .init(color: .linearGradient(colors: [.yellow.opacity(0.6), .yellow],
+    static let partialMatch: CharColor = .init(id: 2,
+                                               color: .linearGradient(colors: [.yellow.opacity(0.6), .yellow],
                                                                       startPoint: .leading,
                                                                       endPoint: .trailing))
-    static let extectMatch: CharColor = .init(color: .linearGradient(colors: [.green.opacity(0.6), .green],
+    static let extectMatch: CharColor = .init(id: 3,
+                                              color: .linearGradient(colors: [.green.opacity(0.6), .green],
                                                                      startPoint: .leading,
                                                                      endPoint: .trailing))
+    
+    func getColor() -> LetterFeedback {
+        switch self {
+        case let i where i.id == CharColor.partialMatch.id : return .yellow
+        case let i where i.id == CharColor.extectMatch.id : return .green
+        default: return .gray
+        }
+    }
 }
 
 struct WordView<VM: ViewModel>: View {
@@ -39,7 +66,10 @@ struct WordView<VM: ViewModel>: View {
     @Binding private var colors: [CharColor]
     @FocusState private var fieldFocus: FieldFocus?
     
-    init(length: Int, word: Binding<[String]>,  gainFocus: Binding<Bool>, colors: Binding<[CharColor]>, done: @escaping () -> ()) {
+    let isAI: Bool
+    
+    init(isAI: Bool = false, length: Int, word: Binding<[String]>, gainFocus: Binding<Bool>, colors: Binding<[CharColor]>, done: @escaping () -> ()) {
+        self.isAI = isAI
         self.length = length
         self.done = done
         self.wordBakup = [String](repeating: "", count: word.wrappedValue.count)
@@ -51,30 +81,12 @@ struct WordView<VM: ViewModel>: View {
     var body: some View {
         HStack(spacing: 4) {
             ForEach(0..<length, id: \.self) { i in
-                CharView(text: $word[i],
-                         didType: { text in
-                    guard wordBakup[i] != text else { return }
-                    guard fieldFocus?.rawValue == i else { return }
-                    handleWordWriting(value: text,
-                                      current: i)
-                    wordBakup[i] = word[i]
-                    guard word.joined().count == length else { return }
-                    done()
-                })
-                .frame(maxHeight: .infinity)
-                .focused($fieldFocus, equals: FieldFocus(rawValue: i)!)
-                .textInputAutocapitalization(i == 0 ? .sentences : .never)
-                .autocorrectionDisabled()
-                .onSubmit { fieldFocus = FieldFocus(rawValue: i)! }
-                .background(colors[i].color.blur(radius: 4))
-                .onTapGesture { fieldFocus = FieldFocus(rawValue: i)! }
-                .clipShape(RoundedRectangle(cornerRadius: 4))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 4)
-                        .stroke(Color.black,
-                                lineWidth: 1)
-                )
-                .shadow(radius: 4)
+                charView(i: i)
+//                    .placeHolder(when: word.isEmpty) {
+//                        if i > 0 && !isAI {
+//                            charView(i: i - 1)
+//                        }
+//                    }
             }
         }
         .onChange(of: vm.current) {
@@ -86,6 +98,37 @@ struct WordView<VM: ViewModel>: View {
             fieldFocus = .one
         }
         .environment(\.layoutDirection, language == "he" ? .rightToLeft : .leftToRight)
+    }
+    
+    @ViewBuilder
+    private func charView(i: Int) -> some View {
+        CharView(isAI: isAI,
+                 text: $word[i],
+                 didType: { text in
+            guard wordBakup[i] != text else { return }
+            if !isAI {
+                guard fieldFocus?.rawValue == i else { return }
+            }
+            handleWordWriting(value: text,
+                              current: i)
+            wordBakup[i] = word[i]
+            guard word.joined().count == length else { return }
+            done()
+        })
+        .frame(maxHeight: .infinity)
+        .focused($fieldFocus, equals: FieldFocus(rawValue: i)!)
+        .textInputAutocapitalization(i == 0 ? .sentences : .never)
+        .autocorrectionDisabled()
+        .onSubmit { fieldFocus = FieldFocus(rawValue: i)! }
+        .background(colors[i].color.blur(radius: 4))
+        .onTapGesture { fieldFocus = FieldFocus(rawValue: i)! }
+        .clipShape(RoundedRectangle(cornerRadius: 4))
+        .overlay(
+            RoundedRectangle(cornerRadius: 4)
+                .stroke(Color.black,
+                        lineWidth: 1)
+        )
+        .shadow(radius: 4)
     }
     
     private func handleWordWriting(value: String, current: Int) {

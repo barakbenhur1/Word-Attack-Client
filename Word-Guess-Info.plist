@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
 	<key>BottomBanner</key>
-	<string>$(BottomBanner)</string>
+	<string>ca-app-pub-6040820758186818/1611225525</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
@@ -26,9 +26,9 @@
 	<key>GADApplicationIdentifier</key>
 	<string>ca-app-pub-6040820758186818~3849037328</string>
 	<key>GameBanner</key>
-	<string>$(GameBanner)</string>
-	<key>GmaeInterstitial</key>
-	<string>$(GmaeInterstitial)</string>
+	<string>ca-app-pub-6040820758186818/3935170373</string>
+	<key>GameInterstitial</key>
+	<string>ca-app-pub-6040820758186818/5392556420</string>
 	<key>SKAdNetworkItems</key>
 	<array>
 		<dict>
@@ -229,8 +229,8 @@
 		</dict>
 	</array>
 	<key>ScoreBanner</key>
-	<string>$(ScoreBanner)</string>
+	<string>ca-app-pub-6040820758186818/5481654941</string>
 	<key>TopBanner</key>
-	<string>$(TopBanner)</string>
+	<string>ca-app-pub-6040820758186818/7249226283</string>
 </dict>
 </plist>

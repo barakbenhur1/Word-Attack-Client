@@ -17,6 +17,7 @@
 		4FD6D2942CB9A2F200755D03 /* FacebookCore in Frameworks */ = {isa = PBXBuildFile; productRef = 4FD6D2932CB9A2F200755D03 /* FacebookCore */; };
 		4FD6D2962CB9A2F200755D03 /* FacebookLogin in Frameworks */ = {isa = PBXBuildFile; productRef = 4FD6D2952CB9A2F200755D03 /* FacebookLogin */; };
 		4FEC01B92CC2F6990086EFEC /* Alamofire in Frameworks */ = {isa = PBXBuildFile; productRef = 4FEC01B82CC2F6990086EFEC /* Alamofire */; };
+		4FFF87412E3F289500D612F0 /* Transformers in Frameworks */ = {isa = PBXBuildFile; productRef = 4FFF87402E3F289500D612F0 /* Transformers */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -72,6 +73,7 @@
 				4FD6D2882CB9A2C000755D03 /* FirebaseAnalyticsOnDeviceConversion in Frameworks */,
 				4FD6D28E2CB9A2C000755D03 /* FirebaseFirestore in Frameworks */,
 				4FD6D28C2CB9A2C000755D03 /* FirebaseCore in Frameworks */,
+				4FFF87412E3F289500D612F0 /* Transformers in Frameworks */,
 				4FD6D2962CB9A2F200755D03 /* FacebookLogin in Frameworks */,
 				4F370C872CC6A5BF00632E10 /* GoogleUserMessagingPlatform in Frameworks */,
 				4FD6D28A2CB9A2C000755D03 /* FirebaseAuth in Frameworks */,
@@ -146,6 +148,7 @@
 				4FEC01B82CC2F6990086EFEC /* Alamofire */,
 				4F370C862CC6A5BF00632E10 /* GoogleUserMessagingPlatform */,
 				4F370C8C2CC6A72F00632E10 /* GoogleMobileAds */,
+				4FFF87402E3F289500D612F0 /* Transformers */,
 			);
 			productName = "Word Guess";
 			productReference = 4FD6D2382CB9A1F400755D03 /* Word Guess.app */;
@@ -237,6 +240,7 @@
 				4FEC01B72CC2F6990086EFEC /* XCRemoteSwiftPackageReference "Alamofire" */,
 				4F370C852CC6A5BF00632E10 /* XCRemoteSwiftPackageReference "swift-package-manager-google-user-messaging-platform" */,
 				4F370C8B2CC6A72F00632E10 /* XCRemoteSwiftPackageReference "swift-package-manager-google-mobile-ads" */,
+				4FFF873F2E3F289500D612F0 /* XCRemoteSwiftPackageReference "swift-tokenizers" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 4FD6D2392CB9A1F400755D03 /* Products */;
@@ -664,6 +668,14 @@
 				minimumVersion = 5.10.0;
 			};
 		};
+		4FFF873F2E3F289500D612F0 /* XCRemoteSwiftPackageReference "swift-tokenizers" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/ensan-hcl/swift-tokenizers";
+			requirement = {
+				branch = main;
+				kind = branch;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -716,6 +728,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 4FEC01B72CC2F6990086EFEC /* XCRemoteSwiftPackageReference "Alamofire" */;
 			productName = Alamofire;
+		};
+		4FFF87402E3F289500D612F0 /* Transformers */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4FFF873F2E3F289500D612F0 /* XCRemoteSwiftPackageReference "swift-tokenizers" */;
+			productName = Transformers;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

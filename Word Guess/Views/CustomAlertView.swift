@@ -179,15 +179,11 @@ struct CustomAlertView<T: Any, M: View>: View {
     @ViewBuilder private var icon: some View {
         switch type {
         case .success:
-            GifImageView("successGif")
-                .frame(height: 100)
-                .frame(width: 100)
+            Text("🏆")
                 .padding(.top, 10)
                 .padding(.bottom, 10)
         case .fail:
-            GifImageView("failGif")
-                .frame(height: 100)
-                .frame(width: 100)
+            Text("😞")
                 .padding(.top, 10)
                 .padding(.bottom, 10)
         }

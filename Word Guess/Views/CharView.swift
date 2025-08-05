@@ -10,6 +10,7 @@ import Combine
 
 struct CharView: View {
     @EnvironmentObject private var local: LanguageSetting
+    var isAI = false
     @Binding var text: String
     let didType: (String) -> ()
     
@@ -132,5 +133,28 @@ public extension UITextField
             UITextInputMode.activeInputModes.first(where: { $0.primaryLanguage == locale.identifier })
             ??
             super.textInputMode
+    }
+}
+
+struct PlaceholderModifier<Placeholder: View>: ViewModifier {
+    var isEmpty: Bool
+    let placeholder: () -> Placeholder
+    
+    func body(content: Content) -> some View {
+        ZStack(alignment: .leading) {
+            content
+            if isEmpty {
+                placeholder()
+            }
+        }
+    }
+}
+
+extension View {
+    func placeHolder<Placeholder: View>(
+           when isEmpty: Bool,
+           @ViewBuilder placeholder: @escaping () -> Placeholder
+       ) -> some View {
+           modifier(PlaceholderModifier(isEmpty: isEmpty, placeholder: placeholder))
     }
 }

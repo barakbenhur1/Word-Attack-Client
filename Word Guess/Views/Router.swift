@@ -39,7 +39,12 @@ class Router: ObservableObject {
         case .score:
             Scoreboard()
         case .game(let value):
-            GameView(diffculty: value)
+            switch value {
+            case .roguelike:
+                AIGameView()
+            default:
+                GameView(diffculty: value)
+            }
         }
     }
     

@@ -13,13 +13,13 @@ struct DifficultyButton: Identifiable {
 }
 
 enum DifficultyType: String, Codable {
-    case easy = "Easy", regular = "Regular", hard = "Hard", tutorial
+    case roguelike = "⚔️ AI", easy = "😀 Easy", regular = "😳 Regular", hard = "🥵 Hard", tutorial
     
     func getLength() -> Int {
         switch self {
         case .easy, .tutorial:
             return 4
-        case .regular:
+        case .regular, .roguelike:
             return 5
         case .hard:
             return 6
@@ -127,8 +127,10 @@ struct DifficultyView: View {
                 .blur(radius: 4)
                
                 VStack {
+                    difficultyButton(type: .roguelike)
+                        .shadow(radius: 8)
                     title()
-                        .padding(.top, 10)
+                        .padding(.top, 8)
                         .padding(.bottom, 15)
                     ForEach(buttons) { button in
                         difficultyButton(type: button.type)
@@ -157,8 +159,8 @@ struct DifficultyView: View {
         Button {
             router.navigateTo(.game(diffculty: type))
         } label: {
-            Text(type.rawValue.localized())
-                .foregroundStyle(Color.white)
+            Text(type.rawValue.localized)
+                .foregroundStyle(type == .roguelike ? Color.cyan : Color.white)
                 .font(.headline)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 40)
@@ -183,14 +185,19 @@ struct DifficultyView: View {
                                endPoint: .topTrailing)
                 .blur(radius: 4)
                 .opacity(0.6)
-            default:
-                Color.clear
+            case .roguelike:
+                LinearGradient(colors: [.black.opacity(0.9), .teal],
+                               startPoint: .bottomLeading,
+                               endPoint: .topTrailing)
+                .blur(radius: 4)
+                .opacity(0.6)
+            default: Color.clear
             }
         }
         .clipShape(Capsule())
         .overlay {
             Capsule()
-                .stroke(.gray, lineWidth: 0.1)
+                .stroke(type == .roguelike ? .cyan : .gray, lineWidth: 0.1)
         }
     }
     
@@ -199,7 +206,7 @@ struct DifficultyView: View {
             loginHandeler.model = nil
             auth.logout()
         } label: {
-            Text("logout")
+            Text("👋 logout")
                 .foregroundStyle(Color.black)
                 .font(.headline)
                 .frame(maxWidth: .infinity)

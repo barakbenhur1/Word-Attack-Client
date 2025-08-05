@@ -42,7 +42,7 @@ struct GameView<VM: ViewModel>: View {
     @State private var timeAttackAnimation = false
     @State private var timeAttackAnimationDone = true
     @State private var endFetchAnimation = false
-    @State private var interstitialAdManager = InterstitialAdsManager(adUnitID: "GmaeInterstitial")
+    @State private var interstitialAdManager = InterstitialAdsManager(adUnitID: "GameInterstitial")
     
     private var language: String? { return local.locale.identifier.components(separatedBy: "_").first }
     
@@ -102,11 +102,11 @@ struct GameView<VM: ViewModel>: View {
                                 
                                 let attr: AttributedString = {
                                     if current < 3 || current == .max {
-                                        return AttributedString("Guess The 4 Letters Word".localized())
+                                        return AttributedString("Guess The 4 Letters Word".localized)
                                     }
                                     else {
                                         let theWord = vm.word.word.value
-                                        var attr = AttributedString("\("the word is".localized()) \"\(theWord)\" \("try it, or not ;)".localized())")
+                                        var attr = AttributedString("\("the word is".localized) \"\(theWord)\" \("try it, or not ;)".localized)")
                                         let range = attr.range(of: theWord)!
                                         attr.foregroundColor = .black.opacity(0.5)
                                         attr[range].foregroundColor = .orange
@@ -169,7 +169,7 @@ struct GameView<VM: ViewModel>: View {
                                 HStack {
                                     Spacer()
                                     VStack {
-                                        Text("\(diffculty.rawValue.localized())")
+                                        Text("\(diffculty.rawValue.localized)")
                                             .multilineTextAlignment(.center)
                                             .font(.title3.weight(.heavy))
                                             .shadow(radius: 4)
@@ -303,7 +303,7 @@ struct GameView<VM: ViewModel>: View {
         VStack {
             Spacer()
             if vm.word == .emapty {
-                TextAnimation(text: "Fetching Word".localized())
+                TextAnimation(text: "Fetching Word".localized)
                     .padding(.bottom, 24)
             }
             AppTitle()
@@ -519,7 +519,7 @@ extension String {
     subscript(range: PartialRangeThrough<Int>) -> SubSequence { self[...index(startIndex, offsetBy: range.upperBound)] }
     subscript(range: PartialRangeUpTo<Int>) -> SubSequence { self[..<index(startIndex, offsetBy: range.upperBound)] }
     
-    func localized() -> String {
+    var localized: String {
         return NSLocalizedString(self, comment: "")
     }
 }
