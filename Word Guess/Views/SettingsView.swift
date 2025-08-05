@@ -77,7 +77,7 @@ struct SettingsView: View {
                                     switch item.type {
                                     case .language:
                                         HStack {
-                                            Text(item.type.rawValue.localized())
+                                            Text(item.type.rawValue.localized)
                                                 .font(.headline)
                                                 .foregroundStyle(.black)
                                             
@@ -87,7 +87,7 @@ struct SettingsView: View {
                                                 .foregroundStyle(.cyan)
                                         }
                                     case .sound:
-                                        Toggle(item.type.rawValue.localized(), isOn: $audio.isOn)
+                                        Toggle(item.type.rawValue.localized, isOn: $audio.isOn)
                                             .font(.headline)
                                             .foregroundStyle(.black)
                                             .tint(.cyan)

@@ -21,3 +21,8 @@ struct Word: Codable, Equatable, Hashable {
     let value: String
     let guesswork: [String]
 }
+
+
+struct WordForAiMode: Codable, Equatable, Hashable {
+    let value: String
+}
