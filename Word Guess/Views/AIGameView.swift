@@ -66,30 +66,12 @@ struct AIGameView<VM: ViewModel>: View {
     @State private var turn: Turn {
         didSet {
             guard turn == .ai else { return }
+            
             let aiWord = {
-                func bestGuess() -> (text: String, colors: [LetterFeedback]) {
-                    var text = ""
-                    var newColors = [LetterFeedback]()
-                    
-                    let ai = current > 0 ? aiColors[current - 1] : [.noGuess, .noGuess, .noGuess, .noGuess, .noGuess]
-                    let player = colors[current]
-                    
-                    for i in 0..<colors[current].count {
-                        if ai[i] < player[i] {
-                            text += matrix[current][i].returnChar(isFinal: i == colors[current].count - 1)
-                            newColors.append(player[i].getColor())
-                        } else {
-                            text += current > 0 ? aiMatrix[current - 1][i].returnChar(isFinal: i == colors[current].count - 1) : generateWord(length: 1, isHebrew: language == "he").returnChar(isFinal: i == colors[current].count - 1)
-                            newColors.append(current > 0 ? ai[i].getColor() : .gray)
-                        }
-                    }
-                    
-                    return (text, newColors)
-                }
-                
                 let bestGuess = bestGuess()
                 return ai.submitFeedback(prv: (bestGuess.text, bestGuess.colors)).capitalizedFirst
             }().toArray()
+            
             Task {
                 try? await Task.sleep(nanoseconds: 1_000_000_000)
                 var arr = [String](repeating: "", count: aiWord.count)
@@ -100,6 +82,26 @@ struct AIGameView<VM: ViewModel>: View {
                 }
             }
         }
+    }
+    
+    func bestGuess() -> (text: String, colors: [LetterFeedback]) {
+        var text = ""
+        var newColors = [LetterFeedback]()
+        
+        let ai = current > 0 ? aiColors[current - 1] : [.noGuess, .noGuess, .noGuess, .noGuess, .noGuess]
+        let player = colors[current]
+        
+        for i in 0..<colors[current].count {
+            if ai[i] < player[i] {
+                text += matrix[current][i].returnChar(isFinal: i == colors[current].count - 1)
+                newColors.append(player[i].getColor())
+            } else {
+                text += current > 0 ? aiMatrix[current - 1][i].returnChar(isFinal: i == colors[current].count - 1) : generateWord(length: 1, isHebrew: language == "he").returnChar(isFinal: i == colors[current].count - 1)
+                newColors.append(current > 0 ? ai[i].getColor() : .gray)
+            }
+        }
+        
+        return (text, newColors)
     }
     
     init() {
