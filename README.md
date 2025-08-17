@@ -27,9 +27,9 @@ A fast, on‑device word puzzle for iOS with an AI opponent that **plays like Wo
 
 <table>
 <tr>
-<td><img src="readme_assets/gameplay.png" width="260"/></td>
-<td><img src="readme_assets/ai_suggestion.png" width="260"/></td>
-<td><img src="readme_assets/best_guess.png" width="260"/></td>
+<td><img src="readme_assets/loading.png" width="260"/></td>
+<td><img src="readme_assets/home.png" width="260"/></td>
+<td><img src="readme_assets/grid.png" width="260"/></td>
 </tr>
 </table>
 
