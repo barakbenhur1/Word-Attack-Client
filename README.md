@@ -3,7 +3,7 @@
 A fast, on‑device word puzzle for iOS with an AI opponent that **plays like Wordle**—no external APIs required. The AI proposes smart next guesses under the same green/yellow/gray rules you do, and it runs entirely with Core ML.
 
 <p align="center">
-  <img src="https://user-images.githubusercontent.com/placeholder/wordzap-hero.png" alt="Word Zap hero" width="680"/>
+  <img src="readme_assets/wordzap-hero.png" alt="Word Zap hero" width="680"/>
 </p>
 
 ---
