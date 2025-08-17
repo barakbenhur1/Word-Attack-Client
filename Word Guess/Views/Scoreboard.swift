@@ -31,15 +31,7 @@ struct Scoreboard<VM: ScoreboardViewModel>: View {
             
             VStack {
                 ZStack(alignment: .topLeading) {
-                    Button {
-                        router.navigateBack()
-                    } label: {
-                        Image(systemName: "\(language == "he" ? "forward" : "backward").end.fill")
-                            .resizable()
-                            .foregroundStyle(Color.black)
-                            .frame(height: 40)
-                            .frame(width: 40)
-                    }
+                    BackButton(action: { router.navigateBack() })
                     
                     Text("Scoreboard")
                         .font(.system(size: 32))
@@ -112,7 +104,7 @@ struct Scoreboard<VM: ScoreboardViewModel>: View {
             .padding(.leading, 10)
             .padding(.trailing, 10)
             .padding(.top, 10)
-            .onAppear { Task { await vm.items(email: loginHandeler.model!.email) } }
+            .task { await vm.items(email: loginHandeler.model!.email) }
             .onChange(of: vm.data) { current = vm.data.count - 1 }
         }
     }

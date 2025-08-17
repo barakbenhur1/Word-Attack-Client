@@ -23,12 +23,14 @@ struct WordGuessApp: App {
     private let audio = AudioPlayer()
     private let local = LanguageSetting()
     private let router = Router()
+    private let login = LoginViewModel()
     
     var body: some Scene {
         WindowGroup {
             RouterView {
                 if loginHaneler.model == nil { LoginView() }
-                else { DifficultyView() }
+                else if loginHaneler.hasGender { DifficultyView() }
+                else { ServerLoadingView() }
             }
             .environmentObject(loginHaneler)
             .onAppear {
@@ -37,14 +39,20 @@ struct WordGuessApp: App {
                 guard let email = currentUser.email else { return }
                 loginHaneler.model = .init(givenName: givenName,
                                            email: email)
+                Task.detached(priority: .high) {
+                    let gender = await login.gender(email: email)
+                    await MainActor.run {
+                        loginHaneler.model?.gender = gender
+                    }
+                }
             }
             .onAppear {
                 guard let email = loginHaneler.model?.email else { return }
-                Task { await LoginViewModel().changeLanguage(email: email) }
+                Task.detached { await LoginViewModel().changeLanguage(email: email) }
             }
             .onChange(of: local.locale) {
                 guard let email = loginHaneler.model?.email else { return }
-                Task { await LoginViewModel().changeLanguage(email: email) }
+                Task.detached { await LoginViewModel().changeLanguage(email: email) }
             }
         }
         .environmentObject(router)

@@ -61,3 +61,40 @@ fastlane/report.xml
 fastlane/Preview.html
 fastlane/screenshots/**/*.png
 fastlane/test_output
+
+# macOS
+.DS_Store
+
+# CoreML
+*.mlmodelc/
+*.mlpackage/
+
+# Python virtualenvs
+venv/
+.env/
+*.egg-info/
+__pycache__/
+
+# Xcode
+*.xcworkspace
+*.xcuserstate
+*.xcuserdata/
+*.xcscmblueprint
+DerivedData/
+build/
+
+# SwiftPM
+.build/
+Packages/
+
+# Logs
+*.log
+
+# Tokenizer files
+*.tokenizer_cache/
+
+# Others
+.idea/
+.vscode/
+*.swp
+

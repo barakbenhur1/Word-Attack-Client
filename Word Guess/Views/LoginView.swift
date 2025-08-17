@@ -10,6 +10,8 @@ import SwiftUI
 struct LoginView<VM: LoginViewModel>: View {
     @EnvironmentObject private var loginHandeler: LoginHandeler
     
+    @State private var loading = false
+    
     private let auth = Authentication()
     private let loginVm = VM()
     
@@ -32,22 +34,30 @@ struct LoginView<VM: LoginViewModel>: View {
                     .padding(.bottom, 160)
             }
             .padding(.horizontal, 40)
+            .loading(show: loading)
         }
     }
     
     @ViewBuilder fileprivate var googleSignInButton: some View {
         GoogleLoginButton {
             hideKeyboard()
+            loading = true
             Task {
                 auth.googleAuth(complition: { model in
                     Task {
                         let name = "\(model.givenName) \(model.lastName)"
                         let email = model.email
+                        let gender = model.gender
                         guard await loginVm.login(email: email,
-                                                  name: name)  else { return }
+                                                  name: name,
+                                                  gender: gender)  else { return }
+                        loading = false
                         loginHandeler.model = model
                     }
-                }, error: { error in print(error) })
+                }, error: { error in
+                    loading = false
+                    print(error)
+                })
             }
         }
     }

@@ -30,21 +30,18 @@ class Router: ObservableObject {
     // Builds the views
     @ViewBuilder func view(for route: Route) -> some View {
         switch route {
-        case .login:
-            LoginView()
-        case .difficulty:
-            DifficultyView()
-        case .settings:
-            SettingsView()
-        case .score:
-            Scoreboard()
-        case .game(let value):
-            switch value {
-            case .roguelike:
-                AIGameView()
-            default:
-                GameView(diffculty: value)
-            }
+        case .login: LoginView()
+        case .difficulty: DifficultyView()
+        case .settings: SettingsView()
+        case .score: Scoreboard()
+        case .game(let value): gameView(value: value)
+        }
+    }
+    
+    @ViewBuilder private func gameView(value: DifficultyType) -> some View {
+        switch value {
+        case .ai: AIGameView()
+        default: GameView(diffculty: value)
         }
     }
     
@@ -56,6 +53,7 @@ class Router: ObservableObject {
     
     // Used to go back to the previous screen
     func navigateBack() {
+        guard !path.isEmpty else { return }
         path.removeLast()
     }
 }

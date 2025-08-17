@@ -63,11 +63,10 @@ struct GameView<VM: ViewModel>: View {
     
     @ViewBuilder private func conatnet() -> some View {
         GeometryReader { proxy in
-            background(proxy: proxy)
+            background()
             ZStack(alignment: .top) {
-                AdView(adUnitID: "GameBanner")
+                topBar()
                 game(proxy: proxy)
-                    .padding(.top, 48)
                 overlayViews(proxy: proxy)
             }
         }
@@ -78,7 +77,14 @@ struct GameView<VM: ViewModel>: View {
         }
     }
     
-    @ViewBuilder private func background(proxy: GeometryProxy) -> some View {
+    @ViewBuilder private func topBar() -> some View {
+        HStack {
+            backButton()
+            AdView(adUnitID: "GameBanner")
+        }
+    }
+    
+    @ViewBuilder private func background() -> some View {
         LinearGradient(colors: [.red,
                                 .yellow,
                                 .green,
@@ -123,7 +129,15 @@ struct GameView<VM: ViewModel>: View {
                         else {
                             ZStack(alignment: .trailing) {
                                 HStack {
+                                    Text("\(diffculty.rawValue.localized)")
+                                        .multilineTextAlignment(.center)
+                                        .font(.title3.weight(.heavy))
+                                        .shadow(radius: 4)
+                                        .padding(.bottom, 8)
+                                        .padding(.leading, 40)
+                                    
                                     Spacer()
+                                    
                                     VStack {
                                         Text("Score")
                                             .multilineTextAlignment(.center)
@@ -164,23 +178,13 @@ struct GameView<VM: ViewModel>: View {
                                     .fixedSize(horizontal: false,
                                                vertical: true)
                                     Spacer()
-                                }
-                                
-                                HStack {
-                                    Spacer()
-                                    VStack {
-                                        Text("\(diffculty.rawValue.localized)")
-                                            .multilineTextAlignment(.center)
-                                            .font(.title3.weight(.heavy))
-                                            .shadow(radius: 4)
-                                            .padding(.bottom, 2)
-                                        Text("words: \(vm.word.number)")
-                                            .multilineTextAlignment(.center)
-                                            .font(.title3.weight(.heavy))
-                                            .shadow(radius: 4)
-                                            .padding(.bottom, 8)
-                                    }
-                                    .padding(.top, -10)
+                                    
+                                    Text("words: \(vm.word.number)")
+                                        .multilineTextAlignment(.center)
+                                        .font(.title3.weight(.heavy))
+                                        .shadow(radius: 4)
+                                        .padding(.bottom, 8)
+                                        .padding(.trailing, 40)
                                 }
                             }
                             .padding(.vertical)
@@ -188,7 +192,7 @@ struct GameView<VM: ViewModel>: View {
                     }
                     .shadow(radius: 4)
                 }
-                .padding(.bottom, -15)
+                .padding(.bottom, -10)
                 
                 ForEach(0..<rows, id: \.self) { i in
                     ZStack {
@@ -215,10 +219,18 @@ struct GameView<VM: ViewModel>: View {
                     }
                 }
                 
-                AppTitle()
-                    .padding(.top, 90)
-                    .padding(.bottom, 140)
-                    .shadow(radius: 4)
+                if endFetchAnimation {
+                    AppTitle()
+                        .padding(.top, 90)
+                        .padding(.bottom, 140)
+                        .shadow(radius: 4)
+                } else {
+                    ZStack{}
+                        .frame(height: 81)
+                        .padding(.top, 90)
+                        .padding(.bottom, 140)
+                        .shadow(radius: 4)
+                }
             }
             .padding(.horizontal, 10)
             .frame(maxHeight: .infinity)
@@ -230,8 +242,8 @@ struct GameView<VM: ViewModel>: View {
         ZStack(alignment: .topLeading) {
             ZStack(alignment: .topLeading) { gameBody(proxy: proxy) }
                 .ignoresSafeArea(.keyboard)
-                .onAppear { Task { await vm.word(diffculty: diffculty,
-                                                 email: loginHandeler.model!.email) } }
+                .onAppear { Task.detached { await vm.word(diffculty: diffculty,
+                                                          email: loginHandeler.model!.email) } }
                 .onChange(of: vm.isError) {
                     guard vm.isError else { return }
                     keyboard.show = true
@@ -247,7 +259,8 @@ struct GameView<VM: ViewModel>: View {
                         for j in 0..<guesswork[i].count {
                             matrix[i][j] = guesswork[i][j]
                         }
-                        colors[i] = calcGuess(word: matrix[i])
+                        colors[i] = vm.calcGuess(word: matrix[i],
+                                                 length: length)
                     }
                     
                     guard !keyboard.show || vm.word.number == 0 || vm.word.number % InterstitialAdInterval != 0 else { return }
@@ -259,12 +272,8 @@ struct GameView<VM: ViewModel>: View {
                     initalConfigirationForWord()
                 }
                 .ignoresSafeArea(.keyboard)
-            
-            HStack {
-                backButton()
-                Spacer()
-            }
         }
+        .padding(.top, 64)
     }
     
     private func initalConfigirationForWord() {
@@ -274,6 +283,9 @@ struct GameView<VM: ViewModel>: View {
                 audio.playSound(sound: "backround",
                                 type: "mp3",
                                 loop: true)
+            }
+            queue.asyncAfter(deadline: .now() + (keyboard.show ? 0 : 0.5)) {
+                endFetchAnimation = true
             }
             return current = vm.word.word.guesswork.count
         }
@@ -295,22 +307,8 @@ struct GameView<VM: ViewModel>: View {
     }
     
     @ViewBuilder private func overlayViews(proxy: GeometryProxy) -> some View {
-        if !vm.isError && !endFetchAnimation && !keyboard.show && diffculty != .tutorial { fetchingView() }
+        if (!vm.isError && !endFetchAnimation && diffculty != .tutorial) || !keyboard.show { FetchingView(vm: vm) }
         else if vm.word.isTimeAttack { timeAttackView(proxy: proxy) }
-    }
-    
-    @ViewBuilder private func fetchingView() -> some View {
-        VStack {
-            Spacer()
-            if vm.word == .emapty {
-                TextAnimation(text: "Fetching Word".localized)
-                    .padding(.bottom, 24)
-            }
-            AppTitle()
-            Spacer()
-        }
-        .offset(y: vm.word == .emapty ? -80 : 340)
-        .shadow(radius: 4)
     }
     
     @ViewBuilder private func timeAttackView(proxy: GeometryProxy) -> some View {
@@ -340,35 +338,27 @@ struct GameView<VM: ViewModel>: View {
     }
     
     @ViewBuilder func backButton() -> some View {
-        Button {
-            audio.stop()
-            if diffculty == .tutorial {
-                hideKeyboard()
-                coreData.new()
-            }
-            router.navigateBack()
-        } label: {
-            if diffculty == .tutorial {
-                Text("skip")
-                    .font(.title)
-                    .foregroundStyle(.black)
-                    .padding(.leading, 10)
-                    .padding(.top, 10)
-            }
-            else {
-                Image(systemName: "\(language == "he" ? "forward" : "backward").end.fill")
-                    .resizable()
-                    .foregroundStyle(Color.black)
-                    .frame(height: 40)
-                    .frame(width: 40)
-                    .padding(.leading, 10)
-                    .padding(.top, 10)
-            }
+        HStack {
+            BackButton(title: diffculty == .tutorial ? "skip" : "back",
+                       action: navBack)
+            .padding(.top, 20)
+            Spacer()
         }
+        .padding(.bottom, 20)
+    }
+    
+    private func navBack() {
+        audio.stop()
+        if diffculty == .tutorial {
+            hideKeyboard()
+            coreData.new()
+        }
+        router.navigateBack()
     }
     
     private func nextLine(i: Int)  {
-        colors[i] = calcGuess(word: matrix[i])
+        colors[i] = vm.calcGuess(word: matrix[i],
+                                 length: length)
         
         let guess = matrix[i].joined()
         
@@ -399,7 +389,7 @@ struct GameView<VM: ViewModel>: View {
             }
             else { score(value: 0) }
             
-            Task {
+            Task.detached {
                 if !correct { await vm.addGuess(diffculty: diffculty, email: email, guess: guess) }
                 await vm.score(diffculty: diffculty, email: email)
                 await vm.word(diffculty: diffculty, email: email)
@@ -409,7 +399,7 @@ struct GameView<VM: ViewModel>: View {
                         scoreAnimation.scale = 0
                     }
                     queue.asyncAfter(wallDeadline: .now() + 0.5) {
-                        Task {
+                        Task.detached {
                             await MainActor.run {
                                 scoreAnimation.value = 0
                                 scoreAnimation.offset = 30
@@ -423,7 +413,7 @@ struct GameView<VM: ViewModel>: View {
             guard let email else { return }
             current = i + 1
             guard diffculty != .tutorial else { return }
-            Task { await vm.addGuess(diffculty: diffculty, email: email, guess: guess) }
+            Task.detached { await vm.addGuess(diffculty: diffculty, email: email, guess: guess) }
         }
     }
     
@@ -461,42 +451,6 @@ struct GameView<VM: ViewModel>: View {
                 scoreAnimation.offset = 30
             }
         }
-    }
-    
-    private func calcGuess(word: [String]) -> [CharColor] {
-        var colors = [CharColor](repeating: .noMatch,
-                                 count: length)
-        var containd = [String: Int]()
-        
-        for char in vm.word.word.value.lowercased() {
-            let key = String(char).returnChar(isFinal: false)
-            if containd[key] == nil {
-                containd[key] = 1
-            }
-            else {
-                containd[key]! += 1
-            }
-        }
-        
-        for i in 0..<word.count {
-            if word[i].lowercased().isEquel(vm.word.word.value[i].lowercased()) {
-                containd[word[i].lowercased().returnChar(isFinal: false)]! -= 1
-                colors[i] = .extectMatch
-            }
-        }
-        
-        for i in 0..<word.count {
-            guard !word[i].lowercased().isEquel(vm.word.word.value[i].lowercased()) else { continue }
-            if vm.word.word.value.lowercased().toSuffixChars().contains(word[i].lowercased().returnChar(isFinal: true)) && containd[word[i].lowercased().returnChar(isFinal: false)]! > 0 {
-                containd[word[i].lowercased().returnChar(isFinal: false)]! -= 1
-                colors[i] = .partialMatch
-            }
-            else {
-                colors[i] = .noMatch
-            }
-        }
-        
-        return colors
     }
 }
 

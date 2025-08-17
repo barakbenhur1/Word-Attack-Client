@@ -18,11 +18,13 @@ class ViewModel: ObservableObject {
     var word: WordData
     var isError: Bool
     var current: Int
+    var aiDownloaded: Bool = ModelStorage.localHasUsableModels()
     
     required init() {
         network = Network(root: "words")
         word = .emapty
         current = 0
+        aiDownloaded = false
         isError = false
     }
     
@@ -36,7 +38,7 @@ class ViewModel: ObservableObject {
     
     func wordForAiMode(email: String) async {
         let word: WordForAiMode? = await network.send(route: "word",
-                                                  parameters: ["email": email])
+                                                      parameters: ["email": email])
         await MainActor.run { [weak self] in
             guard let self else { return }
             guard let word else { return isError = true }
@@ -56,7 +58,7 @@ class ViewModel: ObservableObject {
         }
         
         let value: WordData? = await network.send(route: "getWord",
-                                                  parameters: ["diffculty": diffculty.rawValue.removingEmojis().trimmingCharacters(in: .whitespacesAndNewlines),
+                                                  parameters: ["diffculty": diffculty.rawValue.trimmingCharacters(in: .whitespacesAndNewlines),
                                                                "email": email])
         await MainActor.run { [weak self] in
             guard let self else { return }
@@ -87,8 +89,46 @@ class ViewModel: ObservableObject {
             guard value != nil else { return isError = true }
         }
     }
+    
+    func calcGuess(word: [String], length: Int) -> [CharColor] {
+        var colors = [CharColor](repeating: .noMatch,
+                                 count: length)
+        var containd = [String: Int]()
+        
+        for char in self.word.word.value.lowercased() {
+            let key = String(char).returnChar(isFinal: false)
+            if containd[key] == nil { containd[key] = 1 }
+            else { containd[key]! += 1 }
+        }
+        
+        for i in 0..<word.count {
+            if word[i].lowercased().isEquel(self.word.word.value[i].lowercased()) {
+                containd[word[i].lowercased().returnChar(isFinal: false)]! -= 1
+                colors[i] = .exactMatch
+            }
+        }
+        
+        for i in 0..<word.count {
+            guard !word[i].lowercased().isEquel(self.word.word.value[i].lowercased()) else { continue }
+            if self.word.word.value.lowercased().toSuffixChars().contains(word[i].lowercased().returnChar(isFinal: true)) && containd[word[i].lowercased().returnChar(isFinal: false)]! > 0 {
+                containd[word[i].lowercased().returnChar(isFinal: false)]! -= 1
+                colors[i] = .partialMatch
+            } else { colors[i] = .noMatch }
+        }
+        
+        return colors
+    }
+    
+    // MARK: - Public: enumerate ALL per-index best merges (Y/G only, deduped)
+    func allBestGuesses(matrix: [[String]], colors: [[CharColor]], aiMatrix: [[String]], aiColors: [[CharColor]]
+    ) -> [[Guess]] {
+        return BestGuessProducerProvider.guesser.allBestGuesses(matrix: matrix,
+                                                               colors: colors,
+                                                               aiMatrix: aiMatrix,
+                                                               aiColors: aiColors,
+                                                               debug: true)
+    }
 }
-
 
 extension String {
     func removingEmojis() -> String {

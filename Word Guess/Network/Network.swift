@@ -84,9 +84,7 @@ class Network: Networkble {
                             return c.resume(returning: .success(decodedResponse))
                             
                             // handele expetions
-                        } catch let err {
-                            return c.resume(returning: .failure(err.localizedDescription))
-                        }
+                        } catch let err { return c.resume(returning: .failure(err.localizedDescription)) }
                     }
                     
                     // return error

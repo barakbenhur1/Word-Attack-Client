@@ -12,19 +12,20 @@ struct CharView: View {
     @EnvironmentObject private var local: LanguageSetting
     var isAI = false
     @Binding var text: String
-    let didType: (String) -> ()
+    let usePlaceHolder: Bool
+    var didType: ((String) -> ())? = nil
     
     private var language: String? { return local.locale.identifier.components(separatedBy: "_").first }
     
     var body: some View {
-        TextField("?",
+        TextField(usePlaceHolder ? "?" : "",
                   text: $text)
         .accentColor(.black.opacity(0.2))
         .frame(maxHeight: .infinity)
         .multilineTextAlignment(.center)
         .onReceive(Just(text)) { _ in
             text.limitToAllowedCharacters(language: language)
-            didType(text)
+            didType?(text)
         }
     }
 }
@@ -136,15 +137,28 @@ public extension UITextField
     }
 }
 
+enum PlaceHolderLocation {
+    case under, onTop
+}
+
 struct PlaceholderModifier<Placeholder: View>: ViewModifier {
-    var isEmpty: Bool
+    let isEmpty: Bool
+    let location: PlaceHolderLocation
     let placeholder: () -> Placeholder
     
     func body(content: Content) -> some View {
         ZStack(alignment: .leading) {
-            content
-            if isEmpty {
-                placeholder()
+            switch location {
+            case .under:
+                if isEmpty {
+                    placeholder()
+                }
+                content
+            case .onTop:
+                content
+                if isEmpty {
+                    placeholder()
+                }
             }
         }
     }
@@ -152,9 +166,12 @@ struct PlaceholderModifier<Placeholder: View>: ViewModifier {
 
 extension View {
     func placeHolder<Placeholder: View>(
-           when isEmpty: Bool,
-           @ViewBuilder placeholder: @escaping () -> Placeholder
-       ) -> some View {
-           modifier(PlaceholderModifier(isEmpty: isEmpty, placeholder: placeholder))
+        when isEmpty: Bool,
+        location: PlaceHolderLocation = .onTop,
+        @ViewBuilder placeholder: @escaping () -> Placeholder
+    ) -> some View {
+        modifier(PlaceholderModifier(isEmpty: isEmpty,
+                                     location: location,
+                                     placeholder: placeholder))
     }
 }

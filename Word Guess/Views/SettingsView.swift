@@ -41,17 +41,7 @@ struct SettingsView: View {
             VStack {
                 ZStack {
                     HStack {
-                        Button {
-                            router.navigateBack()
-                        } label: {
-                            Image(systemName: "\(language == "he" ? "forward" : "backward").end.fill")
-                                .resizable()
-                                .foregroundStyle(Color.black)
-                                .frame(height: 40)
-                                .frame(width: 40)
-                                .padding(.leading, 10)
-                                .padding(.top, 10)
-                        }
+                        BackButton()
                         Spacer()
                     }
                     .environment(\.layoutDirection, language == "he" ? .rightToLeft : .leftToRight)
@@ -69,7 +59,7 @@ struct SettingsView: View {
                                 switch item.type {
                                 case .language:
                                     guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
-                                    Task { await UIApplication.shared.open(url) }
+                                    Task { await MainActor.run { UIApplication.shared.open(url) } }
                                 case .sound: audio.isOn.toggle()
                                 }
                             } label: {

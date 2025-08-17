@@ -13,13 +13,13 @@ struct DifficultyButton: Identifiable {
 }
 
 enum DifficultyType: String, Codable {
-    case roguelike = "⚔️ AI", easy = "😀 Easy", regular = "😳 Regular", hard = "🥵 Hard", tutorial
+    case ai = "⚔️ AI", easy = "😀 Easy", medium = "😳 Medium", hard = "🥵 Hard", tutorial
     
     func getLength() -> Int {
         switch self {
         case .easy, .tutorial:
             return 4
-        case .regular, .roguelike:
+        case .medium, .ai:
             return 5
         case .hard:
             return 6
@@ -39,7 +39,7 @@ struct DifficultyView: View {
     
     private let buttons: [DifficultyButton] = [
         .init(type: .easy),
-        .init(type: .regular),
+        .init(type: .medium),
         .init(type: .hard),
     ]
     
@@ -55,32 +55,39 @@ struct DifficultyView: View {
             .opacity(0.1)
             .ignoresSafeArea()
             
-            contanet()
-                .onAppear {
-                    audio.stopAudio(true)
-                    guard tutorialItem != nil else { return router.navigateTo(.game(diffculty: .tutorial)) }
-                }
-                .onDisappear { audio.stopAudio(false)  }
+            contant()
+                .onDisappear { audio.stopAudio(false) }
+                .onAppear { audio.stopAudio(true) }
+                .task { guard tutorialItem != nil else { return router.navigateTo(.game(diffculty: .tutorial)) } }
         }
     }
     
-    @ViewBuilder private func contanet() -> some View {
-        VStack {
-            AdView(adUnitID: "TopBanner")
+    @ViewBuilder private func contant() -> some View {
+        ZStack(alignment: .top) {
             VStack {
                 topButtons()
                     .padding(.vertical, 10)
+
                 buttonList()
             }
             .padding(.horizontal, 20)
+        }
+        .safeAreaInset(edge: .top) {
+            AdView(adUnitID: "TopBanner")
+                .frame(maxWidth: .infinity, minHeight: 50, maxHeight: 50)
+        }
+        .safeAreaInset(edge: .bottom) {
             AdView(adUnitID: "BottomBanner")
+                .frame(maxWidth: .infinity, minHeight: 50, maxHeight: 50)
         }
     }
     
     @ViewBuilder private func topButtons() -> some View {
         HStack {
             Button {
-                router.navigateTo(.settings)
+                Task.detached {
+                    await MainActor.run { router.navigateTo(.settings) }
+                }
             } label: {
                 VStack {
                     Image(systemName: "gear")
@@ -121,27 +128,27 @@ struct DifficultyView: View {
     @ViewBuilder private func buttonList() -> some View {
         VStack {
             ZStack {
-                LinearGradient(colors: [.white.opacity(0.4), .gray.opacity(0.1)],
+                LinearGradient(colors: [.white.opacity(0.4),
+                                        .gray.opacity(0.1)],
                                startPoint: .topTrailing,
                                endPoint: .bottomLeading)
                 .blur(radius: 4)
-               
+                
                 VStack {
-                    difficultyButton(type: .roguelike)
-                        .shadow(radius: 8)
+                    difficultyButton(type: .ai)
+                        .shadow(radius: 4)
                     title()
                         .padding(.top, 8)
                         .padding(.bottom, 15)
                     ForEach(buttons) { button in
                         difficultyButton(type: button.type)
                             .shadow(radius: 4)
-                        Spacer()
                     }
                 }
                 .padding()
             }
             .clipShape(RoundedRectangle(cornerRadius: 60))
-            .shadow(radius: 4)
+            .elevated(cornerRadius: 60)
             
             logoutButton()
                 .padding(.all, 20)
@@ -156,73 +163,33 @@ struct DifficultyView: View {
     }
     
     @ViewBuilder private func difficultyButton(type: DifficultyType) -> some View {
-        Button {
-            router.navigateTo(.game(diffculty: type))
-        } label: {
-            Text(type.rawValue.localized)
-                .foregroundStyle(type == .roguelike ? Color.cyan : Color.white)
-                .font(.headline)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 40)
-        }
-        .background {
+        let style: ElevatedButtonStyle = {
             switch type {
-            case .easy:
-                LinearGradient(colors: [.black.opacity(0.9), .green],
-                               startPoint: .bottomLeading,
-                               endPoint: .topTrailing)
-                .blur(radius: 4)
-                .opacity(0.6)
-            case .regular:
-                LinearGradient(colors: [.black.opacity(0.9), .yellow],
-                               startPoint: .bottomLeading,
-                               endPoint: .topTrailing)
-                .blur(radius: 4)
-                .opacity(0.6)
-            case .hard:
-                LinearGradient(colors: [.black.opacity(0.9), .orange],
-                               startPoint: .bottomLeading,
-                               endPoint: .topTrailing)
-                .blur(radius: 4)
-                .opacity(0.6)
-            case .roguelike:
-                LinearGradient(colors: [.black.opacity(0.9), .teal],
-                               startPoint: .bottomLeading,
-                               endPoint: .topTrailing)
-                .blur(radius: 4)
-                .opacity(0.6)
-            default: Color.clear
+            case .easy: ElevatedButtonStyle(palette: .green)
+            case .medium: ElevatedButtonStyle(palette: .amber)
+            case .hard: ElevatedButtonStyle(palette: .rose)
+            case .ai: ElevatedButtonStyle(palette: .teal)
+            default: ElevatedButtonStyle()
             }
-        }
-        .clipShape(Capsule())
-        .overlay {
-            Capsule()
-                .stroke(type == .roguelike ? .cyan : .gray, lineWidth: 0.1)
-        }
+        }()
+        
+        Button {
+            Task.detached(priority: .userInitiated) {
+                await MainActor.run { router.navigateTo(.game(diffculty: type)) }
+            }
+        } label: { ElevatedButtonLabel(LocalizedStringKey(type.rawValue)) }
+        .buttonStyle(style)
     }
     
     @ViewBuilder private func logoutButton() -> some View {
         Button {
-            loginHandeler.model = nil
-            auth.logout()
-        } label: {
-            Text("👋 logout")
-                .foregroundStyle(Color.black)
-                .font(.headline)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 40)
-        }
-        .background {
-            LinearGradient(colors: [.black.opacity(0.9), .red],
-                           startPoint: .bottomLeading,
-                           endPoint: .topTrailing)
-            .blur(radius: 4)
-            .opacity(0.6)
-        }
-        .clipShape(Capsule())
-        .overlay {
-            Capsule()
-                .stroke(.gray, lineWidth: 0.1)
-        }
+            Task.detached(priority: .userInitiated) {
+                await MainActor.run {
+                    loginHandeler.model = nil
+                    auth.logout()
+                }
+            }
+        } label: { ElevatedButtonLabel(LocalizedStringKey("👋 logout")) }
+            .buttonStyle(ElevatedButtonStyle(palette: .slate))
     }
 }

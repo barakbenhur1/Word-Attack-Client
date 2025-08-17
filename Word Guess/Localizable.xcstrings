@@ -1,6 +1,9 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "" : {
+      "shouldTranslate" : false
+    },
     "- %lld" : {
       "localizations" : {
         "he" : {
@@ -47,6 +50,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%lld"
+          }
+        }
+      }
+    },
+    "%lld percent" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אחוז"
           }
         }
       }
@@ -102,6 +115,16 @@
         }
       }
     },
+    "💔" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "💔"
+          }
+        }
+      }
+    },
     "🥵 Hard" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -124,23 +147,46 @@
         }
       }
     },
-    "😞" : {
-      "localizations" : {
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "😞"
-          }
-        }
-      }
-    },
-    "😳 Regular" : {
+    "😳 Medium" : {
       "extractionState" : "manual",
       "localizations" : {
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "😳 רגיל"
+            "value" : "😳 בנוני"
+          }
+        }
+      }
+    },
+    "back" : {
+
+    },
+    "Back" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "חזור"
+          }
+        }
+      }
+    },
+    "By exiting you will lose all progress" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אם תצא תאבד את כל ההתקדמות שלך"
+          }
+        }
+      }
+    },
+    "Cancel" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ביטול"
           }
         }
       }
@@ -177,12 +223,32 @@
         }
       }
     },
+    "Downloading AI Pack" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מוריד חבילת AI"
+          }
+        }
+      }
+    },
     "English" : {
       "localizations" : {
         "he" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "אנגלית"
+          }
+        }
+      }
+    },
+    "Exit" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "יציאה"
           }
         }
       }
@@ -198,6 +264,17 @@
         }
       }
     },
+    "Finalizing…" : {
+      "comment" : "ODR",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מסיים…"
+          }
+        }
+      }
+    },
     "Guess The 4 Letters Word" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -205,6 +282,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "נחש את המילה בעלת 4 האותיות"
+          }
+        }
+      }
+    },
+    "Guessing glyph animation" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אנימציה של ניחוש אות"
           }
         }
       }
@@ -229,6 +316,16 @@
         }
       }
     },
+    "ℹ️" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ℹ️"
+          }
+        }
+      }
+    },
     "language" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -242,6 +339,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "שפה"
+          }
+        }
+      }
+    },
+    "Loading" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "טוען"
           }
         }
       }
@@ -270,6 +377,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "הפסדת"
+          }
+        }
+      }
+    },
+    "Model is Loading up" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "המודל נטען"
           }
         }
       }
@@ -317,6 +434,37 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "מקום"
+          }
+        }
+      }
+    },
+    "Preparing AI Model" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מכין מודל בינה מלאכותית"
+          }
+        }
+      }
+    },
+    "Progress" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "התקדמות"
+          }
+        }
+      }
+    },
+    "Ready" : {
+      "comment" : "ODR",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מוכן"
           }
         }
       }

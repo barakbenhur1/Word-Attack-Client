@@ -19,7 +19,7 @@ struct AppTitle: View {
                 ForEach(.constant(array), id: \.self) { c in
                     if let i = array.firstIndex(of: c.wrappedValue) {
                         ZStack {
-                            i == 0 || i == 3 ? CharColor.extectMatch.color : i == 2 ? CharColor.partialMatch.color : CharColor.noMatch.color
+                            i == 0 || i == 3 ? CharColor.exactMatch.color : i == 2 ? CharColor.partialMatch.color : CharColor.noMatch.color
                             Text(c.wrappedValue)
                                 .font(.largeTitle)
                         }
@@ -40,7 +40,7 @@ struct AppTitle: View {
                 ForEach(.constant(array), id: \.self) { c in
                     if let i = array.firstIndex(of: c.wrappedValue) {
                         ZStack {
-                            i == 1 ? CharColor.extectMatch.color : i == 0 ? CharColor.partialMatch.color : CharColor.noMatch.color
+                            i == 1 ? CharColor.exactMatch.color : i == 0 ? CharColor.partialMatch.color : CharColor.noMatch.color
                             Text(c.wrappedValue)
                                 .font(.largeTitle)
                         }
