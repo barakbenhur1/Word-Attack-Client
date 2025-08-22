@@ -7,6 +7,7 @@
 
 import Foundation
 
+typealias BestGuess = (index: Int, colordLetters: [Guess])
 typealias Guess = (char: String, color: CharColor)
 
 final class BestGuessProducerProvider: Singleton {
@@ -21,6 +22,224 @@ final class BestGuessProducer: Singleton {
     @available(*, unavailable, message: "Cannot be initialized through the constructor")
     private override init() { super.init() }
     
+    // MARK: New sparse API (preferred)
+    // Returns only indices that have something to show, enforcing:
+    // 1) Prefer G alone: lock greens to their positions.
+    // 2) Prefer Y alone: rehome Y’s to free slots (no G) so each such slot has at most one Y.
+    // 3) If a Y can’t be rehomed, allow placing it with a G; if still impossible, keep at one of its original Y indices.
+    func perIndexCandidatesSparse(
+        matrix: [[String]],
+        colors: [[CharColor]],
+        aiMatrix: [[String]],
+        aiColors: [[CharColor]],
+        debug: Bool = false
+    ) -> [BestGuess] {
+        
+        let n: Int = (
+            colors.first?.count ??
+            aiColors.first?.count ??
+            matrix.first?.count ??
+            aiMatrix.first?.count ?? 5
+        )
+        let lastIdx = max(0, n - 1)
+        let rowsCount = max(matrix.count, max(colors.count, max(aiMatrix.count, aiColors.count)))
+        
+        // 1) Collect ALL (char,color) pairs seen at EACH index from player + AI, including gray.
+        var posSeen: [Set<String>] = Array(repeating: Set<String>(), count: n) // keys "e|G", "r|Y", "t|X"
+        for i in 0..<rowsCount {
+            let pL = lettersRow(matrix, i, n)
+            let pC = colorsRow(colors, i, n)
+            let aL = lettersRow(aiMatrix, i, n)
+            let aC = colorsRow(aiColors, i, n)
+            for j in 0..<n {
+                let pc = pC[j]
+                if pc != .noGuess {
+                    let ch = normAtPosLower(pL[j], j, lastIdx)
+                    if !isEmptyToken(ch) { posSeen[j].insert(ch + "|" + tag(pc)) }
+                }
+                let ac = aC[j]
+                if ac != .noGuess {
+                    let ch = normAtPosLower(aL[j], j, lastIdx)
+                    if !isEmptyToken(ch) { posSeen[j].insert(ch + "|" + tag(ac)) }
+                }
+            }
+        }
+        
+        // 2) Caps and bans from history (letter-level), and tallies we need later.
+        let (cap, banned) = computeCapsAndBans(
+            n: n,
+            lastIdx: lastIdx,
+            matrix: matrix,
+            colors: colors,
+            aiMatrix: aiMatrix,
+            aiColors: aiColors
+        )
+        
+        // Greens by index; Y-forbidden positions per letter; original Y indices per letter
+        var greensAt: [Int: Set<String>] = [:]        // index -> set of green letters (normally one)
+        var yForbidden: [String: Set<Int>] = [:]      // letter -> indexes where it was Y (so not allowed there)
+        var yOriginalAt: [String: Set<Int>] = [:]     // letter -> indexes where it appeared as Y (for fallback)
+        var lettersPresent = Set<String>()            // letters known to be present (had any Y or G)
+        
+        for j in 0..<n {
+            for key in posSeen[j] {
+                let parts = key.split(separator: "|"); guard parts.count == 2 else { continue }
+                let ch = String(parts[0]); let t = String(parts[1])
+                switch t {
+                case "G":
+                    greensAt[j, default: []].insert(ch)
+                    lettersPresent.insert(ch)
+                case "Y":
+                    yForbidden[ch, default: []].insert(j)
+                    yOriginalAt[ch, default: []].insert(j)
+                    lettersPresent.insert(ch)
+                default:
+                    break
+                }
+            }
+        }
+        
+        // minOcc (needed occurrences overall), greenSeen (already satisfied by G)
+        var greenSeen: [String:Int] = [:]
+        var minOcc: [String:Int] = [:]
+        do {
+            var rows: [([String], [CharColor])] = []
+            for i in 0..<min(matrix.count, colors.count)       { rows.append((matrix[i],   colors[i])) }
+            for i in 0..<min(aiMatrix.count, aiColors.count)   { rows.append((aiMatrix[i], aiColors[i])) }
+            for (lettersRow, colorsRow) in rows {
+                let w = min(n, min(lettersRow.count, colorsRow.count))
+                var colored: [String:Int] = [:]
+                for j in 0..<w {
+                    let ch = normSingleLower(lettersRow[j])
+                    switch colorsRow[j] {
+                    case .exactMatch:
+                        colored[ch, default: 0] += 1
+                        greenSeen[ch, default: 0] += 1
+                    case .partialMatch:
+                        colored[ch, default: 0] += 1
+                    default: break
+                    }
+                }
+                for (ch, c) in colored { minOcc[ch] = max(minOcc[ch] ?? 0, c) }
+            }
+        }
+        
+        // 3) Y "need" per letter (bounded by cap)
+        var need: [String:Int] = [:]
+        for ch in lettersPresent {
+            let must = minOcc[ch] ?? 0
+            let haveG = greenSeen[ch] ?? 0
+            let maxCap = cap[ch] ?? Int.max
+            let still = max(0, min(must, maxCap) - haveG)
+            if still > 0 { need[ch] = still }
+        }
+        
+        // Helpful: for any letter, which indices have that SAME letter as green?
+        func indicesWithGreen(_ ch: String) -> Set<Int> {
+            var res: Set<Int> = []
+            for (idx, set) in greensAt where set.contains(ch) { res.insert(idx) }
+            return res
+        }
+        
+        // 4) Assign Y's
+        let greenOccupied = Set(greensAt.keys)
+        var takenYIndex = Set<Int>()           // ensure “Y alone” where possible (one Y per free index)
+        var assignY: [Int:[String]] = [:]      // index -> [letters placed as Y here]
+        
+        struct NeedItem { let ch: String; let options: [Int] }
+        
+        // Pass A: avoid green indices (place Y in free slots only)
+        var passA: [NeedItem] = []
+        for (ch, k) in need {
+            guard !banned.contains(ch) else { continue }
+            let forb = (yForbidden[ch] ?? []).union(indicesWithGreen(ch)) // <- never Y where same letter is G
+            let opts = Array(Set(0..<n).subtracting(greenOccupied).subtracting(forb)).sorted()
+            for _ in 0..<k { passA.append(NeedItem(ch: ch, options: opts)) }
+        }
+        passA.sort { $0.options.count < $1.options.count } // constrained first
+        var remaining: [String:Int] = [:]
+        for item in passA {
+            if let idx = item.options.first(where: { !takenYIndex.contains($0) }) {
+                assignY[idx, default: []].append(item.ch)
+                takenYIndex.insert(idx)
+            } else {
+                remaining[item.ch, default: 0] += 1
+            }
+        }
+        
+        // Pass B: allow green indices too (still try to keep 1 Y per index), but never if same letter is G there
+        if !remaining.isEmpty {
+            var passB: [NeedItem] = []
+            for (ch, k) in remaining {
+                let forb = (yForbidden[ch] ?? []).union(indicesWithGreen(ch)) // <- same safeguard
+                let opts = Array(Set(0..<n).subtracting(forb)).sorted()
+                for _ in 0..<k { passB.append(NeedItem(ch: ch, options: opts)) }
+            }
+            passB.sort { $0.options.count < $1.options.count }
+            remaining.removeAll()
+            
+            for item in passB {
+                if let idx = item.options.first(where: { !takenYIndex.contains($0) }) {
+                    assignY[idx, default: []].append(item.ch)
+                    takenYIndex.insert(idx)
+                } else {
+                    remaining[item.ch, default: 0] += 1
+                }
+            }
+        }
+        
+        // Pass C (fallback): keep at original Y indices (may co-exist with G and other Y’s),
+        // BUT NEVER place Y where the same letter is G.
+        if !remaining.isEmpty {
+            for (ch, k) in remaining {
+                var homes = Array((yOriginalAt[ch] ?? []).subtracting(indicesWithGreen(ch)))
+                if homes.isEmpty { continue } // nowhere valid to show; skip for display
+                homes.sort()
+                // Distribute round-robin over original Y indices
+                for t in 0..<k {
+                    let idx = homes[t % homes.count]
+                    assignY[idx, default: []].append(ch)
+                }
+            }
+        }
+        
+        // 5) Build sparse output; indices with nothing are omitted.
+        var out: [(index: Int, colordLetters: [Guess])] = []
+        out.reserveCapacity(n)
+        
+        for j in 0..<n {
+            var bucket: [Guess] = []
+            // Lock greens (prefer G alone)
+            if let gset = greensAt[j], !gset.isEmpty {
+                for ch in gset.sorted() where !banned.contains(ch) {
+                    bucket.append((ch, .exactMatch))
+                }
+            }
+            // Assigned Y for this index (either free placement or fallback)
+            if let ys = assignY[j], !ys.isEmpty {
+                // If a same-letter green exists here, it was filtered earlier; keep that invariant.
+                for ch in ys.sorted() where !banned.contains(ch) {
+                    bucket.append((ch, .partialMatch))
+                }
+            }
+            if !bucket.isEmpty {
+                out.append((index: j, colordLetters: bucket))
+            }
+        }
+        
+        if debug {
+            dprint(true, "— perIndexCandidatesSparse —")
+            for item in out {
+                let pretty = item.colordLetters.map { "\($0.char)\(tag($0.color))" }.joined(separator: " ")
+                dprint(true, "[\(item.index)] -> [\(pretty)]")
+            }
+        }
+        
+        return out
+    }
+    
+    // MARK: Existing dense API (kept for compatibility)
+    // Returns [[Guess]] aligned by index; indices with no letters return an empty array.
     func allBestGuesses(
         matrix: [[String]],
         colors: [[CharColor]],
@@ -58,12 +277,9 @@ final class BestGuessProducer: Singleton {
             }
         }
         
-        dprint(debug, "—— posMap ——")
         if debug {
-            for j in 0..<n {
-                let line = posSeen[j].sorted().joined(separator: " ")
-                dprint(true, "posMap[\(j)] = \(line)")
-            }
+            dprint(true, "—— posMap ——")
+            for j in 0..<n { dprint(true, "posMap[\(j)] = \(posSeen[j].sorted().joined(separator: " "))") }
         }
         
         // 2) Caps and bans from history (letter-level).
@@ -85,18 +301,11 @@ final class BestGuessProducer: Singleton {
             for key in posSeen[j] {
                 let parts = key.split(separator: "|")
                 guard parts.count == 2 else { continue }
-                if parts[1] == "G" {
-                    greenCount[String(parts[0]), default: 0] += 1
-                }
+                if parts[1] == "G" { greenCount[String(parts[0]), default: 0] += 1 }
             }
         }
-        dprint(debug, "greenCount = \(greenCount)")
         
-        // 3b) Extra tallies for multi-occurrence handling:
-        //     - greenSeen[L] = how many green positions for letter L (any row)
-        //     - minOcc[L]    = LOWER BOUND on true occurrences of L implied by history:
-        //                      max over rows of (#G + #Y) for L in that row
-        //     - yellowCount[L] = total times L appeared yellow across all rows
+        // Tallies for multi-occur handling
         var greenSeen: [String:Int] = [:]
         for set in posSeen {
             for key in set {
@@ -105,25 +314,20 @@ final class BestGuessProducer: Singleton {
             }
         }
         let greenLetters = Set(greenSeen.keys)
-        
         var minOcc: [String:Int] = [:]
         var yellowCount: [String:Int] = [:]
         do {
             var rows: [([String], [CharColor])] = []
             for i in 0..<min(matrix.count, colors.count)       { rows.append((matrix[i],   colors[i])) }
             for i in 0..<min(aiMatrix.count, aiColors.count)   { rows.append((aiMatrix[i], aiColors[i])) }
-            
             for (lettersRow, colorsRow) in rows {
                 let w = min(n, min(lettersRow.count, colorsRow.count))
                 var colored: [String:Int] = [:]
                 for j in 0..<w {
                     let ch = normSingleLower(lettersRow[j])
                     switch colorsRow[j] {
-                    case .exactMatch:
-                        colored[ch, default: 0] += 1
-                    case .partialMatch:
-                        colored[ch, default: 0] += 1
-                        yellowCount[ch, default: 0] += 1
+                    case .exactMatch:   colored[ch, default: 0] += 1
+                    case .partialMatch: colored[ch, default: 0] += 1; yellowCount[ch, default: 0] += 1
                     default: break
                     }
                 }
@@ -136,16 +340,12 @@ final class BestGuessProducer: Singleton {
             dprint(true, "yellowCount = \(yellowCount)")
         }
         
-        // 4) Build candidates per index from posSeen:
-        //    - If any GREEN at j, include green(s) AND yellows only when:
-        //        a) history proves more copies are needed beyond the greens we already have, OR
-        //        b) it’s a lonely-yellow letter (never green anywhere, exactly one Y overall).
-        //    - Else include all Y at j with residual > 0 (cap - greens) and all X (dedup by char).
+        // 4) Build candidates per index from posSeen.
         func parse(_ key: String) -> Guess? {
             let parts = key.split(separator: "|")
             guard parts.count == 2 else { return nil }
             let ch = String(parts[0])
-            guard ch.count == 1 else { return nil } // drop garbage multi-char tokens
+            guard ch.count == 1 else { return nil }
             switch parts[1] {
             case "G": return (ch, .exactMatch)
             case "Y": return (ch, .partialMatch)
@@ -176,13 +376,13 @@ final class BestGuessProducer: Singleton {
             }
             
             if !greens.isEmpty {
-                // ✅ Keep greens; keep Y at this index only if history requires extra copies
-                //    or it is a lonely-yellow (never went green anywhere and appears yellow once overall).
+                // ✅ Keep greens, and only add Y for *other* letters (never same letter),
+                // and only when a genuine residual is needed.
                 var list = greens.sorted { $0.char < $1.char }
-                
-                for y in yellows.sorted(by: { $0.char < $1.char }) {
+                let greenChars = Set(greens.map { $0.char }) // letters that are green at this index
+                for y in yellows.sorted(by: { $0.char < $1.char }) where !greenChars.contains(y.char) {
                     let needExtraCopy = (minOcc[y.char] ?? 0) > (greenSeen[y.char] ?? 0)
-                    let lonelyYellow = !greenLetters.contains(y.char) && (yellowCount[y.char] == 1)
+                    let lonelyYellow  = !greenLetters.contains(y.char) && (yellowCount[y.char] == 1)
                     if needExtraCopy || lonelyYellow {
                         list.append(y)
                     }
@@ -190,40 +390,32 @@ final class BestGuessProducer: Singleton {
                 candidates[j] = list
             } else {
                 var list = yellows.sorted { $0.char < $1.char }
-                // Add grays (dedupe by char)
                 var seenGray = Set<String>()
                 for g in grays.sorted(by: { $0.char < $1.char }) {
                     if seenGray.insert(g.char).inserted { list.append(g) }
-                }
-                if list.isEmpty {
-                    dprint(true, "ERROR: no history-derived candidates at index \(j). Returning [].")
-                    return []
                 }
                 candidates[j] = list
             }
         }
         
-        dprint(debug, "—— candidates ——")
         if debug {
+            dprint(true, "—— candidates ——")
             for j in 0..<n {
                 let line = candidates[j].map { "\($0.char)\(tag($0.color))" }.joined(separator: " ")
                 dprint(true, "candidates[\(j)] = [\(line)]")
             }
         }
         
-        // 5) DFS enumerate all rows with caps; Y/G consume cap, X does not.
+        // 5) DFS enumerate with caps; Y/G consume cap, X does not.
         var results: [[Guess]] = []
         var seenRows = Set<String>()
         var used: [String: Int] = [:]
         var row: [Guess] = Array(repeating: ("", .noGuess), count: n)
-        
-        // extra per-row state
-        var usedYG: [String: Int] = [:]     // Y/G placed counts for this row
-        var usedX:  [String: Int] = [:]     // keep X duplicates in check
+        var usedYG: [String: Int] = [:]
+        var usedX:  [String: Int] = [:]
         
         func dfs(_ j: Int) {
             if j == n {
-                // keep rows that have at least one Y or G
                 if row.contains(where: { $0.color == .partialMatch || $0.color == .exactMatch }) {
                     let key = rowKey(row)
                     if seenRows.insert(key).inserted { results.append(row) }
@@ -231,57 +423,51 @@ final class BestGuessProducer: Singleton {
                 return
             }
             
-            let opts = candidates[j]
-            if opts.isEmpty { return } // no blank fallback; every index must have history
+            let rawOpts = candidates[j]
+            if rawOpts.isEmpty { return }
+            
+            // If any green exists at this index, restrict to greens only (prevents Y where G exists).
+            let opts = rawOpts.contains(where: { $0.color == .exactMatch })
+                ? rawOpts.filter { $0.color == .exactMatch }
+                : rawOpts
             
             for g in opts {
                 switch g.color {
                 case .noMatch:
-                    // 🔓 Allow gray together with Y/G of same letter in a single row (valid Wordle duplicate semantics).
-                    //    We still limit gray spam per letter to 1 to avoid explosion; raise if needed.
                     if (usedX[g.char] ?? 0) >= 1 { continue }
-                    
                     row[j] = g
                     usedX[g.char, default: 0] += 1
                     dfs(j + 1)
-                    usedX[g.char]! -= 1
-                    if usedX[g.char] == 0 { usedX.removeValue(forKey: g.char) }
-                    
+                    usedX[g.char]! -= 1; if usedX[g.char] == 0 { usedX.removeValue(forKey: g.char) }
                 case .partialMatch, .exactMatch:
-                    // cap enforcement for true occurrences (Y/G)
                     let limit = cap[g.char] ?? Int.max
                     if (used[g.char] ?? 0) + 1 > limit { continue }
-                    
                     row[j] = g
                     used[g.char, default: 0] += 1
                     usedYG[g.char, default: 0] += 1
                     dfs(j + 1)
-                    usedYG[g.char]! -= 1
-                    if usedYG[g.char] == 0 { usedYG.removeValue(forKey: g.char) }
+                    usedYG[g.char]! -= 1; if usedYG[g.char] == 0 { usedYG.removeValue(forKey: g.char) }
                     used[g.char]! -= 1
-                    
-                default:
-                    continue
+                default: continue
                 }
             }
         }
-        
         dfs(0)
-        dprint(debug, "rows found before entropy = \(results.count)")
-        if results.isEmpty { return [] }
+        if results.isEmpty { return Array(repeating: [], count: n) }
         
-        // 6) Entropy scoring (ignores grays; G weighs more than Y). Keep best rows.
+        // 6) Entropy scoring (G weight > Y)
         func weight(_ c: CharColor) -> Double { c == .exactMatch ? 3.0 : 1.0 }
         var denom = Array(repeating: 0.0, count: n)
+        
         for j in 0..<n {
-            var sum = 0.0
-            var uniq = Set<String>()
+            var sum = 0.0, uniq = Set<String>()
             for g in candidates[j] where g.color == .partialMatch || g.color == .exactMatch {
                 let k = g.char + "|" + tag(g.color)
                 if uniq.insert(k).inserted { sum += weight(g.color) }
             }
             denom[j] = max(sum, 1.0)
         }
+        
         func entropy(_ r: [Guess]) -> Double {
             var s = 0.0
             for j in 0..<n {
@@ -293,31 +479,28 @@ final class BestGuessProducer: Singleton {
         }
         
         let scored: [(row: [Guess], e: Double)] = results.map { ($0, entropy($0)) }
-        
-        if debug {
-            dprint(true, "—— entropy per row ——")
-            for (r, e) in scored { dprint(true, "\(rowPretty(r)) | H=\(String(format: "%.4f", e))") }
-        }
-        
         let bestScore = scored.map { $0.e }.max() ?? -Double.infinity
         var best = scored.filter { $0.e == bestScore }.map { $0.row }
         
-        // Ties: more greens first, then stable key.
         func greensCount(_ r: [Guess]) -> Int { r.reduce(0) { $0 + ($1.color == .exactMatch ? 1 : 0) } }
+        
         best.sort {
             let ga = greensCount($0), gb = greensCount($1)
             if ga != gb { return ga > gb }
             return rowKey($0) < rowKey($1)
         }
         
-        dprint(debug, "max entropy = \(String(format: "%.4f", bestScore))")
-        dprint(debug, "rows kept = \(best.count)")
-        if debug { for r in best { dprint(true, "KEEP \(rowPretty(r))") } }
-        
-        return best
+        // Convert to aligned-by-index [[Guess]]
+        var dense: [[Guess]] = Array(repeating: [], count: n)
+        if let top = best.first {
+            for (j, g) in top.enumerated() where g.color != .noGuess {
+                dense[j].append(g)
+            }
+        }
+        return dense
     }
     
-    // MARK: internals
+    // MARK: - Internals (shared by both APIs)
     
     private func computeCapsAndBans(
         n: Int,
@@ -327,8 +510,8 @@ final class BestGuessProducer: Singleton {
         aiMatrix: [[String]],
         aiColors: [[CharColor]]
     ) -> ([String: Int], Set<String>) {
-        var perRowMaxColored: [String: Int] = [:] // soft cap = max(G+Y) seen in any single row
-        var cap: [String: Int] = [:]              // hard cap when gray+colored appear in same row
+        var perRowMaxColored: [String: Int] = [:]
+        var cap: [String: Int] = [:]
         var everColored = Set<String>()
         var grayOnlySomeRow = Set<String>()
         var rows: [([String], [CharColor])] = []
@@ -357,7 +540,6 @@ final class BestGuessProducer: Singleton {
                 } else if (b[ch] ?? 0) > 0 {
                     grayOnlySomeRow.insert(ch)
                 }
-                // strict cap: same row has gray + colored ⇒ cap ≤ colored
                 if let bCnt = b[ch], bCnt > 0, colored > 0 {
                     cap[ch] = min(cap[ch] ?? Int.max, colored)
                 }
@@ -365,10 +547,8 @@ final class BestGuessProducer: Singleton {
         }
         var banned = Set<String>()
         for ch in grayOnlySomeRow where !everColored.contains(ch) {
-            banned.insert(ch)
-            cap[ch] = 0
+            banned.insert(ch); cap[ch] = 0
         }
-        // IMPORTANT: never widen cap beyond the per-row maximum colored
         for (ch, m) in perRowMaxColored {
             if let c = cap[ch] { cap[ch] = min(c, m) } else { cap[ch] = m }
         }
@@ -381,70 +561,65 @@ final class BestGuessProducer: Singleton {
     private func isEmptyToken(_ s: String) -> Bool {
         s.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
-    
     @inline(__always)
-    private func tag(_ c: CharColor) -> String {
+    fileprivate func tag(_ c: CharColor) -> String {
         if c == .exactMatch { return "G" }
         if c == .partialMatch { return "Y" }
         if c == .noMatch { return "X" }
         return "_"
     }
     
-    // Strict single-letter normalizer
+    // strict single-letter normalizer
     @inline(__always)
-    private func normSingleLower(_ s: String) -> String {
+    fileprivate func normSingleLower(_ s: String) -> String {
         let t = s.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let ch = t.first else { return " " }
-        return String(ch).lowercased()
+        // collapse Hebrew finals to base
+        switch ch {
+        case "ך": return "כ"
+        case "ם": return "מ"
+        case "ן": return "נ"
+        case "ף": return "פ"
+        case "ץ": return "צ"
+        default:  return String(ch).lowercased()
+        }
     }
     
-    // Keep signature, but always normalize to one letter
+    // position-normalizer (kept for API symmetry)
     @inline(__always)
-    private func normAtPosLower(_ s: String, _ j: Int, _ lastIdx: Int) -> String {
+    fileprivate func normAtPosLower(_ s: String, _ j: Int, _ lastIdx: Int) -> String {
         return normSingleLower(s)
     }
     
     @inline(__always)
-    private func lettersRow(_ rows: [[String]], _ i: Int, _ n: Int) -> [String] {
+    fileprivate func lettersRow(_ rows: [[String]], _ i: Int, _ n: Int) -> [String] {
         guard i < rows.count else { return Array(repeating: " ", count: n) }
         let r = rows[i]
         return r.count >= n ? Array(r.prefix(n)) : (r + Array(repeating: " ", count: n - r.count))
     }
-    
     @inline(__always)
-    private func colorsRow(_ rows: [[CharColor]], _ i: Int, _ n: Int) -> [CharColor] {
+    fileprivate func colorsRow(_ rows: [[CharColor]], _ i: Int, _ n: Int) -> [CharColor] {
         guard i < rows.count else { return Array(repeating: .noGuess, count: n) }
         let r = rows[i]
         return r.count >= n ? Array(r.prefix(n)) : (r + Array(repeating: .noGuess, count: n - r.count))
     }
-    
     @inline(__always)
-    private func rowKey(_ row: [Guess]) -> String {
+    fileprivate func rowKey(_ row: [Guess]) -> String {
         var out = ""
         out.reserveCapacity(row.count * 4)
         for g in row {
-            let ch = g.char.lowercased()
-            let t = tag(g.color)
-            out.append(ch)
-            out.append("|")
-            out.append(contentsOf: t)
-            out.append(";")
+            out.append(g.char.lowercased()); out.append("|"); out.append(contentsOf: tag(g.color)); out.append(";")
         }
         return out
     }
-    
     @inline(__always)
-    private func rowPretty(_ row: [Guess]) -> String {
-        var parts: [String] = []
-        parts.reserveCapacity(row.count)
-        for (idx, g) in row.enumerated() {
-            parts.append("\(idx):\(g.char)\(tag(g.color))")
-        }
+    fileprivate func rowPretty(_ row: [Guess]) -> String {
+        var parts: [String] = []; parts.reserveCapacity(row.count)
+        for (idx, g) in row.enumerated() { parts.append("\(idx):\(g.char)\(tag(g.color))") }
         return parts.joined(separator: " ")
     }
-    
     @inline(__always)
-    private func dprint(_ enabled: Bool, _ s: @autoclosure () -> String) {
+    fileprivate func dprint(_ enabled: Bool, _ s: @autoclosure () -> String) {
         if enabled { print(s()) }
     }
 }
@@ -469,8 +644,6 @@ extension BestGuessProducer {
             }
             denom[j] = max(sum, 1e-9)
         }
-        
-        @inline(__always)
         func entropyScore(_ row: [Guess]) -> Double {
             var s = 0.0
             for j in 0..<n {
@@ -481,16 +654,9 @@ extension BestGuessProducer {
             }
             return s
         }
-        
-        @inline(__always)
-        func greensCount(_ row: [Guess]) -> Int {
-            row.reduce(0) { $0 + ($1.color == .exactMatch ? 1 : 0) }
-        }
-        
-        @inline(__always)
+        func greensCount(_ row: [Guess]) -> Int { row.reduce(0) { $0 + ($1.color == .exactMatch ? 1 : 0) } }
         func stableKey(_ row: [Guess]) -> String {
-            var out = ""
-            out.reserveCapacity(n * 3)
+            var out = ""; out.reserveCapacity(n * 3)
             for g in row {
                 out += g.char.lowercased()
                 out += (g.color == .exactMatch ? "G" : (g.color == .partialMatch ? "Y" : "X"))
@@ -498,19 +664,10 @@ extension BestGuessProducer {
             }
             return out
         }
-        
-        var best = rows[0]
-        var bestScore = entropyScore(best)
-        var bestGreens = greensCount(best)
-        var bestKey = stableKey(best)
-        
+        var best = rows[0]; var bestScore = entropyScore(best); var bestGreens = greensCount(best); var bestKey = stableKey(best)
         for i in 1..<rows.count {
-            let r = rows[i]
-            let e = entropyScore(r)
-            if e > bestScore {
-                best = r; bestScore = e; bestGreens = greensCount(r); bestKey = stableKey(r)
-                continue
-            }
+            let r = rows[i]; let e = entropyScore(r)
+            if e > bestScore { best = r; bestScore = e; bestGreens = greensCount(r); bestKey = stableKey(r); continue }
             if e == bestScore {
                 let g = greensCount(r)
                 if g > bestGreens || (g == bestGreens && stableKey(r) < bestKey) {

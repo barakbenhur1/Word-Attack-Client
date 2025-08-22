@@ -8,55 +8,57 @@
 import SwiftUI
 import CoreData
 import Combine
+import SwiftUITooltip
 
-typealias HpAnimationPArams =  (value: Int, opticity: CGFloat, scale: CGFloat, offset: CGFloat)
+typealias HpAnimationParams =  (value: Int, opacity: CGFloat, scale: CGFloat, offset: CGFloat)
 
-struct AIGameView<VM: ViewModel>: View {
+struct AIGameView<VM: WordViewModelForAI>: View {
     @EnvironmentObject private var coreData: PersistenceController
     @EnvironmentObject private var loginHandeler: LoginHandeler
     @EnvironmentObject private var audio: AudioPlayer
     @EnvironmentObject private var router: Router
     @EnvironmentObject private var local: LanguageSetting
     
-    private enum Turn: Int {
-        case player = 0, ai = 1
-    }
-    
-    private enum GameState {
-        case inProgress, lose, win
-    }
+    private enum Turn: Int  { case player = 0, ai = 1 }
+    private enum GameState { case inProgress, lose, win }
     
     private let queue = DispatchQueue.main
+    
     private let InterstitialAdInterval: Int = 7
-    private let fullHP :Int = 100
+    
     private let rows: Int = 5
-    private var length: Int { return DifficultyType.ai.getLength() }
-    private var email: String? { return loginHandeler.model?.email }
-    private var gender: String? { return loginHandeler.model?.gender }
+    private var length: Int { DifficultyType.ai.getLength() }
+    private var email: String? { loginHandeler.model?.email }
+    private var gender: String? { loginHandeler.model?.gender }
+    
+    private let fullHP :Int = 100
+    private let hitPoints = 5
+    private let noGuessHitPoints = 10
     
     @State private var pack = AIPackManager()
-
+    
     @State private var vm = VM()
     @State private var keyboard = KeyboardHeightHelper()
     @State private var endFetchAnimation = false
     @State private var interstitialAdManager = InterstitialAdsManager(adUnitID: "GameInterstitial")
     
-    @State private var aiHpAnimation: HpAnimationPArams = (0, CGFloat(0), CGFloat(0), CGFloat(30))
-    @State private var playerHpAnimation: HpAnimationPArams = (0, CGFloat(0), CGFloat(0), CGFloat(30))
+    @State private var aiHpAnimation: HpAnimationParams = (0, CGFloat(0), CGFloat(0), CGFloat(30))
+    @State private var playerHpAnimation: HpAnimationParams = (0, CGFloat(0), CGFloat(0), CGFloat(30))
     
     @State private var disabled: Bool = false
     
-    // player
-    @State private var current: Int = 0 { didSet { vm.current = current } }
+    // player params
+    @State private var current: Int = 0
     @State private var matrix: [[String]]
     @State private var colors: [[CharColor]]
     @State private var playerHP: Int
     
-    // ai
+    // ai params
     @State private var aiMatrix: [[String]]
     @State private var aiColors: [[CharColor]]
     @State private var aiHP: Int
     @State private var ai: WordleAIViewModel?
+    @State private var showPhrase: Bool = false
     @State private var showAiIntro: Bool
     @State private var aiDfficulty: AIDifficulty
     @State private var showGameEndPopup: Bool
@@ -64,7 +66,9 @@ struct AIGameView<VM: ViewModel>: View {
     @State private var showCelebrate: Bool
     @State private var showMourn: Bool
     @State private var wordNumber = 0
-   
+    
+    @State private var cleanCells = false
+    
     @State private var gameState: GameState {
         didSet {
             switch gameState {
@@ -77,11 +81,19 @@ struct AIGameView<VM: ViewModel>: View {
     
     @State private var turn: Turn {
         didSet {
+            switch turn {
+            case .player:
+                guard current > 0 && aiMatrix.count > current - 1 else { break }
+                ai?.saveToHistory(guess: (aiMatrix[current - 1].joined(), aiColors[current - 1].map { $0.getColor() }.joined()))
+            case .ai:
+                guard aiMatrix.count > current && aiMatrix[current].filter({ !$0.isEmpty }).isEmpty else { break }
+                ai?.saveToHistory(guess: (matrix[current].joined(), colors[current].map { $0.getColor() }.joined()))
+            }
+            
             guard turn == .ai else { return }
             Task(priority: .high) {
                 guard let ai else { return }
-                let aiWord = await ai.submitFeedback(guess: bestGuessFormatted,
-                                                     difficulty: aiDfficulty).capitalizedFirst.toArray()
+                let aiWord = await ai.getFeedback(with: aiDfficulty).capitalizedFirst.toArray()
                 try? await Task.sleep(nanoseconds: 1_000_000_000)
                 var arr = [String](repeating: "", count: aiWord.count)
                 for i in 0..<aiWord.count {
@@ -93,32 +105,28 @@ struct AIGameView<VM: ViewModel>: View {
         }
     }
     
-    private let hitPoints = 20
-    
     private var language: String? { return local.locale.identifier.components(separatedBy: "_").first }
     
-    private var firstGuess: (_ string: String) -> GuessHistory { { string in return (string, vm.calcGuess(word: string.map { "\($0)" }, length: length).map { $0.getColor() }.joined()) } }
+    private var firstGuess: (_ string: String) -> GuessHistory { { string in return (string, vm.calculateColors(with: string.map { "\($0)" }, length: length).map { $0.getColor() }.joined()) } }
     
-    private var allBestGuesses: [[Guess]] { return vm.allBestGuesses(matrix: matrix,
+    private var allBestGuesses: [BestGuess] { return vm.perIndexCandidatesSparse(matrix: matrix,
                                                                      colors: colors,
                                                                      aiMatrix: aiMatrix,
                                                                      aiColors: aiColors) }
     
-    private var cleanBestGuess: [[Guess]]? {
-        let bestGuess = allBestGuesses.filter { guess in !guess.filter { char, color in char != " " && color != .noGuess }.isEmpty }
-        return bestGuess.isEmpty ? nil : bestGuess
+    private func handleWordChange() {
+        initMatrixState()
+        wordNumber += 1
+        guard wordNumber % InterstitialAdInterval != 0 else {
+            disabled = true
+            return interstitialAdManager.loadInterstitialAd()
+        }
+        initalConfigirationForWord()
     }
     
-    private var bestGuessFormatted: [GuessHistory] {
-        var guess = [GuessHistory]()
-        cleanBestGuess?.forEach { g in guess.append((g.map(\.char).joined(), g.map{ $0.color.getColor() }.joined())) }
-        return guess
-    }
-    
-    private var bestEntropyGuess: [[Guess]]? {
-        guard let cleanBestGuess else { return nil }
-        let arr = BestGuessProducerProvider.guesser.bestEntropyRow(from: cleanBestGuess)
-        return arr != nil ? [arr!] : nil
+    private func handleError() {
+        guard vm.isError else { return }
+        keyboard.show = true
     }
     
     init() {
@@ -166,7 +174,7 @@ struct AIGameView<VM: ViewModel>: View {
     }
     
     private func aiIntroToggle() {
-        Task.detached {
+        Task.detached(priority: .userInitiated) {
             await MainActor.run { withAnimation(.easeInOut(duration: 2.5)) { showAiIntro = true } }
             try? await Task.sleep(nanoseconds: 3_000_000_000)
             await MainActor.run { withAnimation(.easeInOut(duration: 1.5)) { showAiIntro = false } }
@@ -174,6 +182,7 @@ struct AIGameView<VM: ViewModel>: View {
     }
     
     private func handleAiHp() {
+        guard playerHP > 0 else { return }
         if aiHP == 0 {
             switch aiDfficulty {
             case .easy:
@@ -212,13 +221,49 @@ struct AIGameView<VM: ViewModel>: View {
     
     private func initializeAI() {
         guard vm.aiDownloaded && ai == nil else { return }
-//        AIHealthCheck.run(note: "post-gate")
+        //        AIHealthCheck.run(note: "post-gate")
         ai = .init(language: language == "he" ? .he : .en)
     }
     
     private func handleAiIntroToggle<T: Equatable>(oldValue: T, newValue: T) {
         guard oldValue != newValue && (!(type(of: newValue) is Bool.Type) || (newValue as! Bool)) else { return }
         aiIntroToggle()
+    }
+    
+    private func calculatePlayerTurn(i: Int) {
+        guard i == current else { return }
+        colors[i] = vm.calculateColors(with: matrix[i],
+                                 length: length)
+       
+        if chackWord(i: i, matrix: matrix) { makeHitOnAI(hitPoints: rows * hitPoints - current * hitPoints) }
+        if current == rows - 1 {
+            Task.detached(priority: .userInitiated) {
+                try? await Task.sleep(nanoseconds: 1_000_000_000)
+                await MainActor.run {
+                    withAnimation(.easeInOut(duration: 0.6).delay(0.5)) {
+                        turn = .ai
+                    }
+                }
+            }
+        }
+    }
+    
+    private func calculateAITurn(i: Int) {
+        guard i == current else { return }
+        aiColors[i] = vm.calculateColors(with: aiMatrix[i],
+                                   length: length)
+        
+        if chackWord(i: i, matrix: aiMatrix) { makeHitOnPlayer(hitPoints: rows * hitPoints - current * hitPoints) }
+        else if current < rows - 1 { current = i + 1 }
+        else if current == rows - 1 {
+            makeHitOnPlayer(hitPoints: noGuessHitPoints)
+            makeHitOnAI(hitPoints: noGuessHitPoints)
+            Task.detached(priority: .userInitiated) {
+                try? await Task.sleep(nanoseconds: 1_000_000_000)
+                await MainActor.run { cleanCells = true }
+            }
+            Task.detached(priority: .userInitiated) { await vm.word(email: loginHandeler.model!.email) }
+        }
     }
     
     var body: some View {
@@ -229,6 +274,7 @@ struct AIGameView<VM: ViewModel>: View {
                                       onCancel: { router.navigateBack() }) }
         }
         .onChange(of: vm.aiDownloaded, initializeAI)
+        .onChange(of: ai?.showPhrase, { showPhrase = ai?.showPhrase ?? false })
     }
     
     @ViewBuilder private func aiIntro() -> some View {
@@ -238,7 +284,7 @@ struct AIGameView<VM: ViewModel>: View {
                 .ignoresSafeArea()
             
             VStack {
-                Text(aiDfficulty.rawValue.name)
+                Text(aiDfficulty.rawValue.name.localized)
                     .font(.largeTitle)
                 Image(aiDfficulty.rawValue.image)
                     .resizable()
@@ -311,7 +357,7 @@ struct AIGameView<VM: ViewModel>: View {
     }
     
     @ViewBuilder private func gameBody(proxy: GeometryProxy) -> some View {
-        if !vm.isError && vm.word != .emapty {
+        if !vm.isError && vm.word != .empty {
             VStack(spacing: 8) {
                 ZStack(alignment: .bottom) {
                     ZStack(alignment: .top) {
@@ -333,11 +379,11 @@ struct AIGameView<VM: ViewModel>: View {
                                             .animation(.easeInOut, value: playerHP)
                                         
                                         Text("- \(playerHpAnimation.value)")
-                                            .font(.largeTitle.weight(.heavy))
+                                            .font(.body.weight(.heavy))
                                             .multilineTextAlignment(.center)
                                             .frame(maxWidth: .infinity)
                                             .foregroundStyle(.red)
-                                            .opacity(playerHpAnimation.opticity)
+                                            .opacity(playerHpAnimation.opacity)
                                             .scaleEffect(.init(width: playerHpAnimation.scale,
                                                                height: playerHpAnimation.scale))
                                             .offset(x: playerHpAnimation.scale > 0 ? language == "he" ? 12 : -12 : 0,
@@ -345,7 +391,6 @@ struct AIGameView<VM: ViewModel>: View {
                                             .blur(radius: 0.5)
                                             .fixedSize()
                                     }
-                                    .padding(.top, -20)
                                 }
                                 
                                 Spacer()
@@ -357,6 +402,14 @@ struct AIGameView<VM: ViewModel>: View {
                                         .shadow(radius: 4)
                                         .frame(width: 50, height: 50)
                                         .opacity(turn == .ai ? 1 : 0.4)
+//                                        .tooltip(showPhrase,
+//                                                 side: language == "he" ? .right : .left) {
+//                                            Text(ai!.phrase)
+//                                                .lineLimit(1)
+//                                                .truncationMode(.tail)
+//                                                .frame(width: 80, alignment: .leading)   // hard cap at 80pt
+//                                                .allowsTightening(true)                  // nicer squeeze before ellipsis
+//                                        }
                                     
                                     ZStack {
                                         Text("HP: \(aiHP)")
@@ -365,11 +418,11 @@ struct AIGameView<VM: ViewModel>: View {
                                             .animation(.easeInOut, value: aiHP)
                                         
                                         Text("- \(aiHpAnimation.value)")
-                                            .font(.largeTitle.weight(.heavy))
+                                            .font(.body.weight(.heavy))
                                             .multilineTextAlignment(.center)
                                             .frame(maxWidth: .infinity)
                                             .foregroundStyle(.red)
-                                            .opacity(aiHpAnimation.opticity)
+                                            .opacity(aiHpAnimation.opacity)
                                             .scaleEffect(.init(width: aiHpAnimation.scale,
                                                                height: aiHpAnimation.scale))
                                             .offset(x: aiHpAnimation.scale > 0 ? language == "he" ? 12 : -12 : 0,
@@ -377,7 +430,6 @@ struct AIGameView<VM: ViewModel>: View {
                                             .blur(radius: 0.5)
                                             .fixedSize()
                                     }
-                                    .padding(.top, -20)
                                 }
                                 
                                 Spacer()
@@ -394,57 +446,38 @@ struct AIGameView<VM: ViewModel>: View {
                     ZStack {
                         switch turn {
                         case .player:
-                            WordView(length: length,
-                                     placeHolderData: i > 0 && current == i && !aiMatrix[current - 1].filter({ s in !s.isEmpty }).isEmpty ? cleanBestGuess : nil,
+                            WordView(clenCells: $cleanCells,
+                                     current: $current,
+                                     length: length,
+                                     placeHolderData: i > 0 && current == i && !aiMatrix[current - 1].filter({ s in !s.isEmpty }).isEmpty ? allBestGuesses : nil,
                                      word: $matrix[i],
                                      gainFocus: .constant(!showAiIntro && endFetchAnimation),
-                                     colors: $colors[i]) {
-                                guard i == current else { return }
-                                colors[i] = vm.calcGuess(word: matrix[i],
-                                                         length: length)
-                                if chackWord(i: i, matrix: matrix) { makeHitOnAI() }
-                                
-                                if current == rows - 1 {
-                                    Task.detached {
-                                        try? await Task.sleep(nanoseconds: 1_000_000_000)
-                                        await MainActor.run {
-                                            withAnimation(.easeInOut(duration: 0.6).delay(0.5)) {
-                                                turn = .ai
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                                     .disabled(disabled || current != i)
-                                     .environmentObject(vm)
-                                     .shadow(radius: 4)
-                                     .rotation3DEffect(.degrees(turn == .ai ? 180 : 0), axis: (x: 0, y: 1, z: 0))
+                                     colors: $colors[i],
+                                     done: { calculatePlayerTurn(i: i) })
+                            .disabled(disabled || current != i)
+                            .shadow(radius: 4)
+                            .rotation3DEffect(.degrees(turn == .ai ? 180 : 0),
+                                              axis: (x: 0, y: 1, z: 0))
                             
                         case .ai:
-                            WordView(isAI: true,
+                            WordView(clenCells: $cleanCells,
+                                     isAI: true,
+                                     current: $current,
                                      length: length,
                                      isCurrentRow: current == i && !matrix[current].filter({ s in !s.isEmpty }).isEmpty,
                                      word: $aiMatrix[i],
                                      gainFocus: .constant(false),
-                                     colors: $aiColors[i]) {
-                                guard i == current else { return }
-                                aiColors[i] = vm.calcGuess(word: aiMatrix[i],
-                                                           length: length)
-                                if chackWord(i: i, matrix: aiMatrix) { makeHitOnPlayer() }
-                                
-                                if current < rows - 1 { current = i + 1 }
-                                else if current == rows - 1 {
-                                    Task.detached { await vm.wordForAiMode(email: loginHandeler.model!.email) }
-                                }
-                            }
-                                     .disabled(true)
-                                     .environmentObject(vm)
-                                     .shadow(radius: 4)
-                                     .rotation3DEffect(.degrees(180), axis: (x: 0, y: 1, z: 0))
+                                     colors: $aiColors[i],
+                                     done: { calculateAITurn(i: i) })
+                            .disabled(true)
+                            .shadow(radius: 4)
+                            .rotation3DEffect(.degrees(180),
+                                              axis: (x: 0, y: 1, z: 0))
                             
                         }
                     }
-                    .rotation3DEffect(.degrees(turn == .ai ? 180 : 0), axis: (x: 0, y: 1, z: 0))
+                    .rotation3DEffect(.degrees(turn == .ai ? 180 : 0),
+                                      axis: (x: 0, y: 1, z: 0))
                 }
                 
                 if endFetchAnimation {
@@ -471,20 +504,9 @@ struct AIGameView<VM: ViewModel>: View {
         ZStack(alignment: .topLeading) {
             ZStack(alignment: .topLeading) { gameBody(proxy: proxy) }
                 .ignoresSafeArea(.keyboard)
-                .task { await vm.wordForAiMode(email: loginHandeler.model!.email) }
-                .onChange(of: vm.isError) {
-                    guard vm.isError else { return }
-                    keyboard.show = true
-                }
-                .onChange(of: vm.word.word) {
-                    initMatrixState()
-                    wordNumber += 1
-                    guard wordNumber % InterstitialAdInterval != 0 else {
-                        disabled = true
-                        return interstitialAdManager.loadInterstitialAd()
-                    }
-                    initalConfigirationForWord()
-                }
+                .task { await vm.word(email: loginHandeler.model!.email) }
+                .onChange(of: vm.isError, handleError)
+                .onChange(of: vm.word, handleWordChange)
                 .ignoresSafeArea(.keyboard)
         }
         .padding(.top, 64)
@@ -499,8 +521,8 @@ struct AIGameView<VM: ViewModel>: View {
         
         disabled = false
         current = 0
-        ai?.addDetachedGuess(with: firstGuess)
-        queue.asyncAfter(deadline: .now() + (keyboard.show ? 0 : 0.5)) { endFetchAnimation = true }
+        ai?.addDetachedFirstGuess(with: firstGuess)
+        queue.asyncAfter(deadline: .now() + 2) { endFetchAnimation = true }
     }
     
     @ViewBuilder private func overlayViews(proxy: GeometryProxy) -> some View {
@@ -520,17 +542,21 @@ struct AIGameView<VM: ViewModel>: View {
     private func chackWord(i: Int, matrix: [[String]]) -> Bool {
         let guess = matrix[i].joined()
         
-        if guess.lowercased() == vm.word.word.value.lowercased() || i == rows - 1 {
+        if guess.lowercased() == vm.word.value.lowercased() || i == rows - 1 {
             disabled = true
             audio.stop()
             
-            let correct = guess.lowercased() == vm.word.word.value.lowercased()
+            let correct = guess.lowercased() == vm.word.value.lowercased()
             
             if correct {
-                current = .max
-                Task {
+                Task.detached(priority: .userInitiated) {
+                    try? await Task.sleep(nanoseconds: 1_000_000_000)
+                    await MainActor.run { cleanCells = true }
+                }
+                
+                Task(priority: .userInitiated) {
                     guard let email else { return }
-                    await vm.wordForAiMode(email: email)
+                    await vm.word(email: email)
                 }
                 
                 return true
@@ -554,52 +580,31 @@ struct AIGameView<VM: ViewModel>: View {
         }
     }
     
-    private func makeHitOnPlayer() {
-        playerHpAnimation.value = hitPoints
-       
-        withAnimation(.linear(duration: 0.8)) {
-            playerHpAnimation.offset = 0
-            playerHpAnimation.opticity = 1
-            playerHpAnimation.scale = 0.9
+    private func makeHitOnPlayer(hitPoints: Int) { makeHit(hp: $playerHP, hpParams: $playerHpAnimation, hitPoints: hitPoints) }
+    private func makeHitOnAI(hitPoints: Int) { makeHit(hp: $aiHP, hpParams: $aiHpAnimation, hitPoints: hitPoints) }
+    private func makeHit(hp: Binding<Int>, hpParams: Binding<HpAnimationParams>, hitPoints: Int) {
+        current = .max
+        
+        hpParams.wrappedValue.value = hitPoints
+        
+        withAnimation(.linear(duration: 1.4)) {
+            hpParams.wrappedValue.offset = -30
+            hpParams.wrappedValue.opacity = 1
+            hpParams.wrappedValue.scale = 1.6
         }
         
-        queue.asyncAfter(deadline: .now() + 0.8) {
-            guard playerHpAnimation.opticity == 1 else { return }
-            
-            withAnimation(.linear(duration: 0.2)) {
-                playerHpAnimation.opticity = 0
-                playerHpAnimation.scale = 0
-                playerHP -= hitPoints
+        queue.asyncAfter(deadline: .now() + 1.44) {
+            guard hpParams.wrappedValue.opacity == 1 else { return }
+            withAnimation(.linear(duration: 0.4)) {
+                hpParams.wrappedValue.opacity = 0
+                hpParams.wrappedValue.scale = 0
+                let newHP = hp.wrappedValue - hitPoints
+                hp.wrappedValue = max(0, newHP)
             }
             
-            queue.asyncAfter(deadline: .now() + 0.2) {
-                playerHpAnimation.value = 0
-                playerHpAnimation.offset = 30
-            }
-        }
-    }
-    
-    private func makeHitOnAI() {
-        aiHpAnimation.value = hitPoints
-       
-        withAnimation(.linear(duration: 0.8)) {
-            aiHpAnimation.offset = 0
-            aiHpAnimation.opticity = 1
-            aiHpAnimation.scale = 0.9
-        }
-        
-        queue.asyncAfter(deadline: .now() + 0.8) {
-            guard aiHpAnimation.opticity == 1 else { return }
-            
-            withAnimation(.linear(duration: 0.2)) {
-                aiHpAnimation.opticity = 0
-                aiHpAnimation.scale = 0
-                aiHP -= hitPoints
-            }
-            
-            queue.asyncAfter(deadline: .now() + 0.2) {
-                aiHpAnimation.value = 0
-                aiHpAnimation.offset = 30
+            queue.asyncAfter(deadline: .now() + 0.4) {
+                hpParams.wrappedValue.value = 0
+                hpParams.wrappedValue.offset = 30
             }
         }
     }
@@ -619,9 +624,16 @@ struct AIGameView<VM: ViewModel>: View {
                                                         count: length),
                                  count: rows)
         
+        cleanCells = false
+        
         turn = .player
         
         ai?.cleanHistory()
+        
+        switch aiDfficulty {
+        case .boss: WordleAI.installCheatAnswerProvider( { vm.word.value } )
+        default: break
+        }
     }
 }
 

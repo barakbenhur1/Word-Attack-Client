@@ -1,15 +1,6 @@
 //
 //  WordleAI.swift
-//  Word Guess
-//
-//  ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
-//  ┃                              W  O  R  D  L  E    A  I                       ┃
-//  ┃  ✨ Model-derived opener (no word lists)                                    ┃
-//  ┃  ✨ KV fast path (prefill+decode) with safe fallbacks                       ┃
-//  ┃  ✨ Constraint-aware decoding (greens / yellows / grays)                    ┃
-//  ┃  ✨ Decoder-only path via LLMService when prefill is missing                ┃
-//  ┃  ✨ Fully bounds-checked (no index-out-of-range)                            ┃
-//  ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+//  Word Zap / Word Guess
 //
 
 import Foundation
@@ -18,7 +9,7 @@ import CoreML
 import UIKit
 #endif
 
-// MARK: - 🍭 Pretty Trace (quiet in Release)
+// MARK: - Pretty trace
 
 enum Fancy {
     static let reset  = "\u{001B}[0m"
@@ -43,10 +34,11 @@ enum Trace {
     }
 }
 
-// MARK: - 💎 Public API
+// MARK: - Public API
 
 public typealias GuessHistory = (word: String, feedback: String)
 public typealias AIDifficultyItem = (image: String, name: String)
+
 public enum Language: String { case en, he }
 
 public enum AIDifficulty {
@@ -61,6 +53,7 @@ public enum AIDifficulty {
         default: fatalError()
         }
     }
+    
     public var rawValue: AIDifficultyItem {
         switch self {
         case .easy: return ("easyAI", "Chad GPT")
@@ -69,27 +62,25 @@ public enum AIDifficulty {
         case .boss: return ("bossAI", "This Guy")
         }
     }
+    
     /// (temperature, topK)
     var params: (temperature: Float, topK: Int) {
         switch self {
-        case .easy:   return (0.90, 64)
-        case .medium: return (0.70, 32)
-        case .hard:   return (0.40, 12)
-        case .boss:   return (0.00, 1) // greedy
+        case .easy: return (0.70, 32)
+        case .medium: return (0.40, 12)
+        case .hard, .boss: return (0.00, 1)
         }
     }
 }
 
-/// Minimal prompt builder: `"crane G.Y.. \n slope Y...X \n"`
 public enum WordlePrompt {
     public static func make(from history: [GuessHistory]) -> String {
         guard !history.isEmpty else { return "" }
-        return history.map { "\($0.word) \($0.feedback)" }
-            .joined(separator: "\n") + "\n"
+        return history.map { "\($0.word) \($0.feedback)" }.joined(separator: "\n") + "\n"
     }
 }
 
-// MARK: - 🔁 Tiny LRU
+// MARK: - Tiny LRU
 
 private final class LRUCache<K: Hashable, V> {
     private var dict: [K:(value: V, tick: Int)] = [:]
@@ -110,7 +101,7 @@ private final class LRUCache<K: Hashable, V> {
     }
 }
 
-// MARK: - 🔠 Feather-weight Tokenizer
+// MARK: - Feather-weight tokenizer (BPE shim)
 
 private protocol Tokenizing {
     var vocabSize: Int { get }
@@ -121,58 +112,149 @@ private protocol Tokenizing {
     func eos() -> Int?
 }
 
-private final class BPETokenizer: Tokenizing {
+private struct Pair: Hashable { let a: String; let b: String }
+
+final class BPETokenizer {
     private let idToToken: [Int:String]
     private let tokenToId: [String:Int]
+    private let ranks: [Pair:Int]
     private let bosId: Int?
     private let eosId: Int?
     private let unkId: Int
+    private let special: Set<String>
+    
     var vocabSize: Int { idToToken.count }
     
     init(tokenizerJSON url: URL) throws {
         let data = try Data(contentsOf: url)
         guard let root = try JSONSerialization.jsonObject(with: data) as? [String:Any] else {
-            throw NSError(domain: "Tokenizer", code: -1, userInfo: [NSLocalizedDescriptionKey: "Bad tokenizer.json"])
+            throw NSError(domain: "Tokenizer", code: -1,
+                          userInfo: [NSLocalizedDescriptionKey: "Bad tokenizer.json"])
         }
+        
         var i2t: [Int:String] = [:], t2i: [String:Int] = [:]
-        if let model = root["model"] as? [String:Any],
-           let vocab = model["vocab"] as? [String:Int] {
-            for (tok, id) in vocab { i2t[id] = tok; t2i[tok] = id }
+        var pairRanks: [Pair:Int] = [:]
+        var specials = Set<String>()
+        
+        if let model = root["model"] as? [String:Any] {
+            if let vocab = model["vocab"] as? [String:Int] {
+                for (tok, id) in vocab { i2t[id] = tok; t2i[tok] = id }
+            }
+            if let merges = model["merges"] as? [String] {
+                for (rank, line) in merges.enumerated() {
+                    let parts = line.split(separator: " ", maxSplits: 1, omittingEmptySubsequences: true)
+                    if parts.count == 2 {
+                        pairRanks[Pair(a: String(parts[0]), b: String(parts[1]))] = rank
+                    }
+                }
+            }
         }
         if let added = root["added_tokens"] as? [[String:Any]] {
             for a in added {
-                if let tok = a["content"] as? String, let id = a["id"] as? Int { i2t[id] = tok; t2i[tok] = id }
+                if let tok = a["content"] as? String, let id = a["id"] as? Int {
+                    i2t[id] = tok; t2i[tok] = id
+                    if (a["special"] as? Bool) == true { specials.insert(tok) }
+                }
             }
         }
-        guard !i2t.isEmpty else { throw NSError(domain: "Tokenizer", code: -2, userInfo: [NSLocalizedDescriptionKey: "Empty vocab"]) }
-        self.idToToken = i2t; self.tokenToId = t2i
-        self.bosId = t2i["<s>"]; self.eosId = t2i["</s>"]; self.unkId = t2i["<unk>"] ?? 0
+        
+        guard !i2t.isEmpty else {
+            throw NSError(domain: "Tokenizer", code: -2,
+                          userInfo: [NSLocalizedDescriptionKey: "Empty vocab"])
+        }
+        
+        self.idToToken = i2t
+        self.tokenToId = t2i
+        self.ranks = pairRanks
+        self.special = specials.union(["<s>","</s>","<unk>"])
+        self.bosId = t2i["<s>"]
+        self.eosId = t2i["</s>"]
+        self.unkId = t2i["<unk>"] ?? 0
     }
-    func tokenString(for id: Int) -> String? { idToToken[id] }
+    
     func bos() -> Int? { bosId }
     func eos() -> Int? { eosId }
+    func tokenString(for id: Int) -> String? { idToToken[id] }
+    
+    // Encode: NFKC + Metaspace + BPE
     func encode(_ text: String, addBOS: Bool = true) -> [Int] {
-        var ids: [Int] = []; if addBOS, let b = bosId { ids.append(b) }
-        let normalized = "▁" + text.replacingOccurrences(of: " ", with: " ▁")
-        for ch in normalized { ids.append(tokenToId[String(ch)] ?? unkId) }
+        var ids: [Int] = []
+        if addBOS, let b = bosId { ids.append(b) }
+        
+        // NFKC normalization to match training
+        let nfkc = text.precomposedStringWithCompatibilityMapping
+        
+        // Metaspace (▁) to mark spaces
+        let pre = "▁" + nfkc.replacingOccurrences(of: " ", with: " ▁")
+        
+        for chunk in pre.split(separator: " ", omittingEmptySubsequences: false) {
+            for tok in bpe(String(chunk)) {
+                ids.append(tokenToId[tok] ?? unkId)
+            }
+        }
         return ids
     }
+    
+    // Decode: drop specials, replace metaspace with space, trim leading space
     func decode(_ ids: [Int]) -> String {
-        var out = ""
+        var s = ""
         for id in ids {
-            guard let s = idToToken[id] else { continue }
-            if s == "<s>" || s == "</s>" || s == "<unk>" { continue }
-            out += s
+            guard let tok = idToToken[id] else { continue }
+            if special.contains(tok) { continue }
+            s += tok
         }
-        return out.replacingOccurrences(of: "▁", with: " ")
+        var out = s.replacingOccurrences(of: "▁", with: " ")
+        if out.hasPrefix(" ") { out.removeFirst() }
+        return out
+    }
+    
+    // Greedy BPE merges
+    private func bpe(_ word: String) -> [String] {
+        var tokens = word.map { String($0) }
+        if tokens.count <= 1 { return tokens }
+        
+        func bestPairRank() -> (pair: Pair, rank: Int, idxs: [Int])? {
+            var best: (pair: Pair, rank: Int)? = nil
+            var i = 0
+            while i < tokens.count - 1 {
+                let p = Pair(a: tokens[i], b: tokens[i+1])
+                if let r = ranks[p] {
+                    if best == nil || r < best!.rank { best = (p, r) }
+                }
+                i += 1
+            }
+            guard let b = best else { return nil }
+            
+            var idxs: [Int] = []
+            var j = 0
+            while j < tokens.count - 1 {
+                if tokens[j] == b.pair.a && tokens[j+1] == b.pair.b { idxs.append(j); j += 2 }
+                else { j += 1 }
+            }
+            return (b.pair, b.rank, idxs)
+        }
+        
+        while let found = bestPairRank() {
+            var newTokens: [String] = []
+            var i = 0
+            let idxSet = Set(found.idxs)
+            while i < tokens.count {
+                if i < tokens.count - 1, idxSet.contains(i) {
+                    newTokens.append(tokens[i] + tokens[i+1]); i += 2
+                } else {
+                    newTokens.append(tokens[i]); i += 1
+                }
+            }
+            if newTokens.count == tokens.count { break }
+            tokens = newTokens
+        }
+        return tokens
     }
 }
 
-// MARK: - 🧠 WordleAI
+// MARK: - WordleAI
 
 final class WordleAI: Singleton {
-    
-    /// When `true`, prompt is prefixed with `<|en|>` / `<|he|>`.
     public var useLangTags = true
     
     private let tokenizer: BPETokenizer
@@ -183,7 +265,6 @@ final class WordleAI: Singleton {
     private struct Spec { let maxT: Int; let numL: Int; let vocab: Int; let padId: Int; let eosId: Int }
     private let spec: Spec
     
-    // Buffers are resizable to the model’s real sequence length.
     private var idsMA: MLMultiArray
     private var maskMA: MLMultiArray
     private let tok1x1: MLMultiArray
@@ -191,7 +272,6 @@ final class WordleAI: Singleton {
     private var pastK: [MLMultiArray] = []
     private var pastV: [MLMultiArray] = []
     
-    // Discovered sequence lengths per model (nil = unknown)
     private let T_prefill: Int?
     private let T_decode:  Int?
     private let T_fallback: Int?
@@ -207,14 +287,40 @@ final class WordleAI: Singleton {
     private let wordStringSetEN: Set<String>
     private let wordStringSetHE: Set<String>
     
-    // MARK: 🚪 Factory
+    private let openerMinEntropy: Double = 1.55
+    
+    private var warmedUp = false
+    
+    fileprivate var needWarmup: Bool { !warmedUp }
+    
+    // MARK: Boss cheat source (internal & optional)
+    
+    private static var cheatAnswerProvider: (() -> String?)?
+    public static func installCheatAnswerProvider(_ provider: @escaping () -> String?) {
+        cheatAnswerProvider = provider
+    }
+    private func resolveCheatAnswer(lang: Language) -> String? {
+        if let p = Self.cheatAnswerProvider, let s = p(), s.count == 5 { return s }
+        let ud = UserDefaults.standard
+        if let s1 = ud.string(forKey: "WordZap.HiddenAnswer.\(lang.rawValue)"),
+           s1.count == 5 { return s1 }
+        if let s2 = ud.string(forKey: "WordZap.HiddenAnswer"),
+           s2.count == 5 { return s2 }
+        return nil
+    }
+    
+    // MARK: Boss memory (presence + green positions)
+    
+    private var bossKnownLetters: [Language:[Character:Int]] = [:]
+    private var bossKnownGreens:  [Language:[Int:Character]] = [:]
+    
+    // MARK: Factory
     
     fileprivate static func make() throws -> WordleAI {
         let pURL = WordleAI.findOptionalModelURL(named: "WordleGPT_prefill")
         let dURL = WordleAI.findOptionalModelURL(named: "WordleGPT_decode")
         let anyURL = pURL ?? dURL
         guard let anchor = anyURL else {
-            // Build with tokenizer only (opener still works with defaults).
             let tokURL = try WordleAI.findTokenizerJSON(near: nil)
             let tokenizer = try BPETokenizer(tokenizerJSON: tokURL)
             let T0 = 84
@@ -322,48 +428,79 @@ final class WordleAI: Singleton {
         }
     }
     
-    // MARK: 🎯 Public entry points
+    // MARK: Public entry points
     
     public func guessNext(history: [GuessHistory], lang: Language, difficulty: AIDifficulty) throws -> String {
+        let turnIndex = history.count
+        
+        // 0) If the last feedback is all green, the answer is literally the last guess.
+        if let last = history.last {
+            let marks = normalizeFeedback(feedback: last.feedback, count: 5)
+            if marks.allSatisfy({ $0 == .green }) {
+                let solved = last.word.lowercased()
+                Trace.log("✅", "Solved in history → \(solved)", Fancy.green)
+                return solved
+            }
+        }
+        
+        // 1) Obvious answer?
+        if !history.isEmpty {
+            var c = MaskedConstraints(lang: lang, length: 5)
+            c.reset(wordLength: 5, lang: lang)
+            c.ingest(history: history, lang: lang)
+            if let forced = obviousAnswerIfAny(constraints: c, lang: lang) {
+                Trace.log("✅", "Obvious answer from constraints → \(forced)", Fancy.green)
+                return forced
+            }
+        }
+        
+        // 2) Boss uses fully constrained path
+        if difficulty == .boss {
+            let cheatAnswer = resolveCheatAnswer(lang: lang)
+            if prefill != nil && decode != nil {
+                return try guessWithKV(history: history, lang: lang, difficulty: difficulty,
+                                       cheatAnswer: cheatAnswer, turnIndex: turnIndex)
+            }
+            if prefill == nil, decode != nil, let service = try? LLMService() {
+                return try guessWithService(svc: service, history: history, lang: lang, difficulty: difficulty,
+                                            cheatAnswer: cheatAnswer, turnIndex: turnIndex)
+            }
+            if fallbackModel != nil {
+                return try guessWithFallback(history: history, lang: lang, difficulty: difficulty,
+                                             cheatAnswer: cheatAnswer, turnIndex: turnIndex)
+            }
+        }
+        
+        // 3) Non-boss opener
         if history.isEmpty {
             var opener = try pickFirstGuessFromModel(lang: lang)
             opener = maybeMutateFirstGuess(opener, lang: lang, probability: 0.15, maxChanges: 2)
             Trace.log("🎯", "opener → \(opener)", Fancy.cyan)
             return opener
         }
+        
+        // 4) Normal paths
         if prefill != nil && decode != nil {
             Trace.log("⚡️", "KV path", Fancy.blue)
-            return try guessWithKV(history: history, lang: lang, difficulty: difficulty)
+            return try guessWithKV(history: history, lang: lang, difficulty: difficulty,
+                                   cheatAnswer: nil, turnIndex: turnIndex)
         }
-        // If we only have the decoder, use LLMService (KVTextDecoder) to drive it.
         if prefill == nil, decode != nil, let service = try? LLMService() {
             Trace.log("🤖", "Decoder-only via LLMService", Fancy.blue)
-            return try guessWithService(svc: service, history: history, lang: lang, difficulty: difficulty)
+            return try guessWithService(svc: service, history: history, lang: lang, difficulty: difficulty,
+                                        cheatAnswer: nil, turnIndex: turnIndex)
         }
         if fallbackModel != nil {
             Trace.log("🛟", "Fallback path", Fancy.yellow)
-            return try guessWithFallback(history: history, lang: lang, difficulty: difficulty)
+            return try guessWithFallback(history: history, lang: lang, difficulty: difficulty,
+                                         cheatAnswer: nil, turnIndex: turnIndex)
         }
         throw NSError(domain: "WordleAI", code: -100, userInfo: [NSLocalizedDescriptionKey: "No Core ML model loaded"])
     }
     
-    /// Warm up the ML stack (optional but makes first call snappy).
-    public func warmUp() {
-        if prefill != nil { _ = try? prefillOnce(prompt: "<|en|>\n") }
-        else if fallbackModel != nil {
-            let T = T_fallback ?? spec.maxT
-            let ids = Array(repeating: tokenizer.bos() ?? 0, count: T)
-            _ = try? predictLogitsFallback(inputIds: ids, model: fallbackModel!)
-        }
-    }
-    
-    // MARK: - 🎲 Opener
-    
     public func pickFirstGuessFromModel(lang: Language) throws -> String {
-        // 1) Build the candidate vocabulary (exact 5 letters).
         var pool = Self.buildWordTokenIDs(tokenizer: tokenizer, lang: lang, length: 5)
         
-        // 2) Get base logits (prefill, fallback, or static).
         let logitsRaw: [Float]
         if prefill != nil {
             let (lg, _, _, _) = try prefillOnce(prompt: (lang == .en ? "<|en|>\n" : "<|he|>\n"))
@@ -372,191 +509,134 @@ final class WordleAI: Singleton {
             let prompt = (lang == .en ? "<|en|>\n" : "<|he|>\n")
             let ids = encodePromptFallback(prompt)
             logitsRaw = try predictLogitsFallback(inputIds: ids, model: fb)
-        } else {
-            return lang == .en ? "adieu" : "מגניב" // No model at all.
-        }
+        } else { return lang == .en ? "adieu" : "מגניב" }
         
-        // 3) Sanity on the pool vs vocab.
         let vocabCap = logitsRaw.count
         pool.removeAll(where: { $0 < 0 || $0 >= vocabCap })
-        guard !pool.isEmpty else { return lang == .en ? "adieu" : "שלוםך" }
+        guard !pool.isEmpty else { return lang == .en ? "rocky" : "שלומך" }
         
-        // 4) Recent “cooldown” to avoid repeating the same openers too often.
         let ud  = UserDefaults.standard
         let key = "WordleAI.OpenerTokenRecent.v3.\(lang.rawValue)"
         var recent = (ud.array(forKey: key) as? [Int] ?? []).filter { pool.contains($0) }
         let cooldown = Self.cooldownSize(poolCount: pool.count)
         if recent.count > cooldown { recent.removeFirst(recent.count - cooldown) }
-        
         var eligible = pool.filter { !recent.contains($0) }
         if eligible.count < max(16, pool.count / 50) {
-            let drop = max(1, recent.count / 4)
-            if drop > 0 { recent.removeFirst(min(drop, recent.count)) }
+            let drop = max(1, recent.count / 4); if drop > 0 { recent.removeFirst(min(drop, recent.count)) }
             eligible = pool.filter { !recent.contains($0) }
         }
         if eligible.isEmpty { eligible = pool }
         
-        // 5) Add an opener bias that encodes:
-        //    • prefer high within-word Shannon entropy,
-        //    • allow one tasteful double but never triples,
-        //    • never double q/j/x/z (EN),
-        //    • encourage vowel coverage,
-        //    • keep your “monotonic sequence” filter.
         var adjusted = logitsRaw
         for tid in eligible where tid < adjusted.count {
             let w = Self.decodeWord(tid, with: tokenizer)
-            if w.count == 5 {
-                adjusted[tid] = logitsRaw[tid] + openerBias(for: w, lang: lang)
-            }
+            if w.count == 5 { adjusted[tid] = logitsRaw[tid] + openerBias(for: w, lang: lang) }
         }
         
-        // 6) Sample a good opener that passes our quality gate.
         var word = ""
         for _ in 0..<12 {
-            let id = sampleRestricted(logits: adjusted,
-                                      candidates: eligible,
-                                      temperature: 0.85,
-                                      topK: max(300, min(eligible.count, 1024)))
+            let id = sampleRestricted(logits: adjusted, candidates: eligible,
+                                      temperature: 0.85, topK: max(300, min(eligible.count, 1024)))
             if id >= 0 && id < adjusted.count {
                 let w = Self.decodeWord(id, with: tokenizer)
-                if w.count == 5,
-                   isGoodFirstOpener(w, lang: lang),
-                   !isMonotonicSequence(w, lang: lang) {
-                    word = w
-                    recent.append(id)
-                    break
+                if w.count == 5, isGoodFirstOpener(w, lang: lang), !isMonotonicSequence(w, lang: lang) {
+                    word = w; recent.append(id); break
                 }
             }
         }
-        
-        // 7) Deterministic fallback inside the eligible pool if sampling didn’t find a good one.
         if word.isEmpty {
             if let id = eligible.first(where: {
                 let w = Self.decodeWord($0, with: tokenizer)
-                return w.count == 5 &&
-                isGoodFirstOpener(w, lang: lang) &&
-                !isMonotonicSequence(w, lang: lang)
-            }) {
-                word = Self.decodeWord(id, with: tokenizer)
-                recent.append(id)
-            }
+                return w.count == 5 && isGoodFirstOpener(w, lang: lang) && !isMonotonicSequence(w, lang: lang)
+            }) { word = Self.decodeWord(id, with: tokenizer); recent.append(id) }
         }
-        
-        // 8) Final safety fallback (very rare).
         if word.isEmpty { word = lang == .en ? "house" : "מגניב" }
-        
-        // 9) Persist cooldown list.
         if recent.count > cooldown { recent.removeFirst(recent.count - cooldown) }
         ud.set(Array(NSOrderedSet(array: recent)) as! [Int], forKey: key)
         Trace.log("ℹ️", "First Word = \(word)", Fancy.blue)
         return word
     }
     
-    // MARK: - Opener quality & bias
-    
-    /// Returns a positive/negative bias added to logits for the given 5-letter word.
-    /// Higher is better.
-    private func openerBias(for w: String, lang: Language) -> Float {
-        let s = w.lowercased()
-        guard s.count == 5 else { return 0 }
+    public func warmUp() {
+        if prefill != nil { _ = try? prefillOnce(prompt: "<|en|>\n") }
+        else if fallbackModel != nil {
+            let T = T_fallback ?? spec.maxT
+            let ids = Array(repeating: tokenizer.bos() ?? 0, count: T)
+            _ = try? predictLogitsFallback(inputIds: ids, model: fallbackModel!)
+        }
         
+        warmedUp = true
+    }
+    
+    // MARK: Opener quality & bias
+    
+    private func openerBias(for w: String, lang: Language) -> Float {
+        let s = w.lowercased(); guard s.count == 5 else { return 0 }
         let chars = Array(s)
         var counts: [Character:Int] = [:]
         for c in chars { counts[c, default: 0] += 1 }
         let maxDup = counts.values.max() ?? 1
         let distinct = counts.count
         
-        // Soft penalties for duplicates; hard vetoes are handled by isGoodFirstOpener().
         var dupPenalty: Float = 0
-        if maxDup >= 3 { dupPenalty -= 10 }                  // should be filtered anyway
-        if counts.values.filter({ $0 == 2 }).count >= 2 {    // two different doubles
-            dupPenalty -= 2.0
-        }
-        if lang == .en {
-            let hard = Set("qjxz")
-            for h in hard where (counts[h] ?? 0) >= 2 { dupPenalty -= 6.0 }
-        }
+        if maxDup >= 3 { dupPenalty -= 10 }
+        if counts.values.filter({ $0 == 2 }).count >= 2 { dupPenalty -= 2.0 }
+        if lang == .en { for h in "qjxz" where (counts[h] ?? 0) >= 2 { dupPenalty -= 6.0 } }
         
-        // Within-word Shannon entropy (distribution over letters).
-        // Uniform over 5 distinct letters ≈ max; duplicates reduce it.
         var H: Float = 0
         for c in counts.values {
             let p = Float(c) / 5.0
             H += -p * log2f(p)
         }
-        // Normalize a bit (max around log2(5) ≈ 2.32)
-        let entropyBoost: Float = (H / 2.32) * 2.0  // in [0, ~2]
+        let entropyBoost: Float = (H / 2.32) * 2.0
         
-        // Vowel coverage (don’t force, just nudge).
         let vowelsEN = Set("aeiouy")
-        let vowelsHE: Set<Character> = ["א","ה","ו","י"].map { Character($0) }.reduce(into: Set<Character>()) { $0.insert($1) }
+        let vowelsHE: Set<Character> = ["א","ה","ו","י"]
         let V = (lang == .en ? vowelsEN : vowelsHE)
         let vowelCount = chars.reduce(0) { $0 + (V.contains($1) ? 1 : 0) }
         let vowelNudge: Float = (vowelCount >= 2 ? 0.7 : (vowelCount == 1 ? -0.4 : -0.8))
         
-        // Letter “surprisal” from simple unigram frequencies:
-        // reward covering common testing letters while not over-rewarding rare junk.
         let freq = unigramFreq(lang: lang)
         var coverage: Float = 0
         for c in Set(chars) {
-            let f = Float(freq[c] ?? 0.0005)
-            coverage += min(f * 4.0, 1.2) // cap so very common letters don’t dominate
+            let f = Float(freq[c] ?? 0.0005); coverage += min(f * 4.0, 1.2)
         }
         
-        // Small bonus for bigram diversity (unique adjacent pairs).
         var bigrams = Set<String>()
         for i in 1..<chars.count { bigrams.insert(String([chars[i-1], chars[i]])) }
         let bigramBoost: Float = Float(bigrams.count) * 0.15
         
-        // Distinctness slight bonus.
-        let distinctBoost: Float = Float(distinct - 3) * 0.3  // +0.6 for 5 uniques, 0 for 3
+        let distinctBoost: Float = Float(distinct - 3) * 0.3
         
         return entropyBoost + vowelNudge + coverage + bigramBoost + distinctBoost + dupPenalty
     }
     
-    /// Quick gate that rejects clearly bad openers. We still allow *one* tasteful pair.
-    /// – No triples.
-    /// – Never double q/j/x/z (EN).
-    /// – At most one pair overall.
-    /// – Must have at least 3 distinct letters.
-    /// – Avoid obvious sequences (checked separately by isMonotonicSequence()).
     private func isGoodFirstOpener(_ w: String, lang: Language) -> Bool {
         let s = w.lowercased()
         guard s.count == 5 else { return false }
         var counts: [Character:Int] = [:]
         for c in s { counts[c, default: 0] += 1 }
         
-        if counts.values.contains(where: { $0 >= 3 }) { return false }    // ban triples (e.g., "eeee*")
+        if counts.values.contains(where: { $0 >= 3 }) { return false }
+        if counts.values.filter({ $0 == 2 }).count > 1 { return false }
+        if counts.count < 4 { return false }
         
-        // Never double “hard” letters in English
+        if shannonEntropy(s) < openerMinEntropy { return false }
+        
         if lang == .en {
             for h in "qjxz" { if (counts[h] ?? 0) >= 2 { return false } }
         }
-        
-        // At most one pair overall (e.g., "press" ok, "pizza" not great for a first move)
-        let pairs = counts.values.filter { $0 == 2 }.count
-        if pairs > 1 { return false }
-        
-        // Need at least 3 distinct letters.
-        if counts.count < 3 { return false }
-        
         return true
     }
     
-    // MARK: - Lightweight language stats
-    
     private func unigramFreq(lang: Language) -> [Character: Double] {
         if lang == .en {
-            // normalized ~letter frequency; rough but good enough for opener shaping
             return [
-                "e": 0.127, "t": 0.091, "a": 0.082, "o": 0.075, "i": 0.070, "n": 0.067,
-                "s": 0.063, "h": 0.061, "r": 0.060, "d": 0.043, "l": 0.040, "c": 0.028,
-                "u": 0.028, "m": 0.024, "w": 0.024, "f": 0.022, "g": 0.020, "y": 0.020,
-                "p": 0.019, "b": 0.015, "v": 0.010, "k": 0.008, "j": 0.002, "x": 0.002,
-                "q": 0.001, "z": 0.001
+                "e":0.127,"t":0.091,"a":0.082,"o":0.075,"i":0.070,"n":0.067,"s":0.063,"h":0.061,"r":0.060,
+                "d":0.043,"l":0.040,"c":0.028,"u":0.028,"m":0.024,"w":0.024,"f":0.022,"g":0.020,"y":0.020,
+                "p":0.019,"b":0.015,"v":0.010,"k":0.008,"j":0.002,"x":0.002,"q":0.001,"z":0.001
             ]
         } else {
-            // very rough Hebrew weights; good enough for gentle nudging
             let pairs: [(Character, Double)] = [
                 ("א",0.10),("ה",0.09),("י",0.09),("ו",0.08),("ל",0.07),
                 ("מ",0.07),("ר",0.06),("נ",0.06),("ת",0.06),("ש",0.05),
@@ -567,12 +647,9 @@ final class WordleAI: Singleton {
             var map: [Character:Double] = [:]; for (c,f) in pairs { map[c] = f }; return map
         }
     }
-    
 }
 
-// MARK: - 🎲 Opener helpers
-
-// MARK: - Opener scoring: prefer high-entropy, avoid weird repeats (but don't ban them)
+// MARK: - Helpers (opener + misc)
 
 private extension WordleAI {
     static func decodeWord(_ tokenId: Int, with tok: BPETokenizer) -> String {
@@ -596,7 +673,6 @@ private extension WordleAI {
         return ids
     }
     
-    /// Build token→character map for single letters (optionally prefixed with a space).
     static func buildLetterMap(tokenizer: BPETokenizer, pattern: String) -> ([Int: Character], [Int]) {
         let rx = try! NSRegularExpression(pattern: pattern, options: [])
         var map: [Int: Character] = [:]; var ids: [Int] = []
@@ -622,54 +698,26 @@ private extension WordleAI {
     
     private static func cooldownSize(poolCount n: Int) -> Int { max(64, min(512, Int(Double(n) * 0.05))) }
     
-    
-    // rough English letter frequencies (percent). Used only to scale duplicate penalties.
-    static let freqEN: [Character: Double] = [
-        "e":12.7,"t":9.1,"a":8.2,"o":7.5,"i":7.0,"n":6.7,"s":6.3,"h":6.1,"r":6.0,
-        "d":4.3,"l":4.0,"c":2.8,"u":2.8,"m":2.4,"w":2.4,"f":2.2,"g":2.0,"y":2.0,
-        "p":1.9,"b":1.5,"v":1.0,"k":0.8,"j":0.15,"x":0.15,"q":0.10,"z":0.07
-    ]
-    static let vowelsEN = Set("aeiou")
-    
-    func letterFreq(_ ch: Character, lang: Language) -> Double {
-        if lang == .en { return Self.freqEN[ch] ?? 0.5 }
-        // simple fallback for Hebrew until you feed a real table:
-        let commonHE = Set("אהילמשרתן")        // common-ish letters
-        return commonHE.contains(ch) ? 6.0 : 1.0
-    }
-    
     func shannonEntropy(_ w: String) -> Double {
         guard !w.isEmpty else { return 0 }
         var counts: [Character:Int] = [:]
         for c in w { counts[c, default: 0] += 1 }
         let n = Double(w.count)
         var H = 0.0
-        for (_, c) in counts {
-            let p = Double(c) / n
-            H += -p * log2(p)
-        }
-        return H // [0, log2(5)]
+        for (_, c) in counts { let p = Double(c) / n; H += -p * log2(p) }
+        return H
     }
     
-    func weirdBigramPenalty(_ w: String, lang: Language) -> Float {
-        // not a ban — just down-weight very odd adjacent pairs
-        if lang == .en {
-            let bad: Set<String> = ["qq","jj","zx","xz","qg","gq","qv","vq","qk","kq","qh","hq"]
-            let s = w.lowercased()
-            let arr = Array(s)
-            for i in 1..<arr.count {
-                if bad.contains(String([arr[i-1], arr[i]])) { return -1.2 }
-            }
-        }
-        return 0
-    }
-    
-    func maybeMutateFirstGuess(_ word: String, lang: Language, probability: Double = 0.15, maxChanges: Int = 2) -> String {
+    func maybeMutateFirstGuess(_ word: String, lang: Language,
+                               probability: Double = 0.15, maxChanges: Int = 2) -> String {
         guard Double.random(in: 0..<1) < probability else { return word }
         let pool = (lang == .en) ? wordStringSetEN : wordStringSetHE
         guard !pool.isEmpty, word.count == 5 else { return word }
-        let alpha: [Character] = (lang == .en) ? Array("abcdefghijklmnopqrstuvwxyz")
+        
+        let alpha: [Character] = (lang == .en)
+        ? Array("abcdefghijklmnopqrstuvwxyz")
         : Array("אבגדהוזחטיכלמנסעפצקרשת")
+        
         let base = word.lowercased()
         let baseScore = openerBias(for: base, lang: lang)
         
@@ -679,9 +727,14 @@ private extension WordleAI {
                 c[i] = alpha.randomElement()!
             }
             let m = String(c)
-            if m != base, pool.contains(m), !isMonotonicSequence(m, lang: lang) {
+            
+            if m != base,
+               pool.contains(m),
+               isGoodFirstOpener(m, lang: lang),
+               !isMonotonicSequence(m, lang: lang) {
+                
                 let score = openerBias(for: m, lang: lang)
-                if score > baseScore {                       // only accept if strictly better
+                if score > baseScore {
                     Trace.log("🎲", "mutated \(base) → \(m) (Δ=\(String(format: "%.2f", score - baseScore)))", Fancy.mag)
                     return m
                 }
@@ -689,78 +742,217 @@ private extension WordleAI {
         }
         return word
     }
+    
+    // MARK: Obvious-answer fast path
+    func obviousAnswerIfAny(constraints: MaskedConstraints, lang: Language) -> String? {
+        let pool = (lang == .en) ? wordStringSetEN : wordStringSetHE
+        guard !pool.isEmpty else { return nil }
+        var candidate: String? = nil
+        var seen = 0
+        for w in pool {
+            if satisfies(word: w, constraints: constraints) {
+                seen += 1
+                if seen == 1 { candidate = w }
+                if seen > 1 { return nil }
+            }
+        }
+        return candidate
+    }
+    
+    func satisfies(word: String, constraints: MaskedConstraints) -> Bool {
+        let w = word.lowercased()
+        guard w.count == constraints.length else { return false }
+        let chars = Array(w)
+        
+        for i in 0..<constraints.length {
+            let ch = chars[i]
+            if let fx = constraints.fixed[i], ch != fx { return false }
+            if constraints.bannedAt[i].contains(ch) { return false }
+        }
+        
+        for ch in constraints.disallow where w.contains(ch) { return false }
+        
+        var counts: [Character:Int] = [:]; for ch in chars { counts[ch, default: 0] += 1 }
+        for (ch, need) in constraints.minCount {
+            if counts[ch, default: 0] < need { return false }
+        }
+        for (ch, mx) in constraints.maxCount {
+            if counts[ch, default: 0] > mx { return false }
+        }
+        return true
+    }
 }
 
-// MARK: - ⚡️ KV path
+// MARK: - Boss discovery model
+
+private struct BossPresencePlan {
+    var need: [Character:Int] = [:]
+}
+
+private extension WordleAI {
+    func updateBossMemoryForTurn(lang: Language,
+                                 solution: String,
+                                 turnIndex: Int,
+                                 constraints: inout MaskedConstraints) -> BossPresencePlan {
+        guard solution.count == 5 else { return BossPresencePlan() }
+        if turnIndex == 0 {
+            bossKnownLetters[lang] = [:]
+            bossKnownGreens[lang]  = [:]
+        }
+        
+        var knownP = bossKnownLetters[lang] ?? [:]
+        var knownG = bossKnownGreens[lang]  ?? [:]
+        
+        let sArr = Array(solution.lowercased())
+        var solCount: [Character:Int] = [:]; for c in sArr { solCount[c, default: 0] += 1 }
+        
+        var greensFromHistory: [Character:Int] = [:]
+        for fx in constraints.fixed { if let ch = fx { greensFromHistory[ch, default: 0] += 1 } }
+        
+        for (pos, ch) in knownG { constraints.fixed[pos] = ch }
+        for (ch, lim) in solCount { constraints.maxCount[ch] = min(constraints.maxCount[ch] ?? Int.max, lim) }
+        
+        let baseMin = constraints.minCount
+        
+        func greensKnownFromMemory(_ ch: Character) -> Int {
+            knownG.values.reduce(0) { $0 + ($1 == ch ? 1 : 0) }
+        }
+        func totalGreens(_ ch: Character) -> Int {
+            greensFromHistory[ch, default: 0] + greensKnownFromMemory(ch)
+        }
+        func assuredCount(_ ch: Character) -> Int {
+            max(constraints.minCount[ch] ?? 0, totalGreens(ch))
+        }
+        func residualCount(_ ch: Character) -> Int {
+            max(0, (solCount[ch] ?? 0) - assuredCount(ch))
+        }
+        
+        @discardableResult
+        func attemptPresence() -> Character? {
+            var pool: [Character] = []
+            for (ch, _) in solCount {
+                let res = residualCount(ch)
+                if res > 0 {
+                    let hinted = (constraints.minCount[ch, default: 0] > totalGreens(ch)) ? 2 : 1
+                    for _ in 0..<(res * hinted) { pool.append(ch) }
+                }
+            }
+            guard !pool.isEmpty else { return nil }
+            let pick = pool.randomElement()!
+            knownP[pick, default: 0] += 1
+            let seen = knownP[pick] ?? 1
+            constraints.minCount[pick] = max(constraints.minCount[pick] ?? 0, seen)
+            Trace.log("🧠", "Boss learned presence \(pick)", Fancy.cyan)
+            return pick
+        }
+        
+        @discardableResult
+        func attemptPosition() -> Int? {
+            var positions: [Int] = []
+            for i in 0..<sArr.count where constraints.fixed[i] == nil && knownG[i] == nil {
+                let ch = sArr[i]
+                if totalGreens(ch) < (solCount[ch] ?? 0) { positions.append(i) }
+            }
+            guard !positions.isEmpty else { return nil }
+            func desirability(_ i: Int) -> Int {
+                let L = sArr[i]
+                let hinted = (constraints.minCount[L, default: 0] > totalGreens(L)) ? 1 : 0
+                let learned = (knownP[L] ?? 0) > 0 ? 1 : 0
+                return hinted * 2 + learned
+            }
+            positions.sort { desirability($0) > desirability($1) }
+            let pickPos = positions.first!
+            let ch = sArr[pickPos]
+            knownG[pickPos] = ch
+            constraints.fixed[pickPos] = ch
+            Trace.log("🧠", "Boss locked green @\(pickPos)=\(ch)", Fancy.cyan)
+            return pickPos
+        }
+        
+        let presenceRoll = (Double.random(in: 0..<1) < 0.50)
+        let extraChance  = (turnIndex >= 2) ? 0.30 : 0.10
+        let extraRoll    = (Double.random(in: 0..<1) < extraChance)
+        
+        if presenceRoll { _ = attemptPresence() }
+        if extraRoll {
+            let goPositionFirst = (Double.random(in: 0..<1) < 0.5)
+            if goPositionFirst {
+                if attemptPosition() == nil { _ = attemptPresence() }
+            } else {
+                if attemptPresence() == nil { _ = attemptPosition() }
+            }
+        }
+        
+        bossKnownLetters[lang] = knownP
+        bossKnownGreens[lang]  = knownG
+        
+        var need: [Character:Int] = [:]
+        for (ch, lim) in solCount { constraints.maxCount[ch] = min(constraints.maxCount[ch] ?? Int.max, lim) }
+        for (ch, now) in constraints.minCount {
+            let before = baseMin[ch] ?? 0
+            if now > before { need[ch] = now - before }
+        }
+        return BossPresencePlan(need: need)
+    }
+}
+
+// MARK: - KV path
 
 private extension WordleAI {
     func ensureBuffers(T: Int) {
         let curT1 = idsMA.shape.last?.intValue ?? -1
-        if curT1 != T {
-            idsMA = try! MLMultiArray(shape: [1, NSNumber(value: T)], dataType: .int32)
-        }
+        if curT1 != T { idsMA = try! MLMultiArray(shape: [1, NSNumber(value: T)], dataType: .int32) }
         let curT2 = maskMA.shape.last?.intValue ?? -1
-        if curT2 != T {
-            maskMA = try! MLMultiArray(shape: [1, NSNumber(value: T)], dataType: .int32)
-        }
+        if curT2 != T { maskMA = try! MLMultiArray(shape: [1, NSNumber(value: T)], dataType: .int32) }
     }
     
-    // Replace the whole function
     func alignKVsForDecode(ks: [MLMultiArray], vs: [MLMultiArray]) -> ([MLMultiArray], [MLMultiArray], Int) {
         guard let first = ks.first ?? vs.first else { return (ks, vs, 0) }
         let shape = first.shape.map(\.intValue)
         guard shape.count == 4 else { return (ks, vs, shape.count >= 3 ? shape[2] : 0) }
-        
         let curT = shape[2]
         let decT = T_decode ?? spec.maxT
-        // Decoder wants past length = decT - 1
         let targetT = max(0, min(curT, max(0, decT - 1)))
-        
-        // Fast path: already correct
         guard targetT != curT else { return (ks, vs, curT) }
-        
         func sliceRight(_ ma: MLMultiArray, to target: Int) -> MLMultiArray {
-            let H = ma.shape[1].intValue
-            let W = ma.shape[2].intValue
-            let D = ma.shape[3].intValue
-            let out = try! MLMultiArray(
-                shape: [1, NSNumber(value: H), NSNumber(value: target), NSNumber(value: D)],
-                dataType: ma.dataType
-            )
-            let ps = ma.strides.map { $0.intValue }
-            let qs = out.strides.map { $0.intValue }
-            
-            // Keep the **last** `target` time steps so alignment matches the prompt tail
+            let H = ma.shape[1].intValue, W = ma.shape[2].intValue, D = ma.shape[3].intValue
+            let out = try! MLMultiArray(shape: [1, NSNumber(value: H), NSNumber(value: target), NSNumber(value: D)], dataType: ma.dataType)
+            let ps = ma.strides.map { $0.intValue }; let qs = out.strides.map { $0.intValue }
             let start = max(0, W - target)
-            for h in 0..<H {
-                for t in 0..<target {
-                    for d in 0..<D {
-                        out[0*qs[0] + h*qs[1] + t*qs[2] + d*qs[3]] =
-                        ma [0*ps[0] + h*ps[1] + (start + t)*ps[2] + d*ps[3]]
-                    }
-                }
-            }
+            for h in 0..<H { for t in 0..<target { for d in 0..<D {
+                out[0*qs[0] + h*qs[1] + t*qs[2] + d*qs[3]] =
+                ma [0*ps[0] + h*ps[1] + (start + t)*ps[2] + d*ps[3]]
+            }}}
             return out
         }
-        
         let ksT = ks.map { sliceRight($0, to: targetT) }
         let vsT = vs.map { sliceRight($0, to: targetT) }
         return (ksT, vsT, targetT)
     }
     
-    func guessWithKV(history: [GuessHistory], lang: Language, difficulty: AIDifficulty) throws -> String {
+    func guessWithKV(history: [GuessHistory], lang: Language, difficulty: AIDifficulty,
+                     cheatAnswer: String?, turnIndex: Int) throws -> String
+    {
         let prompt = buildPrompt(history: history, lang: lang)
         let (logits0, k0, v0, usedLen) = try prefillOnce(prompt: prompt)
         
         let (kAligned, vAligned, alignedLen) = alignKVsForDecode(ks: k0, vs: v0)
-        pastK = kAligned
-        pastV = vAligned
+        pastK = kAligned; pastV = vAligned
         curLen = min(usedLen, alignedLen)
         Trace.log("ℹ️", "KV layers K=\(pastK.count) V=\(pastV.count)")
         
         var constraints = MaskedConstraints(lang: lang, length: 5)
         constraints.reset(wordLength: 5, lang: lang)
         constraints.ingest(history: history, lang: lang)
+        
+        if let forced = obviousAnswerIfAny(constraints: constraints, lang: lang) {
+            Trace.log("✅", "Obvious answer from constraints → \(forced)", Fancy.green)
+            return forced
+        }
+        
+        if difficulty == .boss, let ans = cheatAnswer {
+            _ = updateBossMemoryForTurn(lang: lang, solution: ans, turnIndex: turnIndex, constraints: &constraints)
+        }
         
         let (temp, topK) = difficulty.params
         let id2c = filteredId2c((lang == .en) ? letterMapEN : letterMapHE, vocab: logits0.count)
@@ -778,22 +970,21 @@ private extension WordleAI {
             constraints.apply(at: pos, used: used, id2c: id2c, logits: &masked, negInf: -1e30)
             applySoftRepeatPenalty(at: pos, used: used, result: result, constraints: constraints, id2c: id2c, logits: &masked)
             forceDeficitIfNeeded(at: pos, constraints: constraints, used: used, invMap: inv, logits: &masked)
+            avoidExtraCopiesWhileDeficit(at: pos, constraints: constraints, used: used, id2c: id2c, logits: &masked)
             maskDuplicatesUnlessRequired(at: pos, constraints: constraints, used: used, id2c: id2c, logits: &masked)
             
             var nextId = sampleRestricted(logits: masked, candidates: clean, temperature: temp, topK: topK)
             var ch = id2c[nextId]
             if ch == nil || !isAllowed(ch!, at: pos, used: used, constraints: constraints) {
                 let fb = pickFallbackChar(position: pos, used: used, constraints: constraints, lang: lang)
-                ch = fb
-                if let forced = inv[fb]?.first { nextId = forced }
+                ch = fb; if let forced = inv[fb]?.first { nextId = forced }
             }
             if let c = ch { result.append(c); used[c, default: 0] += 1 }
-            
-            do {
-                logits = try decodeOnce(nextId: nextId)
-            } catch {
-                Trace.log("🛟", "Decode failed @\(pos) — trying sliding fallback.", Fancy.yellow)
-                return try guessWithFallback(history: history, lang: lang, difficulty: difficulty)
+            do { logits = try decodeOnce(nextId: nextId) }
+            catch {
+                Trace.log("🛟", "Decode failed @\(pos) — sliding fallback", Fancy.yellow)
+                return try guessWithFallback(history: history, lang: lang, difficulty: difficulty,
+                                             cheatAnswer: cheatAnswer, turnIndex: turnIndex)
             }
         }
         let out = String(result)
@@ -801,12 +992,22 @@ private extension WordleAI {
         return out
     }
     
-    func guessWithService(svc: LLMService, history: [GuessHistory], lang: Language, difficulty: AIDifficulty) throws -> String {
+    func guessWithService(svc: LLMService, history: [GuessHistory], lang: Language, difficulty: AIDifficulty,
+                          cheatAnswer: String?, turnIndex: Int) throws -> String
+    {
         var constraints = MaskedConstraints(lang: lang, length: 5)
         constraints.reset(wordLength: 5, lang: lang)
         constraints.ingest(history: history, lang: lang)
         
-        // Warm the KV cache by feeding the whole prompt through the decoder.
+        if let forced = obviousAnswerIfAny(constraints: constraints, lang: lang) {
+            Trace.log("✅", "Obvious answer from constraints → \(forced)", Fancy.green)
+            return forced
+        }
+        
+        if difficulty == .boss, let ans = cheatAnswer {
+            _ = updateBossMemoryForTurn(lang: lang, solution: ans, turnIndex: turnIndex, constraints: &constraints)
+        }
+        
         let prompt = buildPrompt(history: history, lang: lang)
         let ids = tokenizer.encode(prompt, addBOS: true)
         try svc.resetSequence()
@@ -828,19 +1029,18 @@ private extension WordleAI {
             constraints.apply(at: pos, used: used, id2c: id2c, logits: &masked, negInf: -1e30)
             applySoftRepeatPenalty(at: pos, used: used, result: result, constraints: constraints, id2c: id2c, logits: &masked)
             forceDeficitIfNeeded(at: pos, constraints: constraints, used: used, invMap: inv, logits: &masked)
+            avoidExtraCopiesWhileDeficit(at: pos, constraints: constraints, used: used, id2c: id2c, logits: &masked)
             maskDuplicatesUnlessRequired(at: pos, constraints: constraints, used: used, id2c: id2c, logits: &masked)
             
             var nextId = sampleRestricted(logits: masked, candidates: clean, temperature: temp, topK: topK)
             var ch = id2c[nextId]
             if ch == nil || !isAllowed(ch!, at: pos, used: used, constraints: constraints) {
                 let fb = pickFallbackChar(position: pos, used: used, constraints: constraints, lang: lang)
-                ch = fb
-                if let forced = inv[fb]?.first { nextId = forced }
+                ch = fb; if let forced = inv[fb]?.first { nextId = forced }
             }
             if let c = ch { result.append(c); used[c, default: 0] += 1 }
             logits = try svc.step(tokenId: Int32(nextId), expectedVocab: spec.vocab)
         }
-        
         let out = String(result)
         Trace.log("🤖", "decoder-only service guess → \(out)", Fancy.blue)
         return out
@@ -852,16 +1052,13 @@ private extension WordleAI {
         }
         let T = T_prefill ?? spec.maxT
         ensureBuffers(T: T)
-        
         var ids = tokenizer.encode(prompt, addBOS: true)
         if ids.count > T { ids = Array(ids.suffix(T)) }
         let real = ids.count
         if real < T { ids = Array(repeating: spec.padId, count: T - real) + ids }
-        
         let ip = idsMA.dataPointer.bindMemory(to: Int32.self, capacity: idsMA.count)
         let mp = maskMA.dataPointer.bindMemory(to: Int32.self, capacity: maskMA.count)
         for i in 0..<T { ip[i] = Int32(ids[i]); mp[i] = (i < (T - real)) ? 0 : 1 }
-        
         let out = try prefill.prediction(from: MLDictionaryFeatureProvider(dictionary: [
             "input_ids": idsMA, "attention_mask": maskMA
         ]))
@@ -871,26 +1068,21 @@ private extension WordleAI {
         return (logits, ks, vs, real)
     }
     
-    // Replace the whole function
     func decodeOnce(nextId: Int) throws -> [Float] {
         guard let decode else {
             throw NSError(domain: "WordleAI", code: -210, userInfo: [NSLocalizedDescriptionKey: "Decode not loaded"])
         }
         let T = T_decode ?? T_prefill ?? spec.maxT
         ensureBuffers(T: T)
-        
-        // Mask for current length (past) + 1 (next token)
         curLen = min(curLen + 1, T)
         let mp = maskMA.dataPointer.bindMemory(to: Int32.self, capacity: maskMA.count)
         for i in 0..<T { mp[i] = (i < (T - curLen)) ? 0 : 1 }
-        
         tok1x1[0] = NSNumber(value: nextId)
         
         var dict: [String: MLFeatureValue] = [
             "input_ids": MLFeatureValue(multiArray: tok1x1),
             "attention_mask": MLFeatureValue(multiArray: maskMA)
         ]
-        // Ensure we always send K/V with length == (T - 1)
         let (kOK, vOK, _) = alignKVsForDecode(ks: pastK, vs: pastV)
         for i in 0..<kOK.count { dict[String(format: "past_k_%02d", i)] = MLFeatureValue(multiArray: kOK[i]) }
         for i in 0..<vOK.count { dict[String(format: "past_v_%02d", i)] = MLFeatureValue(multiArray: vOK[i]) }
@@ -898,18 +1090,18 @@ private extension WordleAI {
         let out = try decode.prediction(from: MLDictionaryFeatureProvider(dictionary: dict))
         guard let (logits, ks, vs) = Self.extractKVOutputs(from: out, vocab: spec.vocab, L: spec.numL)
         else { throw NSError(domain: "WordleAI", code: -211, userInfo: [NSLocalizedDescriptionKey: "Bad decode outputs"]) }
-        
-        // Some models return present_* with time = T; trim again to (T - 1) before the next step
         let (kAligned, vAligned, _) = alignKVsForDecode(ks: ks, vs: vs)
         pastK = kAligned; pastV = vAligned
         return logits
     }
 }
 
-// MARK: - 🛟 Fallback path
+// MARK: - Fallback path
 
 private extension WordleAI {
-    func guessWithFallback(history: [GuessHistory], lang: Language, difficulty: AIDifficulty) throws -> String {
+    func guessWithFallback(history: [GuessHistory], lang: Language, difficulty: AIDifficulty,
+                           cheatAnswer: String?, turnIndex: Int) throws -> String
+    {
         guard let model = fallbackModel else {
             throw NSError(domain: "WordleAI", code: -300, userInfo: [NSLocalizedDescriptionKey: "No fallback model"])
         }
@@ -919,6 +1111,15 @@ private extension WordleAI {
         var constraints = MaskedConstraints(lang: lang, length: 5)
         constraints.reset(wordLength: 5, lang: lang)
         constraints.ingest(history: history, lang: lang)
+        
+        if let forced = obviousAnswerIfAny(constraints: constraints, lang: lang) {
+            Trace.log("✅", "Obvious answer from constraints → \(forced)", Fancy.green)
+            return forced
+        }
+        
+        if difficulty == .boss, let ans = cheatAnswer {
+            _ = updateBossMemoryForTurn(lang: lang, solution: ans, turnIndex: turnIndex, constraints: &constraints)
+        }
         
         let (temp, topK) = difficulty.params
         var logits = try predictLogitsFallback(inputIds: ids, model: model)
@@ -936,6 +1137,7 @@ private extension WordleAI {
             constraints.apply(at: pos, used: used, id2c: id2c, logits: &masked, negInf: -1e30)
             applySoftRepeatPenalty(at: pos, used: used, result: result, constraints: constraints, id2c: id2c, logits: &masked)
             forceDeficitIfNeeded(at: pos, constraints: constraints, used: used, invMap: inv, logits: &masked)
+            avoidExtraCopiesWhileDeficit(at: pos, constraints: constraints, used: used, id2c: id2c, logits: &masked)
             maskDuplicatesUnlessRequired(at: pos, constraints: constraints, used: used, id2c: id2c, logits: &masked)
             
             var nextId = sampleRestricted(logits: masked, candidates: clean, temperature: temp, topK: topK)
@@ -943,8 +1145,7 @@ private extension WordleAI {
             if ch == nil || !isAllowed(ch!, at: pos, used: used, constraints: constraints) {
                 Trace.log("🚫", "over-masked @\(pos) → fallback char", Fancy.gray)
                 let fb = pickFallbackChar(position: pos, used: used, constraints: constraints, lang: lang)
-                ch = fb
-                if let forced = inv[fb]?.first { nextId = forced }
+                ch = fb; if let forced = inv[fb]?.first { nextId = forced }
             }
             if let c = ch { result.append(c); used[c, default: 0] += 1 }
             ids.removeFirst(); ids.append(nextId)
@@ -982,7 +1183,7 @@ private extension WordleAI {
     }
 }
 
-// MARK: - 🧩 Constraints
+// MARK: - Constraints
 
 private enum FBMark { case green, yellow, gray }
 
@@ -1002,18 +1203,14 @@ private struct MaskedConstraints {
         self.minCount = [:]
         self.maxCount = [:]
     }
-    
     mutating func reset(wordLength: Int, lang: Language) {
-        precondition(wordLength == length)
-        fixed = Array(repeating: nil, count: length)
-        bannedAt = Array(repeating: [], count: length)
+        fixed = Array(repeating: nil, count: wordLength)
+        bannedAt = Array(repeating: [], count: wordLength)
         disallow.removeAll(); minCount.removeAll(); maxCount.removeAll()
     }
-    
     mutating func ingest(history: [GuessHistory], lang: Language) {
         for (w, f) in history { ingestRow(word: w.lowercased(), feedback: f, lang: lang) }
     }
-    
     mutating func ingestRow(word: String, feedback: String, lang: Language) {
         guard word.count == length else { return }
         let ws = Array(word)
@@ -1039,7 +1236,6 @@ private struct MaskedConstraints {
         }
         Trace.log("🧩", "min:\(minCount) max:\(maxCount)", Fancy.green)
     }
-    
     func apply(at position: Int, used: [Character: Int], id2c: [Int: Character], logits: inout [Float], negInf: Float) {
         if let fx = fixed[position] {
             for (tid, ch) in id2c where tid < logits.count { logits[tid] = (ch == fx) ? logits[tid] : negInf }
@@ -1067,10 +1263,9 @@ private func normalizeFeedback(feedback: String, count: Int) -> [FBMark] {
     return out
 }
 
-// MARK: - 🛠 Helpers
+// MARK: - Masking helpers
 
 private extension WordleAI {
-    // Softly discourage duplicates & runs unless constraints require them.
     func applySoftRepeatPenalty(
         at pos: Int,
         used: [Character: Int],
@@ -1079,7 +1274,6 @@ private extension WordleAI {
         id2c: [Int: Character],
         logits: inout [Float]
     ) {
-        // Run-length of the last char (to avoid aaa-style runs)
         var lastRunChar: Character? = nil
         var lastRunLen = 0
         if let last = result.last {
@@ -1087,29 +1281,36 @@ private extension WordleAI {
             lastRunLen = 1
             if result.count >= 2, result[result.count - 2] == last { lastRunLen = 2 }
         }
-        
-        // Basic duplicate penalty grows with how many times we've used the char
-        // but only after we’ve satisfied `minCount` for that char.
         for (tid, ch) in id2c where tid < logits.count {
             let usedCount = used[ch, default: 0]
-            let requiredMin = constraints.minCount[ch, default: 0]       // may be 0
-            let allowUpTo  = max(1, requiredMin)                         // at least one copy w/o penalty
-            
-            // If we already used enough of this char, push it down (don’t mask).
+            let requiredMin = constraints.minCount[ch, default: 0]
+            let allowUpTo  = max(1, requiredMin)
             if usedCount >= allowUpTo {
-                // Penalty: second copy mild, third harsher, etc.
-                let dupIdx = usedCount - allowUpTo + 1                    // 1 for 2nd, 2 for 3rd …
+                let dupIdx = usedCount - allowUpTo + 1
                 logits[tid] -= 0.85 * Float(min(3, dupIdx))
             }
-            
-            // Extra penalty for immediate runs like “ee”, “eee”
-            if let lr = lastRunChar, lr == ch {
-                logits[tid] -= (lastRunLen >= 2) ? 1.75 : 0.90
-            }
-            
-            // Small vowel anti-spam (English only) — avoids EEE…
-            if "aeiou".contains(ch), used[ch, default: 0] >= 2 {
-                logits[tid] -= 0.6
+            if let lr = lastRunChar, lr == ch { logits[tid] -= (lastRunLen >= 2) ? 1.75 : 0.90 }
+            if "aeiou".contains(ch), used[ch, default: 0] >= 2 { logits[tid] -= 0.6 }
+        }
+    }
+    
+    /// While any min-count is unmet, ban extra copies of letters already at their minimum.
+    func avoidExtraCopiesWhileDeficit(
+        at pos: Int,
+        constraints: MaskedConstraints,
+        used: [Character:Int],
+        id2c: [Int: Character],
+        logits: inout [Float]
+    ) {
+        var deficitExists = false
+        for (ch, need) in constraints.minCount {
+            if (need - used[ch, default: 0]) > 0 { deficitExists = true; break }
+        }
+        guard deficitExists else { return }
+        for (tid, ch) in id2c where tid < logits.count {
+            let minNeeded = constraints.minCount[ch] ?? 0
+            if minNeeded > 0, used[ch, default: 0] >= minNeeded {
+                logits[tid] = -1e30
             }
         }
     }
@@ -1124,7 +1325,6 @@ private extension WordleAI {
             if used[ch, default: 0] >= allow { logits[tid] = -1e30 }
         }
     }
-    
     func forceDeficitIfNeeded(at pos: Int, constraints: MaskedConstraints, used: [Character:Int],
                               invMap: [Character:[Int]], logits: inout [Float]) {
         let remainingSlots = 5 - pos
@@ -1136,7 +1336,6 @@ private extension WordleAI {
         guard deficit > 0, deficit >= remainingSlots else { return }
         for i in 0..<logits.count where !keep.contains(i) { logits[i] = -1e30 }
     }
-    
     func isAllowed(_ ch: Character, at position: Int, used: [Character:Int], constraints: MaskedConstraints) -> Bool {
         if constraints.disallow.contains(ch) { return false }
         if constraints.bannedAt[position].contains(ch) { return false }
@@ -1144,22 +1343,18 @@ private extension WordleAI {
         if let mx = constraints.maxCount[ch], used[ch, default: 0] >= mx { return false }
         return true
     }
-    
     func invert(_ id2c: [Int: Character]) -> [Character:[Int]] {
         var out: [Character:[Int]] = [:]
         for (tid, ch) in id2c { out[ch, default: []].append(tid) }
         for (k, v) in out { out[k] = v.sorted() }
         return out
     }
-    
     func filteredId2c(_ id2c: [Int: Character], vocab: Int) -> [Int: Character] {
         var out: [Int: Character] = [:]; out.reserveCapacity(min(id2c.count, vocab))
         for (tid, ch) in id2c where tid >= 0 && tid < vocab { out[tid] = ch }
         return out
     }
-    
     func tokenStartsWithSpace(tokenId: Int) -> Bool { tokenizer.decode([tokenId]).first == " " }
-    
     func pickFallbackChar(position: Int, used: [Character:Int], constraints: MaskedConstraints, lang: Language) -> Character {
         for ch in fallbackOrder(for: lang) {
             let need = constraints.minCount[ch, default: 0]
@@ -1173,18 +1368,14 @@ private extension WordleAI {
         }
         return (lang == .en) ? "e" : "י"
     }
-    
     func fallbackOrder(for lang: Language) -> [Character] { lang == .en ? Array("etaoinshrdlcumwfgypbvkjxqz") : Array("יוהרלמאשתנכבדסגפצחעקטז") }
 }
 
-// MARK: - 🔧 Model utils & sampling (ModelStorage-first)
+// MARK: - Model utils & sampling
 
 extension WordleAI {
-    /// Prefer persisted Models/vX/<name>.mlmodelc, else bundle.
     static func findOptionalModelURL(named name: String) -> URL? {
-        if ModelStorage.modelExists(name) {
-            if let u = try? ModelStorage.modelDir(name: name) { return u }
-        }
+        if ModelStorage.modelExists(name) { if let u = try? ModelStorage.modelDir(name: name) { return u } }
         let b = Bundle.main
         if let u = b.url(forResource: name, withExtension: "mlmodelc") { return u }
         if let all = b.urls(forResourcesWithExtension: "mlmodelc", subdirectory: nil) {
@@ -1192,74 +1383,46 @@ extension WordleAI {
         }
         return nil
     }
-    
-    /// Find tokenizer JSON/sidecar: near model, then Models/vX/, then bundle.
     static func findTokenizerJSON(near anchor: URL?) throws -> URL {
         let fm = FileManager.default
-        
-        // Try a directory for all candidate filenames (with & without .json)
         func probeDir(_ dir: URL) -> URL? {
             let candidates: [(String, String?)] = [
-                ("tokenizer", "json"), ("tokenizer", nil),
-                ("tokenizer_config", "json"), ("tokenizer_config", nil),
-                ("special_tokens_map", "json"), ("special_tokens_map", nil),
-                ("tokenizer", "model"),
-                ("config", "json"), ("config", nil),
-                ("WordleGPT_runtime_spec", "json"), ("WordleGPT_runtime_spec", nil)
+                ("tokenizer","json"),("tokenizer",nil),("tokenizer_config","json"),("tokenizer_config",nil),
+                ("special_tokens_map","json"),("special_tokens_map",nil),("tokenizer","model"),
+                ("config","json"),("config",nil),("WordleGPT_runtime_spec","json"),("WordleGPT_runtime_spec",nil)
             ]
             for (name, ext) in candidates {
-                let u = (ext == nil)
-                ? dir.appendingPathComponent(name)
-                : dir.appendingPathComponent("\(name).\(ext!)")
+                let u = (ext == nil) ? dir.appendingPathComponent(name) : dir.appendingPathComponent("\(name).\(ext!)")
                 if fm.fileExists(atPath: u.path) { return u }
             }
             return nil
         }
-        
-        // A) Next to the chosen model
         if let anchor {
-            if let u = probeDir(anchor) { return u } // inside .mlmodelc (rare but harmless)
-            if let u = probeDir(anchor.deletingLastPathComponent()) { return u } // sibling to .mlmodelc
+            if let u = probeDir(anchor) { return u }
+            if let u = probeDir(anchor.deletingLastPathComponent()) { return u }
         }
-        
-        // B) Models/vX/ (your persisted root where sidecars are copied)
         if let root = try? ModelStorage.versionedRoot(),
            fm.fileExists(atPath: root.path),
-           let u = probeDir(root) {
-            return u
-        }
-        
-        // C) Bundle (root)
+           let u = probeDir(root) { return u }
         let b = Bundle.main
         let bundleCandidates: [(String, String?)] = [
-            ("tokenizer","json"), ("tokenizer", nil),
-            ("tokenizer_config","json"), ("tokenizer_config", nil),
-            ("special_tokens_map","json"), ("special_tokens_map", nil),
-            ("tokenizer","model"),
-            ("config","json"), ("config", nil),
-            ("WordleGPT_runtime_spec","json"), ("WordleGPT_runtime_spec", nil)
+            ("tokenizer","json"),("tokenizer",nil),("tokenizer_config","json"),("tokenizer_config",nil),
+            ("special_tokens_map","json"),("special_tokens_map",nil),("tokenizer","model"),
+            ("config","json"),("config",nil),("WordleGPT_runtime_spec","json"),("WordleGPT_runtime_spec",nil)
         ]
-        for (name, ext) in bundleCandidates {
-            if let u = b.url(forResource: name, withExtension: ext) { return u }
-        }
-        
+        for (name, ext) in bundleCandidates { if let u = b.url(forResource: name, withExtension: ext) { return u } }
         throw NSError(domain: "WordleAI", code: -11,
-                      userInfo: [NSLocalizedDescriptionKey:
-                                    "Tokenizer not found near model, in Models/vX/, or in bundle."])
+                      userInfo: [NSLocalizedDescriptionKey: "Tokenizer not found near model, in Models/vX/, or in bundle."])
     }
-    
-    /// Central prompt builder used by all paths.
     func buildPrompt(history: [GuessHistory], lang: Language) -> String {
         let body = WordlePrompt.make(from: history)
         guard useLangTags else { return body }
         return ((lang == .en) ? "<|en|>\n" : "<|he|>\n") + body
     }
-    
     static func extractKVOutputs(from out: MLFeatureProvider, vocab: Int, L: Int) -> ([Float],[MLMultiArray],[MLMultiArray])? {
         var kvTensors: [MLMultiArray] = []
         var logitsCandidate: MLMultiArray?
         var logitsScore = -1
-        
         for name in out.featureNames {
             guard let ma = out.featureValue(for: name)?.multiArrayValue else { continue }
             let dims = ma.shape.map(\.intValue)
@@ -1271,26 +1434,21 @@ extension WordleAI {
             if dims.last == vocab || dims.contains(vocab) { score += 5 }
             if vocab > 0 && (count == vocab || count % vocab == 0) { score += 3 }
             if dims.count <= 2 { score += 1 }
-            if score > logitsScore { logitsScore = score; logitsCandidate = ma }
+            if score > logitsScore { logitsCandidate = ma; logitsScore = score }
         }
-        
         guard let lm = logitsCandidate, !kvTensors.isEmpty else { return nil }
         let mid = kvTensors.count / 2
         let ks = Array(kvTensors.prefix(mid))
         let vs = Array(kvTensors.suffix(from: mid))
-        
         var flat = [Float](repeating: 0, count: lm.count)
         for i in 0..<lm.count { flat[i] = lm[i].floatValue }
-        
         let logits: [Float]
         if flat.count == vocab { logits = flat }
         else if vocab > 0, flat.count % vocab == 0 { logits = Array(flat.suffix(vocab)) }
-        else if let last = lm.shape.last?.intValue, last > 0, flat.count % last == 0 { logits = Array(flat.suffix(last)) }
+        else if let last = lm.shape.last?.intValue, flat.count % last == 0 { logits = Array(flat.suffix(last)) }
         else { logits = flat }
-        
         return (logits, ks, vs)
     }
-    
     func sampleRestricted(logits: [Float], candidates: [Int], temperature: Float, topK: Int) -> Int {
         var idxs: [Int] = []
         for id in candidates where id >= 0 && id < logits.count { idxs.append(id) }
@@ -1315,12 +1473,14 @@ extension WordleAI {
     }
 }
 
-
-// MARK: - 🪄 Convenience Provider
+// MARK: - Convenience Provider
 
 final class WordleAIProvider: Singleton {
     private var loadTask: Task<WordleAI, Error>?
-    var ai: WordleAI?
+    private var ai: WordleAI?
+    
+    static var aiWarmedup: Bool { shared.ai != nil ? !shared.ai!.needWarmup : false }
+    
     private override init() {}
     
     func sharedAsync() async -> WordleAI {

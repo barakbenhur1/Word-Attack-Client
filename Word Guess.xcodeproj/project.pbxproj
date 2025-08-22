@@ -11,6 +11,7 @@
 		4F1BDC6C2E4BC7FF00A4B3DD /* WordleGPT_decode.mlmodelc in Resources */ = {isa = PBXBuildFile; fileRef = 4F1BDC692E4BC7FF00A4B3DD /* WordleGPT_decode.mlmodelc */; settings = {ASSET_TAGS = ("ai-pack-v1", ); }; };
 		4F370C872CC6A5BF00632E10 /* GoogleUserMessagingPlatform in Frameworks */ = {isa = PBXBuildFile; productRef = 4F370C862CC6A5BF00632E10 /* GoogleUserMessagingPlatform */; };
 		4F370C8D2CC6A72F00632E10 /* GoogleMobileAds in Frameworks */ = {isa = PBXBuildFile; productRef = 4F370C8C2CC6A72F00632E10 /* GoogleMobileAds */; };
+		4FCDAC372E53E416001A758F /* SwiftUITooltip in Frameworks */ = {isa = PBXBuildFile; productRef = 4FCDAC362E53E416001A758F /* SwiftUITooltip */; };
 		4FD6D2882CB9A2C000755D03 /* FirebaseAnalyticsOnDeviceConversion in Frameworks */ = {isa = PBXBuildFile; productRef = 4FD6D2872CB9A2C000755D03 /* FirebaseAnalyticsOnDeviceConversion */; };
 		4FD6D28A2CB9A2C000755D03 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 4FD6D2892CB9A2C000755D03 /* FirebaseAuth */; };
 		4FD6D28C2CB9A2C000755D03 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = 4FD6D28B2CB9A2C000755D03 /* FirebaseCore */; };
@@ -92,6 +93,7 @@
 				4FEC01B92CC2F6990086EFEC /* Alamofire in Frameworks */,
 				4F370C8D2CC6A72F00632E10 /* GoogleMobileAds in Frameworks */,
 				4FD6D2942CB9A2F200755D03 /* FacebookCore in Frameworks */,
+				4FCDAC372E53E416001A758F /* SwiftUITooltip in Frameworks */,
 				4FD6D2882CB9A2C000755D03 /* FirebaseAnalyticsOnDeviceConversion in Frameworks */,
 				4FD6D28E2CB9A2C000755D03 /* FirebaseFirestore in Frameworks */,
 				4FD6D28C2CB9A2C000755D03 /* FirebaseCore in Frameworks */,
@@ -173,6 +175,7 @@
 				4F370C862CC6A5BF00632E10 /* GoogleUserMessagingPlatform */,
 				4F370C8C2CC6A72F00632E10 /* GoogleMobileAds */,
 				4FFF87402E3F289500D612F0 /* Transformers */,
+				4FCDAC362E53E416001A758F /* SwiftUITooltip */,
 			);
 			productName = "Word Guess";
 			productReference = 4FD6D2382CB9A1F400755D03 /* Word Guess.app */;
@@ -269,6 +272,7 @@
 				4F370C852CC6A5BF00632E10 /* XCRemoteSwiftPackageReference "swift-package-manager-google-user-messaging-platform" */,
 				4F370C8B2CC6A72F00632E10 /* XCRemoteSwiftPackageReference "swift-package-manager-google-mobile-ads" */,
 				4FFF873F2E3F289500D612F0 /* XCRemoteSwiftPackageReference "swift-tokenizers" */,
+				4FCDAC352E53E416001A758F /* XCRemoteSwiftPackageReference "SwiftUI-Tooltip" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 4FD6D2392CB9A1F400755D03 /* Products */;
@@ -680,6 +684,14 @@
 				minimumVersion = 11.10.0;
 			};
 		};
+		4FCDAC352E53E416001A758F /* XCRemoteSwiftPackageReference "SwiftUI-Tooltip" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/quassum/SwiftUI-Tooltip.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.0.2;
+			};
+		};
 		4FD6D2862CB9A2C000755D03 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/firebase/firebase-ios-sdk.git";
@@ -732,6 +744,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 4F370C8B2CC6A72F00632E10 /* XCRemoteSwiftPackageReference "swift-package-manager-google-mobile-ads" */;
 			productName = GoogleMobileAds;
+		};
+		4FCDAC362E53E416001A758F /* SwiftUITooltip */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4FCDAC352E53E416001A758F /* XCRemoteSwiftPackageReference "SwiftUI-Tooltip" */;
+			productName = SwiftUITooltip;
 		};
 		4FD6D2872CB9A2C000755D03 /* FirebaseAnalyticsOnDeviceConversion */ = {
 			isa = XCSwiftPackageProductDependency;

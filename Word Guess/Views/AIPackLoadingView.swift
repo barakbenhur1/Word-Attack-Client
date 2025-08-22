@@ -12,7 +12,7 @@ import UIKit
 
 public struct AIPackLoadingView: View {
     // Copy you can customize
-    public var title: String = "Loading AI Model…"
+    public var title: String = "Loading AI Model…".localized
     public var messages: [String] = AIPackLoadingView.defaultWarmupMessages
     
     // UX knobs
@@ -37,7 +37,7 @@ public struct AIPackLoadingView: View {
         showsCancel: Bool = true,
         onCancel: (() -> Void)? = nil
     ) {
-        self.title = title
+        self.title = title.localized
         self.messages = messages
         self.cycleEvery = max(0.6, cycleEvery)
         self.orbSize = orbSize

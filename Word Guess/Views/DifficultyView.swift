@@ -116,6 +116,7 @@ struct DifficultyView: View {
                                                                   .yellow.opacity(0.6)],
                                                          startPoint: .leading,
                                                          endPoint: .trailing))
+                        .blendMode(.difference)
                     
                     Text("Scoreboard")
                 }
@@ -132,6 +133,7 @@ struct DifficultyView: View {
                                         .gray.opacity(0.1)],
                                startPoint: .topTrailing,
                                endPoint: .bottomLeading)
+                .blendMode(.luminosity)
                 .blur(radius: 4)
                 
                 VStack {
@@ -148,7 +150,7 @@ struct DifficultyView: View {
                 .padding()
             }
             .clipShape(RoundedRectangle(cornerRadius: 60))
-            .elevated(cornerRadius: 60)
+//            .elevated(cornerRadius: 60)
             
             logoutButton()
                 .padding(.all, 20)

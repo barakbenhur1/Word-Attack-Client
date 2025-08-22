@@ -18,7 +18,7 @@ enum FieldFocus: Int {
     case six
 }
 
-struct GameView<VM: ViewModel>: View {
+struct GameView<VM: WordViewModel>: View {
     @EnvironmentObject private var coreData: PersistenceController
     @EnvironmentObject private var loginHandeler: LoginHandeler
     @EnvironmentObject private var audio: AudioPlayer
@@ -32,7 +32,7 @@ struct GameView<VM: ViewModel>: View {
     private var length: Int { return diffculty.getLength() }
     private var email: String? { return loginHandeler.model?.email }
     
-    @State private var current: Int = 0 { didSet { vm.current = current } }
+    @State private var current: Int = 0
     @State private var score: Int = 0
     @State private var scoreAnimation: (value: Int, opticity: CGFloat, scale: CGFloat, offset: CGFloat) = (0, CGFloat(0), CGFloat(0), CGFloat(30))
     @State private var matrix: [[String]]
@@ -44,10 +44,44 @@ struct GameView<VM: ViewModel>: View {
     @State private var endFetchAnimation = false
     @State private var interstitialAdManager = InterstitialAdsManager(adUnitID: "GameInterstitial")
     
+    @State private var cleanCells = false
+    
     private var language: String? { return local.locale.identifier.components(separatedBy: "_").first }
+    
+    private func handleError() {
+        guard vm.isError else { return }
+        keyboard.show = true
+    }
+    
+    private func handleWordChange() {
+        initMatrixState()
+        guard !keyboard.show || vm.word.number == 0 || vm.word.number % InterstitialAdInterval != 0 else { return interstitialAdManager.loadInterstitialAd() }
+        initalConfigirationForWord()
+    }
+    
+    private func handleGuessworkChage() {
+        let guesswork = vm.word.word.guesswork
+        for i in 0..<guesswork.count {
+            for j in 0..<guesswork[i].count {
+                matrix[i][j] = guesswork[i][j]
+            }
+            colors[i] = vm.calculateColors(with: matrix[i],
+                                     length: length)
+        }
+        
+        guard !keyboard.show || vm.word.number == 0 || vm.word.number % InterstitialAdInterval != 0 else { return }
+        guard vm.word.isTimeAttack else { return }
+        current = guesswork.count
+    }
+    
+    private func handleTimeAttack() {
+        guard !keyboard.show || vm.word.number == 0 || vm.word.number % InterstitialAdInterval != 0 else { return }
+        initalConfigirationForWord()
+    }
     
     init(diffculty: DifficultyType) {
         self.diffculty = diffculty
+       
         self.matrix = [[String]](repeating: [String](repeating: "",
                                                      count: diffculty.getLength()),
                                  count: rows)
@@ -97,7 +131,7 @@ struct GameView<VM: ViewModel>: View {
     }
     
     @ViewBuilder private func gameBody(proxy: GeometryProxy) -> some View {
-        if !vm.isError && vm.word != .emapty && timeAttackAnimationDone {
+        if !vm.isError && vm.word != .empty && timeAttackAnimationDone {
             VStack(spacing: 8) {
                 ZStack(alignment: .bottom) {
                     ZStack(alignment: .top) {
@@ -107,9 +141,7 @@ struct GameView<VM: ViewModel>: View {
                                     .font(.largeTitle)
                                 
                                 let attr: AttributedString = {
-                                    if current < 3 || current == .max {
-                                        return AttributedString("Guess The 4 Letters Word".localized)
-                                    }
+                                    if current < 3 || current == .max { return AttributedString("Guess The 4 Letters Word".localized) }
                                     else {
                                         let theWord = vm.word.word.value
                                         var attr = AttributedString("\("the word is".localized) \"\(theWord)\" \("try it, or not ;)".localized)")
@@ -196,7 +228,9 @@ struct GameView<VM: ViewModel>: View {
                 
                 ForEach(0..<rows, id: \.self) { i in
                     ZStack {
-                        WordView(length: length,
+                        WordView(clenCells: $cleanCells,
+                                 current: $current,
+                                 length: length,
                                  word: $matrix[i],
                                  gainFocus: .constant(true),
                                  colors: $colors[i]) {
@@ -204,7 +238,6 @@ struct GameView<VM: ViewModel>: View {
                             nextLine(i: i)
                         }
                                  .disabled(current != i)
-                                 .environmentObject(vm)
                                  .shadow(radius: 4)
                         
                         if keyboard.show && vm.word.isTimeAttack && timeAttackAnimationDone && current == i {
@@ -242,35 +275,12 @@ struct GameView<VM: ViewModel>: View {
         ZStack(alignment: .topLeading) {
             ZStack(alignment: .topLeading) { gameBody(proxy: proxy) }
                 .ignoresSafeArea(.keyboard)
-                .onAppear { Task.detached { await vm.word(diffculty: diffculty,
-                                                          email: loginHandeler.model!.email) } }
-                .onChange(of: vm.isError) {
-                    guard vm.isError else { return }
-                    keyboard.show = true
-                }
-                .onChange(of: vm.word.word) {
-                    initMatrixState()
-                    guard !keyboard.show || vm.word.number == 0 || vm.word.number % InterstitialAdInterval != 0 else { return interstitialAdManager.loadInterstitialAd() }
-                    initalConfigirationForWord()
-                }
-                .onChange(of: vm.word.word.guesswork) {
-                    let guesswork = vm.word.word.guesswork
-                    for i in 0..<guesswork.count {
-                        for j in 0..<guesswork[i].count {
-                            matrix[i][j] = guesswork[i][j]
-                        }
-                        colors[i] = vm.calcGuess(word: matrix[i],
-                                                 length: length)
-                    }
-                    
-                    guard !keyboard.show || vm.word.number == 0 || vm.word.number % InterstitialAdInterval != 0 else { return }
-                    guard vm.word.isTimeAttack else { return }
-                    current = guesswork.count
-                }
-                .onChange(of: vm.word.isTimeAttack) {
-                    guard !keyboard.show || vm.word.number == 0 || vm.word.number % InterstitialAdInterval != 0 else { return }
-                    initalConfigirationForWord()
-                }
+                .onChange(of: vm.isError, handleError)
+                .onChange(of: vm.word.word, handleWordChange)
+                .onChange(of: vm.word.word.guesswork, handleGuessworkChage)
+                .onChange(of: vm.word.isTimeAttack, handleTimeAttack)
+                .task { await vm.word(diffculty: diffculty,
+                                      email: loginHandeler.model!.email) }
                 .ignoresSafeArea(.keyboard)
         }
         .padding(.top, 64)
@@ -284,13 +294,11 @@ struct GameView<VM: ViewModel>: View {
                                 type: "mp3",
                                 loop: true)
             }
-            queue.asyncAfter(deadline: .now() + (keyboard.show ? 0 : 0.5)) {
-                endFetchAnimation = true
-            }
+            queue.asyncAfter(deadline: .now() + 2) { endFetchAnimation = true }
             return current = vm.word.word.guesswork.count
         }
         timeAttackAnimationDone = false
-        queue.asyncAfter(deadline: .now() + (keyboard.show ? 0 : 0.5)) {
+        queue.asyncAfter(deadline: .now() + 2) {
             endFetchAnimation = true
             withAnimation(.interpolatingSpring(.smooth)) { timeAttackAnimation = true }
             queue.asyncAfter(deadline: .now() + 1) {
@@ -357,7 +365,7 @@ struct GameView<VM: ViewModel>: View {
     }
     
     private func nextLine(i: Int)  {
-        colors[i] = vm.calcGuess(word: matrix[i],
+        colors[i] = vm.calculateColors(with: matrix[i],
                                  length: length)
         
         let guess = matrix[i].joined()
@@ -389,7 +397,12 @@ struct GameView<VM: ViewModel>: View {
             }
             else { score(value: 0) }
             
-            Task.detached {
+            Task.detached(priority: .userInitiated) {
+                try? await Task.sleep(nanoseconds: 1_000_000_000)
+                await MainActor.run { cleanCells = true }
+            }
+            
+            Task.detached(priority: .userInitiated) {
                 if !correct { await vm.addGuess(diffculty: diffculty, email: email, guess: guess) }
                 await vm.score(diffculty: diffculty, email: email)
                 await vm.word(diffculty: diffculty, email: email)
@@ -408,8 +421,7 @@ struct GameView<VM: ViewModel>: View {
                     }
                 }
             }
-        }
-        else if i == current && i + 1 > vm.word.word.guesswork.count {
+        } else if i == current && i + 1 > vm.word.word.guesswork.count {
             guard let email else { return }
             current = i + 1
             guard diffculty != .tutorial else { return }
@@ -424,6 +436,7 @@ struct GameView<VM: ViewModel>: View {
         colors = [[CharColor]](repeating: [CharColor](repeating: .noGuess,
                                                       count: length),
                                count: rows)
+        cleanCells = false
     }
     
     private func score(value: Int) {
@@ -434,7 +447,7 @@ struct GameView<VM: ViewModel>: View {
             scoreAnimation.scale = 0.9
         }
         
-        queue.asyncAfter(deadline: .now() + 1.6) {
+        queue.asyncAfter(deadline: .now() + 1.44) {
             let sound = value > 0 ? "success" : "fail"
             audio.playSound(sound: sound,
                             type: "wav")

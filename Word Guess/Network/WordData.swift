@@ -13,7 +13,7 @@ struct WordData: Codable, Equatable, Hashable {
     var number: Int
     var isTimeAttack: Bool
     
-    static let emapty = WordData(score: 0, word: .init(value: "", guesswork: []), number: 0, isTimeAttack: false)
+    static let empty = WordData(score: 0, word: .init(value: "", guesswork: []), number: 0, isTimeAttack: false)
 }
 
 
@@ -25,4 +25,6 @@ struct Word: Codable, Equatable, Hashable {
 
 struct WordForAiMode: Codable, Equatable, Hashable {
     let value: String
+    
+    static let empty = WordForAiMode(value: "")
 }

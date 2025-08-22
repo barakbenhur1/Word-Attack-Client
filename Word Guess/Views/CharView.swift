@@ -82,6 +82,10 @@ extension String {
     func toSuffixChars() -> String {
         return map { String.suffixs[String($0)] ?? String($0) }.joined()
     }
+    
+    func correctSuffix() -> String {
+        return map { $0 == last ? String.suffixs[String($0)] ?? String($0) : String($0) }.joined()
+    }
 }
 
 extension CharacterSet {

@@ -4,6 +4,17 @@
     "" : {
       "shouldTranslate" : false
     },
+    " Hell 9000" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "האל 9000"
+          }
+        }
+      }
+    },
     "- %lld" : {
       "localizations" : {
         "he" : {
@@ -159,7 +170,14 @@
       }
     },
     "back" : {
-
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "חזור"
+          }
+        }
+      }
     },
     "Back" : {
       "localizations" : {
@@ -187,6 +205,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "ביטול"
+          }
+        }
+      }
+    },
+    "Chad GPT" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "צ׳אד ג׳יפיטי"
           }
         }
       }
@@ -349,6 +378,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "טוען"
+          }
+        }
+      }
+    },
+    "Loading AI Model…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "טוען מודל בינה מלאכותית…"
           }
         }
       }
@@ -564,6 +604,17 @@
         }
       }
     },
+    "Spynet" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ספאינט"
+          }
+        }
+      }
+    },
     "the word is" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -577,6 +628,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "המילה היא"
+          }
+        }
+      }
+    },
+    "This Guy" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הבחור הזה"
           }
         }
       }

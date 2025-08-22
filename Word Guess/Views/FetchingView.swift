@@ -17,12 +17,8 @@ struct FetchingView<VM: ViewModel>: View {
     @ViewBuilder private func fetchingView() -> some View {
         VStack {
             Spacer()
-            if vm.word == .emapty {
-                ServerLoadingView(title: "Fetching Word".localized)
-            }
+            if vm.wordValue == "" { ServerLoadingView(title: "Fetching Word".localized) }
             Spacer()
         }
-        .offset(y: vm.word == .emapty ? -80 : 340)
-        .shadow(radius: 4)
     }
 }

@@ -8,13 +8,8 @@
 import SwiftUI
 
 struct CharColor: Comparable {
-    static func == (lhs: CharColor, rhs: CharColor) -> Bool {
-        return lhs.id == rhs.id
-    }
-    
-    static func < (lhs: CharColor, rhs: CharColor) -> Bool {
-        return lhs.id > rhs.id
-    }
+    static func == (lhs: CharColor, rhs: CharColor) -> Bool { return lhs.id == rhs.id}
+    static func < (lhs: CharColor, rhs: CharColor) -> Bool { return lhs.id > rhs.id }
     
     let id: Int
     let color: LinearGradient
@@ -36,15 +31,7 @@ struct CharColor: Comparable {
                                                                     startPoint: .leading,
                                                                     endPoint: .trailing))
     
-    func getColor() -> String {
-        switch self {
-        case let i where i.id == CharColor.partialMatch.id : return "🟨"
-        case let i where i.id == CharColor.exactMatch.id : return "🟩"
-        default: return "⬜"
-        }
-    }
-    
-    func toColor() -> Color {
+    var baseColor: Color {
         switch self {
         case let i where i == .exactMatch: return .green
         case let i where i == .partialMatch: return .yellow
@@ -53,59 +40,59 @@ struct CharColor: Comparable {
         default: return .clear
         }
     }
+    
+    func getColor() -> String {
+        switch self {
+        case let i where i.id == CharColor.partialMatch.id : return "🟨"
+        case let i where i.id == CharColor.exactMatch.id : return "🟩"
+        default: return "⬜"
+        }
+    }
 }
 
 struct WordView<VM: ViewModel>: View {
-    @EnvironmentObject private var vm: VM
     @EnvironmentObject private var local: LanguageSetting
     
     private let length: Int
-    private let placeHolderData: [[Guess]]?
+    private let placeHolderData: [BestGuess]?
     private let done: () -> ()
     
-    private var placeHolderForCell: (_ i: Int) -> [Guess] {
-        return { i in
-            guard let placeHolderData else { return [] }
-            var td = [Guess]()
-            for k in 0..<placeHolderData.count {
-                let g = placeHolderData[k][i]
-                guard !td.contains(where: { char, color in char == g.char && color == g.color }) else { continue }
-                td.append(g)
-            }
-            
-            return td
-        }
-    }
+    private var placeHolderForCell: (_ index: Int) -> [Guess] { { i in return placeHolderData?.filter { $0.index == i }.first?.colordLetters ?? [] } }
     
     private var language: String? { return local.locale.identifier.components(separatedBy: "_").first }
     
     @Binding private var gainFocus: Bool
     @Binding private var word: [String]
     @State private var wordBakup: [String]
+    @Binding private var current: Int
     @Binding private var colors: [CharColor]
     @FocusState private var fieldFocus: FieldFocus?
     
     private let isAI: Bool
     private let isCurrentRow: Bool
     
-    init(isAI: Bool = false, length: Int, placeHolderData: [[Guess]]? = nil, isCurrentRow: Bool = false, word: Binding<[String]>, gainFocus: Binding<Bool>, colors: Binding<[CharColor]>, done: @escaping () -> ()) {
+    @Binding private var cleanCells: Bool
+    
+    init(clenCells: Binding<Bool>, isAI: Bool = false, current: Binding<Int>, length: Int, placeHolderData: [BestGuess]? = nil, isCurrentRow: Bool = false, word: Binding<[String]>, gainFocus: Binding<Bool>, colors: Binding<[CharColor]>, done: @escaping () -> ()) {
         self.isAI = isAI
         self.length = length
         self.isCurrentRow = isCurrentRow
         self.placeHolderData = placeHolderData
         self.done = done
         self.wordBakup = [String](repeating: "", count: word.wrappedValue.count)
+        _current = current
+        _cleanCells = clenCells
         _gainFocus = gainFocus
         _colors = colors
         _word = word
     }
     
-    private func onDidType(text: String, i: Int) {
-        guard wordBakup[i] != text else { return }
-        if !isAI { guard fieldFocus?.rawValue == i else { return } }
+    private func onDidType(text: String, index: Int) {
+        guard wordBakup[index] != text else { return }
+        if !isAI { guard fieldFocus?.rawValue == index else { return } }
         handleWordWriting(value: text,
-                          current: i)
-        wordBakup[i] = word[i]
+                          current: index)
+        wordBakup[index] = word[index]
         guard word.joined().count == length else { return }
         done()
     }
@@ -126,7 +113,7 @@ struct WordView<VM: ViewModel>: View {
                                          placeholder: waiting)
                     } else { view }
                 } else  {
-                    let placeHolderData: [[Guess]] = placeHolderData ?? []
+                    let placeHolderData: [BestGuess] = placeHolderData ?? []
                     
                     let placeHolderForCell = placeHolderForCell(i)
                     
@@ -140,7 +127,7 @@ struct WordView<VM: ViewModel>: View {
                 }
             }
         }
-        .onChange(of: vm.current) {
+        .onChange(of: current) {
             wordBakup = [String](repeating: "", count: $word.wrappedValue.count)
             fieldFocus = .one
         }
@@ -170,22 +157,21 @@ struct WordView<VM: ViewModel>: View {
     }
     
     @ViewBuilder
-    private func getBackground(i: Int, usePlaceHolder: Bool) -> some View {
-        if usePlaceHolder || !word[i].isEmpty { colors[i].color.blur(radius: 4) }
-        else { Color.clear }
-    }
-    
-    @ViewBuilder
     private func charView(i: Int) -> some View {
         let placeHolderForCell = placeHolderForCell(i)
-        let usePlaceHolderText = (isAI && !isCurrentRow) || (!isAI && (placeHolderData == nil || placeHolderForCell.filter { _, color in color != .noGuess && color != .noMatch }.isEmpty))
+        let usePlaceHolderText = cleanCells ||
+        (isAI && !isCurrentRow) ||
+        (!isAI && (placeHolderData == nil || placeHolderForCell.filter { _, color in color != .noGuess && color != .noMatch }.isEmpty))
         
-        CharView(isAI: isAI,
-                 text: $word[i],
-                 usePlaceHolder: usePlaceHolderText,
-                 didType: { text in onDidType(text: text, i: i) })
-        .background(getBackground(i: i,
-                                  usePlaceHolder: usePlaceHolderText))
+        CharView(
+            isAI: isAI,
+            text: cleanCells ? .constant("") : $word[i],
+            usePlaceHolder: usePlaceHolderText,
+            didType: { text in
+                onDidType(text: text,
+                          index: i)
+            }
+        )
         .frame(maxHeight: .infinity)
         .textInputAutocapitalization(i == 0 ? .sentences : .never)
         .autocorrectionDisabled()
@@ -193,12 +179,12 @@ struct WordView<VM: ViewModel>: View {
         .onSubmit { fieldFocus = FieldFocus(rawValue: i)! }
         .onTapGesture { fieldFocus = FieldFocus(rawValue: i)! }
         .clipShape(RoundedRectangle(cornerRadius: 4))
-        .realisticCell(color: colors[i].toColor())
+        .realisticCell(color: cleanCells ? .white : colors[i].baseColor)
         .elevated(cornerRadius: 4)
+        .animation(.easeOut(duration: 0.8), value: cleanCells)
         .overlay(
             RoundedRectangle(cornerRadius: 4)
-                .stroke(Color.black,
-                        lineWidth: 1)
+                .stroke(.black, lineWidth: 1)
         )
     }
     

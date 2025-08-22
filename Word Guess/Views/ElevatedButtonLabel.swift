@@ -78,7 +78,7 @@ public struct ElevatedButtonStyle: ButtonStyle {
     public var compressScale: CGFloat = 0.985   // press scale
     public var depth: CGFloat = 10              // shadow y-offset
     
-    public init(palette: Palette = .teal, height: CGFloat = 72, corner: CGFloat = 34) {
+    public init(palette: Palette = .teal, height: CGFloat = 92, corner: CGFloat = 34) {
         self.palette = palette
         self.height = height
         self.corner = corner

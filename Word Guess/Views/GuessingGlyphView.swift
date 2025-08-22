@@ -35,7 +35,7 @@ public struct GuessingGlyphView: View {
                 language: Language,
                 staggerFraction: Double = 0.18,
                 changesPerSecond: Double = 3,
-                fontSize: CGFloat = 26,
+                fontSize: CGFloat = 18,
                 weight: Font.Weight = .medium,
                 initialHoldDuration: TimeInterval = 2.2,
                 holdStagger: TimeInterval = 0.12,
@@ -57,14 +57,23 @@ public struct GuessingGlyphView: View {
     private var period: TimeInterval { max(0.02, 1.0 / changesPerSecond) }
     
     // Visual index = the order the user *sees* (LTR or RTL)
+    // Visual rank used for the "?" hold staggering
     private var visualIndex: Int {
         guard stringLangth > 0 else { return index }
-        let rtl = switch waveDirection {
-        case .autoByLayout: layoutDirection == .rightToLeft
-        case .leftToRight:  false
-        case .rightToLeft:  true
+        
+        switch waveDirection {
+        case .autoByLayout:
+            // reading order (works for LTR and RTL automatically)
+            return index
+            
+        case .leftToRight:
+            // physical left → right, regardless of locale
+            return (layoutDirection == .rightToLeft) ? (stringLangth - 1 - index) : index
+            
+        case .rightToLeft:
+            // physical right → left, regardless of locale
+            return (layoutDirection == .rightToLeft) ? index : (stringLangth - 1 - index)
         }
-        return rtl ? (max(0, stringLangth - 1 - index)) : index
     }
     
     public var body: some View {
@@ -114,7 +123,8 @@ public struct GuessingGlyphView: View {
                 let base   = Int(truncatingIfNeeded: step &* 1103515245 &+ 12345)
                 let salt   = (index &* 9973 &+ 2713) % max(glyphs.count, 1)
                 let idxRaw = (abs(base) &+ salt) % max(glyphs.count, 1)
-                let glyph  = glyphs[idxRaw].returnChar(isFinal: index == stringLangth)
+                let glyphSymbol  = glyphs[idxRaw].returnChar(isFinal: index == stringLangth - 1)
+                let glyph = index == 0 ? glyphSymbol.capitalizedFirst : glyphSymbol
                 
                 let eased = phase * phase * (3 - 2 * phase)
                 let angle = Angle.degrees(50 * sin(eased * 2 * .pi))
@@ -154,14 +164,14 @@ public extension GuessingGlyphView {
         let letters = Array(language == .en
                             ? "abcdefghijklmnopqrstuvwxyz"
                             : "אבגדלהוזחטיכלמנסעפצקרשת").map { String($0) }
-//        let numbers = Array("0123456789").map { String($0) }
-//        let symbols = [
-//            "★","☆","✦","✧","✪","✬","✯","◆","◇","◈",
-//            "♠︎","♣︎","♥︎","♦︎","☯︎","☢︎","☣︎","∞","⌘","⌁",
-//            "✺","✹","✸","✷","▣","▤","▥","▦","▧","▨","▩",
-//            "░","▒","▓","█","▞","▚","▟","▙","▛","▜",
-//            "◉","◎","●","◍","◐","◑","◒","◓","◔","◕"
-//        ]
+        //        let numbers = Array("0123456789").map { String($0) }
+        //        let symbols = [
+        //            "★","☆","✦","✧","✪","✬","✯","◆","◇","◈",
+        //            "♠︎","♣︎","♥︎","♦︎","☯︎","☢︎","☣︎","∞","⌘","⌁",
+        //            "✺","✹","✸","✷","▣","▤","▥","▦","▧","▨","▩",
+        //            "░","▒","▓","█","▞","▚","▟","▙","▛","▜",
+        //            "◉","◎","●","◍","◐","◑","◒","◓","◔","◕"
+        //        ]
         return letters /*+ numbers + symbols*/
     }
     

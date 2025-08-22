@@ -192,11 +192,11 @@ public struct ServerLoadingView: View {
 
 public extension ServerLoadingView {
     static let defaultServerMessages: [String] = [
-        "Connecting to servers…",
-        "Negotiating session…",
-        "Priming caches…",
-        "Streaming first tokens…",
-        "Almost there…"
+//        "Connecting to servers…",
+//        "Negotiating session…",
+//        "Priming caches…",
+//        "Streaming first tokens…",
+//        "Almost there…"
     ]
 }
 
