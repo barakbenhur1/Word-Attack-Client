@@ -51,6 +51,8 @@ struct GameView<VM: WordViewModel>: View {
     private func handleError() {
         guard vm.isError else { return }
         keyboard.show = true
+        audio.stop()
+        router.navigateBack()
     }
     
     private func handleWordChange() {
@@ -228,7 +230,7 @@ struct GameView<VM: WordViewModel>: View {
                 
                 ForEach(0..<rows, id: \.self) { i in
                     ZStack {
-                        WordView(clenCells: $cleanCells,
+                        WordView(cleanCells: $cleanCells,
                                  current: $current,
                                  length: length,
                                  word: $matrix[i],
@@ -315,7 +317,7 @@ struct GameView<VM: WordViewModel>: View {
     }
     
     @ViewBuilder private func overlayViews(proxy: GeometryProxy) -> some View {
-        if (!vm.isError && !endFetchAnimation && diffculty != .tutorial) || !keyboard.show { FetchingView(vm: vm) }
+        if (!vm.isError && !endFetchAnimation && diffculty != .tutorial) || !keyboard.show { FetchingView(word: vm.wordValue) }
         else if vm.word.isTimeAttack { timeAttackView(proxy: proxy) }
     }
     

@@ -73,7 +73,7 @@ struct WordView<VM: ViewModel>: View {
     
     @Binding private var cleanCells: Bool
     
-    init(clenCells: Binding<Bool>, isAI: Bool = false, current: Binding<Int>, length: Int, placeHolderData: [BestGuess]? = nil, isCurrentRow: Bool = false, word: Binding<[String]>, gainFocus: Binding<Bool>, colors: Binding<[CharColor]>, done: @escaping () -> ()) {
+    init(cleanCells: Binding<Bool>, isAI: Bool = false, current: Binding<Int>, length: Int, placeHolderData: [BestGuess]? = nil, isCurrentRow: Bool = false, word: Binding<[String]>, gainFocus: Binding<Bool>, colors: Binding<[CharColor]>, done: @escaping () -> ()) {
         self.isAI = isAI
         self.length = length
         self.isCurrentRow = isCurrentRow
@@ -81,7 +81,7 @@ struct WordView<VM: ViewModel>: View {
         self.done = done
         self.wordBakup = [String](repeating: "", count: word.wrappedValue.count)
         _current = current
-        _cleanCells = clenCells
+        _cleanCells = cleanCells
         _gainFocus = gainFocus
         _colors = colors
         _word = word
@@ -179,13 +179,10 @@ struct WordView<VM: ViewModel>: View {
         .onSubmit { fieldFocus = FieldFocus(rawValue: i)! }
         .onTapGesture { fieldFocus = FieldFocus(rawValue: i)! }
         .clipShape(RoundedRectangle(cornerRadius: 4))
-        .realisticCell(color: cleanCells ? .white : colors[i].baseColor)
-        .elevated(cornerRadius: 4)
         .animation(.easeOut(duration: 0.8), value: cleanCells)
-        .overlay(
-            RoundedRectangle(cornerRadius: 4)
-                .stroke(.black, lineWidth: 1)
-        )
+        .realisticCell(color: cleanCells ? .white.opacity(0.8) : colors[i].baseColor.opacity(0.8))
+        .elevated(cornerRadius: 4)
+        .realStone(cornerRadius: 4)
     }
     
     @ViewBuilder

@@ -50,7 +50,7 @@ struct LoginView<VM: LoginViewModel>: View {
                         let gender = model.gender
                         guard await loginVm.login(email: email,
                                                   name: name,
-                                                  gender: gender)  else { return }
+                                                  gender: gender)  else { return loading = false }
                         loading = false
                         loginHandeler.model = model
                     }

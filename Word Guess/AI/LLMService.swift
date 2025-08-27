@@ -32,7 +32,7 @@ final class LLMService {
         #if targetEnvironment(simulator)
         cfg.computeUnits = .cpuOnly
         #else
-        cfg.computeUnits = .cpuAndNeuralEngine
+        cfg.computeUnits = .all
         #endif
         
         self.model = try MLModel(contentsOf: url, configuration: cfg)

@@ -12,7 +12,7 @@ public struct ServerLoadingView: View {
     public var onCancel: (() -> Void)? = nil
     
     // Layout & style
-    public var ringSize: CGFloat = 200
+    public var ringSize: CGFloat = 260
     public var ringThickness: CGFloat = 16
     public var cycleEvery: TimeInterval = 1.15          // message cadence
     
@@ -29,7 +29,7 @@ public struct ServerLoadingView: View {
                 progress: Double? = nil,
                 showsCancel: Bool = false,
                 onCancel: (() -> Void)? = nil,
-                ringSize: CGFloat = 240,
+                ringSize: CGFloat = 140,
                 ringThickness: CGFloat = 16,
                 cycleEvery: TimeInterval = 0.1,
                 isActive: Bool = true) {
@@ -82,14 +82,6 @@ public struct ServerLoadingView: View {
                 Circle()
                     .fill(LoadPalette.centerFill)
                     .frame(width: ringSize * 0.38, height: ringSize * 0.38)
-                    .overlay(
-                        AppTitle()
-                            .font(.system(size: ringSize * 0.20, weight: .semibold, design: .rounded))
-                            .foregroundColor(LoadPalette.centerGlyph)
-                            .shadow(color: .black.opacity(0.15), radius: 3, x: 0, y: 1)
-                            .frame(maxWidth: ringSize * 0.34) // keep content inside chip
-                            .minimumScaleFactor(0.8)
-                    )
                     .shadow(color: .black.opacity(0.10), radius: 12, x: 0, y: 8)
                     .accessibilityHidden(true)
             }

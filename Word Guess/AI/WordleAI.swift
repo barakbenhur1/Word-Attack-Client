@@ -7,6 +7,7 @@ import Foundation
 import CoreML
 #if canImport(UIKit)
 import UIKit
+import SwiftUICore
 #endif
 
 // MARK: - Pretty trace
@@ -37,7 +38,7 @@ enum Trace {
 // MARK: - Public API
 
 public typealias GuessHistory = (word: String, feedback: String)
-public typealias AIDifficultyItem = (image: String, name: String)
+public typealias AIDifficultyItem = (image: String, name: String, color: Color)
 
 public enum Language: String { case en, he }
 
@@ -46,20 +47,20 @@ public enum AIDifficulty {
     typealias RawValue = AIDifficultyItem
     public init?(rawValue: AIDifficultyItem) {
         switch rawValue {
-        case ("easyAI", "Chad GPT"): self = .easy
-        case ("mediumAI", "Hell 9000"): self = .medium
-        case ("hardAI", "Spynet"): self = .hard
-        case ("bossAI", "This Guy"): self = .boss
+        case ("easyAI", "Chad GPT", .green): self = .easy
+        case ("mediumAI", "Hell 9000", .yellow): self = .medium
+        case ("hardAI", "Spynet", .orange): self = .hard
+        case ("bossAI", "This Guy", .red): self = .boss
         default: fatalError()
         }
     }
     
     public var rawValue: AIDifficultyItem {
         switch self {
-        case .easy: return ("easyAI", "Chad GPT")
-        case .medium: return ("mediumAI", "Hell 9000")
-        case .hard: return ("hardAI", "Spynet")
-        case .boss: return ("bossAI", "This Guy")
+        case .easy: return ("easyAI", "Chad GPT", .green)
+        case .medium: return ("mediumAI", "Hell 9000", .yellow)
+        case .hard: return ("hardAI", "Spynet", .orange)
+        case .boss: return ("bossAI", "This Guy", .red)
         }
     }
     
@@ -295,12 +296,10 @@ final class WordleAI: Singleton {
     
     // MARK: Boss cheat source (internal & optional)
     
-    private static var cheatAnswerProvider: (() -> String?)?
-    public static func installCheatAnswerProvider(_ provider: @escaping () -> String?) {
-        cheatAnswerProvider = provider
-    }
+    private var cheatAnswerProvider: (() -> String?)?
+    public func installBossEnhancementProvider(_ provider: @escaping () -> String?) { cheatAnswerProvider = provider }
     private func resolveCheatAnswer(lang: Language) -> String? {
-        if let p = Self.cheatAnswerProvider, let s = p(), s.count == 5 { return s }
+        if let p = cheatAnswerProvider, let s = p(), s.count == 5 { return s }
         let ud = UserDefaults.standard
         if let s1 = ud.string(forKey: "WordZap.HiddenAnswer.\(lang.rawValue)"),
            s1.count == 5 { return s1 }

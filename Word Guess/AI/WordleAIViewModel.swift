@@ -17,62 +17,92 @@ public func generateWord(for lang: Language, length: Int = 5) -> String {
 @MainActor
 @Observable
 class WordleAIViewModel {
+    // MARK: - Private Parameters
     private let lang: Language
     private var history: [GuessHistory]
     private var solverWarmedup: Bool = false
     
+    private let showPhraseTime: UInt64 = 10_000_000_000
+    private let hidePhraseTime: UInt64 = 6_000_000_000
+    
+    private var blocked: Bool
     private var currentPhrase: String = ""
     
-    var isReadyToGuess: Bool { solverWarmedup }
-    
-    var showPhrase: Bool {
+    private var didStartShowing: Bool
+    private var showPhrase: Bool = false {
         didSet {
-            guard !showPhrase else { return currentPhrase = PhraseProvider.shared.nextPhrase() }
-            Task(priority: .utility) {
-                try? await Task.sleep(nanoseconds: 4_000_000_000)
-                showPhrase = true
+            if showPhrase { currentPhrase = PhraseProvider.shared.nextPhrase() }
+            guard !blocked else { return blocked = false }
+            Task(priority: .utility) { [weak self] in
+                guard let self else { return }
+                try? await Task.sleep(nanoseconds: showPhrase ? showPhraseTime : hidePhraseTime)
+                withAnimation { self.showPhrase.toggle() }
             }
         }
     }
     
-    var phrase: String { currentPhrase }
+    private var bossProvider: (() -> String?) = { nil } {
+        didSet {
+            Task.detached(priority: .high) { [weak self] in
+                guard let self else { return }
+                await solver().installBossEnhancementProvider(bossProvider)
+            }
+        }
+    }
+    
+    // MARK: - Public Parameters
+    var isReadyToGuess: Bool { solverWarmedup }
+    
+    var phrase: String { currentPhrase.localized }
+    
+    var showPhraseValue: Bool { showPhrase }
     
     init(language: Language, startingHistory: [GuessHistory] = []) {
-        showPhrase = false
         lang = language
         history = startingHistory
         solverWarmedup = WordleAIProvider.aiWarmedup
-        Task(priority: .userInitiated) {
-            guard !solverWarmedup  else { return startShowingwPhrases() }
+        didStartShowing = false
+        blocked = false
+        Task(priority: .userInitiated) { [weak self] in
+            guard let self else { return }
+            guard !solverWarmedup  else { return }
             await solver().warmUp()
             solverWarmedup = true
-            startShowingwPhrases()
         }
     }
     
     // MARK: - Public
     
-    func saveToHistory(guess: GuessHistory) { history.append(guess) }
+    func startShowingPhrase() {
+        guard !didStartShowing else { return }
+        didStartShowing = true
+        blocked = false
+        showPhrase = true
+    }
     
-    func cleanHistory(with guessHistory: [GuessHistory] = []) { history = guessHistory }
+    func hidePhrase() {
+        blocked = true
+        showPhrase = false
+    }
+    
+    func manageMemory(with guessHistory: [GuessHistory] = [], provider: @escaping (() -> String?) = { nil }) {
+        bossProvider = provider
+        history = guessHistory
+    }
     
     func addDetachedFirstGuess(with formatter: @escaping (_ value: String) -> GuessHistory) {
-        Task(priority: .utility) {
+        Task(priority: .utility) { [weak self] in
+            guard let self else { return }
             guard let guess = try? await solver().pickFirstGuessFromModel(lang: lang) else { return }
             saveToHistory(guess: formatter(guess.map { String($0).returnChar(isFinal: $0 == guess.last) }.joined()))
         }
     }
     
+    func saveToHistory(guess: GuessHistory) { history.append(guess) }
+    
     func deassign() { WordleAIProvider.shared.deassign() }
     
     // MARK: - Private
-    
-    private func startShowingwPhrases() {
-        Task(priority: .utility) {
-            try? await Task.sleep(nanoseconds: 4_000_000_000)
-            showPhrase = true
-        }
-    }
     
     private func solver() async -> WordleAI { await WordleAIProvider.shared.sharedAsync() }
     
@@ -85,6 +115,7 @@ class WordleAIViewModel {
                 return try await solver().guessNext(history: history,
                                                     lang: lang,
                                                     difficulty: difficulty)
+                
             } catch { fatalError("Solver faild to provide a guess") }
         }
         

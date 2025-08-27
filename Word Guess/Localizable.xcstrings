@@ -169,6 +169,171 @@
         }
       }
     },
+    "Absolute" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אבסולוטי"
+          }
+        }
+      }
+    },
+    "Accent misplaced" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הטעמה לא במקום"
+          }
+        }
+      }
+    },
+    "Adjective annihilator" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מכלה התיאורים"
+          }
+        }
+      }
+    },
+    "Affix annihilated" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הצורן הושמד"
+          }
+        }
+      }
+    },
+    "Again? Really?" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "שוב? באמת?"
+          }
+        }
+      }
+    },
+    "Agreement error" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "שגיאת התאמה"
+          }
+        }
+      }
+    },
+    "ai" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "בינה מלאכותית"
+          }
+        }
+      }
+    },
+    "Allocating KV cache…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מקצה מקום בראם…"
+          }
+        }
+      }
+    },
+    "Almost ready…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "כמעט סיימנו..."
+          }
+        }
+      }
+    },
+    "Alpha words" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מילות אלפא"
+          }
+        }
+      }
+    },
+    "Alphabet assassin" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "רוצח האלפבית"
+          }
+        }
+      }
+    },
+    "Always wrong" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "תמיד טועה"
+          }
+        }
+      }
+    },
+    "Amateur hour" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "שעת חובבנים"
+          }
+        }
+      }
+    },
+    "Apostrophe abuse" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "שימוש לרעה באפוסטרוף"
+          }
+        }
+      }
+    },
+    "Are you sure you want to reset AI difficulty process is unreversible" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "האם אתה בטוח שאתה רוצה לאתחל את רמת הקושי של הבינה המלאכותית התהליך אינו הפיך"
+          }
+        }
+      }
+    },
     "back" : {
       "localizations" : {
         "he" : {
@@ -189,12 +354,106 @@
         }
       }
     },
-    "By exiting you will lose all progress" : {
+    "Basic" : {
+      "extractionState" : "manual",
       "localizations" : {
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "אם תצא תאבד את כל ההתקדמות שלך"
+            "value" : "בסיסי"
+          }
+        }
+      }
+    },
+    "Big word, small brain" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מילה גדולה, מוח קטן"
+          }
+        }
+      }
+    },
+    "Booting runtime…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מאתחל זמן ריצה…"
+          }
+        }
+      }
+    },
+    "Boring" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "משעמם"
+          }
+        }
+      }
+    },
+    "Bow before me" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "כרע לפניי"
+          }
+        }
+      }
+    },
+    "Bow down" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "שתחווה"
+          }
+        }
+      }
+    },
+    "Buzzword busted" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "באז־וורד נחשף"
+          }
+        }
+      }
+    },
+    "By exiting you will lose all progress" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "By exiting you will lose all progress (progress is saved only on difficulty level change)"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אם תצא תאבד את כל ההתקדמות שלך (ההתקדמות נשמרת רק במעבר בין רמות קושי)"
+          }
+        }
+      }
+    },
+    "C’mon already" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "נו כבר"
           }
         }
       }
@@ -209,6 +468,39 @@
         }
       }
     },
+    "Capitalization chaos" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "כאוס אותיות גדולות"
+          }
+        }
+      }
+    },
+    "Case closed" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "תיק סגור"
+          }
+        }
+      }
+    },
+    "Case mismatch" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אי־התאמה במקרים"
+          }
+        }
+      }
+    },
     "Chad GPT" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -216,6 +508,317 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "צ׳אד ג׳יפיטי"
+          }
+        }
+      }
+    },
+    "Champion here" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "האלוף כאן"
+          }
+        }
+      }
+    },
+    "Checkmate" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "שח־מט"
+          }
+        }
+      }
+    },
+    "Child’s play" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "משחק ילדים"
+          }
+        }
+      }
+    },
+    "Clause collapse" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "קריסת פסוקית"
+          }
+        }
+      }
+    },
+    "Clueless" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "חסר מושג"
+          }
+        }
+      }
+    },
+    "Cognate crash" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "קריסת הקוגנאט"
+          }
+        }
+      }
+    },
+    "Comma catastrophe" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "קטסטרופת פסיקים"
+          }
+        }
+      }
+    },
+    "Compiling graph optimizations…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מצבע אופטימיזציות לגרף…"
+          }
+        }
+      }
+    },
+    "Compound crushed" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הרכבה נמעכה"
+          }
+        }
+      }
+    },
+    "Conjugated!" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מוטה!"
+          }
+        }
+      }
+    },
+    "Conjugation crusher" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מועך ההטיות"
+          }
+        }
+      }
+    },
+    "Conquered" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "נכבשת"
+          }
+        }
+      }
+    },
+    "Corpora conqueror" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "כובש הקורפוסים"
+          }
+        }
+      }
+    },
+    "Crown mine" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הכתר שלי"
+          }
+        }
+      }
+    },
+    "Crowned champ" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אלוף מוכתר"
+          }
+        }
+      }
+    },
+    "Crushed" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "נרמסת"
+          }
+        }
+      }
+    },
+    "Damage -12" : {
+      "shouldTranslate" : false
+    },
+    "Dangling participle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "משתתף תלוי"
+          }
+        }
+      }
+    },
+    "Declension denied" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הטייה נדחתה"
+          }
+        }
+      }
+    },
+    "Declension dragon" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "דרקון ההטייה"
+          }
+        }
+      }
+    },
+    "Declined!" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "נדחה!"
+          }
+        }
+      }
+    },
+    "Defeated already" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "כבר הובסת"
+          }
+        }
+      }
+    },
+    "Derivation denied" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "גזירה נדחתה"
+          }
+        }
+      }
+    },
+    "Desperate much?" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "נואש, אה?"
+          }
+        }
+      }
+    },
+    "Destroyer of words" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "משמיד המילים"
+          }
+        }
+      }
+    },
+    "Diachronic disaster" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אסון דיאכרוני"
+          }
+        }
+      }
+    },
+    "Diction disaster" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אסון דיקציה"
+          }
+        }
+      }
+    },
+    "Dictionary > you" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "המילון > אתה"
+          }
+        }
+      }
+    },
+    "Dictionary dropout" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "נשר מהמילון"
           }
         }
       }
@@ -232,6 +835,39 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "דרגת קושי"
+          }
+        }
+      }
+    },
+    "Dominated" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "נשלטת"
+          }
+        }
+      }
+    },
+    "Dominion" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "דומיניון"
+          }
+        }
+      }
+    },
+    "Don’t bother" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אל תטרח"
           }
         }
       }
@@ -257,7 +893,40 @@
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "מוריד חבילת AI"
+            "value" : "מוריד חבילת בינה מלאכותית"
+          }
+        }
+      }
+    },
+    "Easy mode" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מצב קל"
+          }
+        }
+      }
+    },
+    "Elite only" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "לעילית בלבד"
+          }
+        }
+      }
+    },
+    "Embarrassing" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מביך"
           }
         }
       }
@@ -272,12 +941,100 @@
         }
       }
     },
+    "Epic fail" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "פייל אפי"
+          }
+        }
+      }
+    },
+    "Eponym error" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "שגיאת אפונימים"
+          }
+        }
+      }
+    },
+    "Error-prone editor" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "עורך מלא שגיאות"
+          }
+        }
+      }
+    },
+    "Etymology expert" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מומחה אטימולוגיה"
+          }
+        }
+      }
+    },
     "Exit" : {
       "localizations" : {
         "he" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "יציאה"
+          }
+        }
+      }
+    },
+    "Facepalm" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "פייספאלם"
+          }
+        }
+      }
+    },
+    "Fail faster" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "תיכשל מהר יותר"
+          }
+        }
+      }
+    },
+    "Failed linguist" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "בלשן כושל"
+          }
+        }
+      }
+    },
+    "Feast of victory" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "משתת הניצחון"
           }
         }
       }
@@ -293,6 +1050,39 @@
         }
       }
     },
+    "Final checks…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "בדיקות אחרונות…"
+          }
+        }
+      }
+    },
+    "Final strike" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "המכה הסופית"
+          }
+        }
+      }
+    },
+    "Final word" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "המילה האחרונה"
+          }
+        }
+      }
+    },
     "Finalizing…" : {
       "comment" : "ODR",
       "localizations" : {
@@ -300,6 +1090,160 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "מסיים…"
+          }
+        }
+      }
+    },
+    "Flawless" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מושלם"
+          }
+        }
+      }
+    },
+    "Forever winner" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מנצח לנצח"
+          }
+        }
+      }
+    },
+    "Fumbling" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מגמגם"
+          }
+        }
+      }
+    },
+    "Futile" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "חסר תועלת"
+          }
+        }
+      }
+    },
+    "Game over" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "גיים אובר"
+          }
+        }
+      }
+    },
+    "Game’s mine" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "המשחק שלי"
+          }
+        }
+      }
+    },
+    "Give up yet?" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "כבר מוותר?"
+          }
+        }
+      }
+    },
+    "Grammar 101" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "דקדוק 101"
+          }
+        }
+      }
+    },
+    "Grammar geek wins" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "חנון הדקדוק מנצח"
+          }
+        }
+      }
+    },
+    "Grammar goblin strikes" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "גובלין הדקדוק מכה"
+          }
+        }
+      }
+    },
+    "Grammar goblin wins" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "גובלין הדקדוק מנצח"
+          }
+        }
+      }
+    },
+    "Grammar gremlin" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "גרמלין הדקדוק"
+          }
+        }
+      }
+    },
+    "Guess goblin" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "גובלין הניחושים"
+          }
+        }
+      }
+    },
+    "Guess harder" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "תנחש חזק יותר"
           }
         }
       }
@@ -325,6 +1269,34 @@
         }
       }
     },
+    "Guesswork trash" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הימור גרוע"
+          }
+        }
+      }
+    },
+    "Hapax fail" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "כישלון האפקס"
+          }
+        }
+      }
+    },
+    "Heal +8" : {
+      "shouldTranslate" : false
+    },
+    "Health" : {
+      "shouldTranslate" : false
+    },
     "Hebrew" : {
       "localizations" : {
         "he" : {
@@ -335,12 +1307,68 @@
         }
       }
     },
-    "HP: %lld" : {
+    "Hopeless" : {
+      "extractionState" : "manual",
       "localizations" : {
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "חיים: %lld"
+            "value" : "חסר תקווה"
+          }
+        }
+      }
+    },
+    "Hopeless case" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מקרה אבוד"
+          }
+        }
+      }
+    },
+    "Hopeless fool" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "שוטה חסר תקווה"
+          }
+        }
+      }
+    },
+    "Hopeless mortal" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "בן־תמותה חסר תקווה"
+          }
+        }
+      }
+    },
+    "HP" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "חיים"
+          }
+        }
+      }
+    },
+    "Hybrid horror" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אימה היברידית"
           }
         }
       }
@@ -351,6 +1379,193 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "ℹ️"
+          }
+        }
+      }
+    },
+    "I always win" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אני תמיד מנצח"
+          }
+        }
+      }
+    },
+    "I eat words" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אני אוכל מילים"
+          }
+        }
+      }
+    },
+    "I reign" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אני מולך"
+          }
+        }
+      }
+    },
+    "Idiom idiot" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אידיוט האידיומים"
+          }
+        }
+      }
+    },
+    "Illiterate much?" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אנאלפבית הרבה?"
+          }
+        }
+      }
+    },
+    "Inevitable" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "בלתי נמנע"
+          }
+        }
+      }
+    },
+    "Inferior" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "נחות"
+          }
+        }
+      }
+    },
+    "Inflection infection" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "זיהום ההטיות"
+          }
+        }
+      }
+    },
+    "Inflection invader" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "פולש ההטיות"
+          }
+        }
+      }
+    },
+    "Initializing compute backend…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מאתחל שרת חישוב…"
+          }
+        }
+      }
+    },
+    "Invincible" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "בלתי מנוצח"
+          }
+        }
+      }
+    },
+    "IPA master here" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מאסטר IPA כאן"
+          }
+        }
+      }
+    },
+    "Is that all?" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "זה הכל?"
+          }
+        }
+      }
+    },
+    "Jargon jammed" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ז׳רגון תקוע"
+          }
+        }
+      }
+    },
+    "Just quit" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "פשוט תפרוש"
+          }
+        }
+      }
+    },
+    "Keep guessing" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "תמשיך לנחש"
+          }
+        }
+      }
+    },
+    "Lacking etymology" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "חסר אטימולוגיה"
           }
         }
       }
@@ -372,6 +1587,105 @@
         }
       }
     },
+    "Language dropout" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "נשר מהשפה"
+          }
+        }
+      }
+    },
+    "Laughable" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מצחיק"
+          }
+        }
+      }
+    },
+    "Lexeme lost" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "לקסמה אבדה"
+          }
+        }
+      }
+    },
+    "Lexical loser" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מפסידן לקסיקלי"
+          }
+        }
+      }
+    },
+    "Lexicon overlord" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "שליט הלקסיקון"
+          }
+        }
+      }
+    },
+    "Lexiconless" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ללא לקסיקון"
+          }
+        }
+      }
+    },
+    "Linguist laughs last" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הבלש צוחק אחרון"
+          }
+        }
+      }
+    },
+    "Linguist legend" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אגדת הבלשנות"
+          }
+        }
+      }
+    },
+    "Linguist lord" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אדון הבלשנים"
+          }
+        }
+      }
+    },
     "Loading" : {
       "localizations" : {
         "he" : {
@@ -389,6 +1703,50 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "טוען מודל בינה מלאכותית…"
+          }
+        }
+      }
+    },
+    "Loading tokenizer & vocab…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "טוען מילון…"
+          }
+        }
+      }
+    },
+    "Loading up attention kernels…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "טוען קרנלים…"
+          }
+        }
+      }
+    },
+    "Loanword lost" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מילה לועזית אבדה"
+          }
+        }
+      }
+    },
+    "Logophile? Doubtful" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "חובב מילים? מוטל בספק"
           }
         }
       }
@@ -421,12 +1779,134 @@
         }
       }
     },
+    "Loser energy" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "וייב של לוזר"
+          }
+        }
+      }
+    },
+    "Mapping weights into memory…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ממפה לזיכרון…"
+          }
+        }
+      }
+    },
+    "Mastermind" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מוח על"
+          }
+        }
+      }
+    },
+    "Mediocre" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "בינוני"
+          }
+        }
+      }
+    },
+    "Misplaced modifier" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "משלים לא במקום"
+          }
+        }
+      }
+    },
+    "Missed again" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "פספסת שוב"
+          }
+        }
+      }
+    },
     "Model is Loading up" : {
+      "extractionState" : "stale",
       "localizations" : {
         "he" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "המודל נטען"
+          }
+        }
+      }
+    },
+    "Morph master" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מאסטר מורף"
+          }
+        }
+      }
+    },
+    "Morph moron detected" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "טיפש מורפי זוהה"
+          }
+        }
+      }
+    },
+    "Morpheme master" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מאסטר המורפמות"
+          }
+        }
+      }
+    },
+    "Morphology meltdown" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "קריסת צורן"
+          }
+        }
+      }
+    },
+    "My victory" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הניצחון שלי"
           }
         }
       }
@@ -437,6 +1917,127 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "שם"
+          }
+        }
+      }
+    },
+    "Neologism noob" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "נוב של ניאולוגיזמים"
+          }
+        }
+      }
+    },
+    "Nice fail" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "איזה פייל"
+          }
+        }
+      }
+    },
+    "Nice try… not" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ניסיון יפה… לא"
+          }
+        }
+      }
+    },
+    "No brains" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "בלי מוח"
+          }
+        }
+      }
+    },
+    "No chance" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אין סיכוי"
+          }
+        }
+      }
+    },
+    "No contest" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אין תחרות"
+          }
+        }
+      }
+    },
+    "No match" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "לא תואם"
+          }
+        }
+      }
+    },
+    "No sweat" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "בקלות"
+          }
+        }
+      }
+    },
+    "Nonce word nonsense" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "שטות של מילה חד־פעמית"
+          }
+        }
+      }
+    },
+    "Not even close" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "לא קרוב בכלל"
+          }
+        }
+      }
+    },
+    "Nothing personal" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "שום דבר אישי"
           }
         }
       }
@@ -457,6 +2058,17 @@
         }
       }
     },
+    "Obsolete usage!" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "שימוש מיושן!"
+          }
+        }
+      }
+    },
     "OK" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -464,6 +2076,204 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "אישור"
+          }
+        }
+      }
+    },
+    "Orthography fail" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "כישלון אורתוגרפי"
+          }
+        }
+      }
+    },
+    "Orthography overlord" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "שליט האורתוגרפיה"
+          }
+        }
+      }
+    },
+    "Out of your league" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מחוץ לליגה שלך"
+          }
+        }
+      }
+    },
+    "Outclassed" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "נחות ברמה"
+          }
+        }
+      }
+    },
+    "Outplayed" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "התחכמתי עליך"
+          }
+        }
+      }
+    },
+    "Owned" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "בבעלותי"
+          }
+        }
+      }
+    },
+    "Parse-tree prince" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "נסיך עץ הניתוח"
+          }
+        }
+      }
+    },
+    "Parsing error" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "שגיאת ניתוח"
+          }
+        }
+      }
+    },
+    "Pathetic effort" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מאמץ פתטי"
+          }
+        }
+      }
+    },
+    "Pathetic lexicon" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אוצר מילים עלוב"
+          }
+        }
+      }
+    },
+    "Pathetic pedagogy" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "פדגוגיה פתטית"
+          }
+        }
+      }
+    },
+    "Pathetic play" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "משחק פתטי"
+          }
+        }
+      }
+    },
+    "Pathetic try" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ניסיון פתטי"
+          }
+        }
+      }
+    },
+    "Pedant power" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "כוח הפדנט"
+          }
+        }
+      }
+    },
+    "Pedant prevails" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הפדנט מנצח"
+          }
+        }
+      }
+    },
+    "Phoneme fail" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "כישלון פונמה"
+          }
+        }
+      }
+    },
+    "Phonetics fail" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "כישלון פונטי"
+          }
+        }
+      }
+    },
+    "Phonetics phantom" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "פנטום הפונטיקה"
           }
         }
       }
@@ -478,12 +2288,78 @@
         }
       }
     },
+    "Plural? Wrong!" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "רבים? טעות!"
+          }
+        }
+      }
+    },
+    "Polysyllabic panic" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "פאניקה רב־הברתית"
+          }
+        }
+      }
+    },
+    "Pragmatics prevail" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הפרגמטיקה מנצחת"
+          }
+        }
+      }
+    },
+    "Pragmatics punisher" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מעניש הפרגמטיקה"
+          }
+        }
+      }
+    },
+    "Predictable" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "צפוי"
+          }
+        }
+      }
+    },
     "Preparing AI Model" : {
       "localizations" : {
         "he" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "מכין מודל בינה מלאכותית"
+          }
+        }
+      }
+    },
+    "Preposition predator" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "טורף המיליות"
           }
         }
       }
@@ -498,6 +2374,61 @@
         }
       }
     },
+    "Proofread, peasant" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "תבצע הגהה, איכר"
+          }
+        }
+      }
+    },
+    "Punctuation panic" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "פאניקת פיסוק"
+          }
+        }
+      }
+    },
+    "Puny vocab" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אוצר מילים דל"
+          }
+        }
+      }
+    },
+    "Rare word, rarer win" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מילה נדירה, ניצחון נדיר יותר"
+          }
+        }
+      }
+    },
+    "Read a book" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "תקרא ספר"
+          }
+        }
+      }
+    },
     "Ready" : {
       "comment" : "ODR",
       "localizations" : {
@@ -505,6 +2436,115 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "מוכן"
+          }
+        }
+      }
+    },
+    "Register mismatch" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אי־התאמת משלב"
+          }
+        }
+      }
+    },
+    "Repeat failure" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "כישלון חוזר"
+          }
+        }
+      }
+    },
+    "Reset AI Difficulty" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אתחל את רמת הקושי של הבינה המלאכותית"
+          }
+        }
+      }
+    },
+    "Reset Difficulty" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אתחל את רמת הקושי"
+          }
+        }
+      }
+    },
+    "Ridiculous" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מגוחך"
+          }
+        }
+      }
+    },
+    "Root rot" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ריקבון השורש"
+          }
+        }
+      }
+    },
+    "Run-on alert" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "משפט רץ ללא סוף"
+          }
+        }
+      }
+    },
+    "Sad effort" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מאמץ עצוב"
+          }
+        }
+      }
+    },
+    "Schooled" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "חונכת"
+          }
+        }
+      }
+    },
+    "Schoolyard spelling bee fail" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "כישלון בחידון איות של החצר"
           }
         }
       }
@@ -535,6 +2575,72 @@
         }
       }
     },
+    "Semantic drift" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "היסחפות סמנטית"
+          }
+        }
+      }
+    },
+    "Semantic supremacy" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "עליונות סמנטית"
+          }
+        }
+      }
+    },
+    "Semantics slayer" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "משמיד הסמנטיקה"
+          }
+        }
+      }
+    },
+    "Semantics sovereign" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ריבון הסמנטיקה"
+          }
+        }
+      }
+    },
+    "Semantics win" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "המשמעות ניצחה"
+          }
+        }
+      }
+    },
+    "Sentence fragment" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "קטע משפטי"
+          }
+        }
+      }
+    },
     "Settings" : {
       "localizations" : {
         "en" : {
@@ -547,6 +2653,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "הגדרות"
+          }
+        }
+      }
+    },
+    "Shameful" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מביש"
           }
         }
       }
@@ -587,6 +2704,28 @@
         }
       }
     },
+    "Sloppy" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מרושל"
+          }
+        }
+      }
+    },
+    "Sloppy mess" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "בלגן מרושל"
+          }
+        }
+      }
+    },
     "sound" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -604,6 +2743,50 @@
         }
       }
     },
+    "Speechless already" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "כבר חסר מילים"
+          }
+        }
+      }
+    },
+    "Spellcheck champ (not you)" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אלוף בדיקת איות (לא אתה)"
+          }
+        }
+      }
+    },
+    "Spelling snob approved" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "חנון האיות מאשר"
+          }
+        }
+      }
+    },
+    "Split infinitive!" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "שם פועל מפוצל!"
+          }
+        }
+      }
+    },
     "Spynet" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -611,6 +2794,127 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "ספאינט"
+          }
+        }
+      }
+    },
+    "Still wrong" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "עדיין טעות"
+          }
+        }
+      }
+    },
+    "Stress pattern slip" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "החלקת הטעם"
+          }
+        }
+      }
+    },
+    "Subject–verb mismatch" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אי־התאמה בין נושא לפועל"
+          }
+        }
+      }
+    },
+    "Supreme" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "עליון"
+          }
+        }
+      }
+    },
+    "Surrender now" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "להיכנע עכשיו"
+          }
+        }
+      }
+    },
+    "Swing and miss" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "החטאה מוחלטת"
+          }
+        }
+      }
+    },
+    "Syntax error" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "שגיאת תחביר"
+          }
+        }
+      }
+    },
+    "Syntax skeleton" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "שלד התחביר"
+          }
+        }
+      }
+    },
+    "Syntax sorcerer" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "קוסם התחביר"
+          }
+        }
+      }
+    },
+    "Syntax sorcery" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "כישוף תחבירי"
+          }
+        }
+      }
+    },
+    "Syntax tree snapped" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "עץ התחביר נשבר"
           }
         }
       }
@@ -643,12 +2947,78 @@
         }
       }
     },
+    "This is mine" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "זה שלי"
+          }
+        }
+      }
+    },
     "Time Attack" : {
       "localizations" : {
         "he" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "מתקפת זמן"
+          }
+        }
+      }
+    },
+    "Tiny lexicon" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "לקסיקון זעום"
+          }
+        }
+      }
+    },
+    "Too easy" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "קל מדי"
+          }
+        }
+      }
+    },
+    "Too slow" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "איטי מדי"
+          }
+        }
+      }
+    },
+    "Tooltip" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "טיפ"
+          }
+        }
+      }
+    },
+    "Top tier" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "דרג עליון"
           }
         }
       }
@@ -669,6 +3039,39 @@
         }
       }
     },
+    "Trash guess" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ניחוש על הפנים"
+          }
+        }
+      }
+    },
+    "Trivial win" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ניצחון טריוויאלי"
+          }
+        }
+      }
+    },
+    "Try harder" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "תנסה חזק יותר"
+          }
+        }
+      }
+    },
     "try it, or not ;)" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -676,6 +3079,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "תנסה אותה, או לא ;)"
+          }
+        }
+      }
+    },
+    "Try literacy" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "נסה אוריינות"
+          }
+        }
+      }
+    },
+    "Try phonology next time" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "נסה פונולוגיה בפעם הבאה"
           }
         }
       }
@@ -690,6 +3115,105 @@
         }
       }
     },
+    "Typo tyrant wins" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "עריץ השגיאות ניצח"
+          }
+        }
+      }
+    },
+    "Undefeated" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "בלתי מובס"
+          }
+        }
+      }
+    },
+    "Unworthy" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "לא ראוי"
+          }
+        }
+      }
+    },
+    "Verb vanquisher" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מכניע הפעלים"
+          }
+        }
+      }
+    },
+    "Verbal void" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "חלל מילולי"
+          }
+        }
+      }
+    },
+    "Vocab vacuum" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ואקום של אוצר מילים"
+          }
+        }
+      }
+    },
+    "Vocabulary vacuum" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ואקום אוצר מילים"
+          }
+        }
+      }
+    },
+    "Weak guess" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ניחוש חלש"
+          }
+        }
+      }
+    },
+    "Weak syntax" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "תחביר חלש"
+          }
+        }
+      }
+    },
     "win" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -697,6 +3221,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "ניצחת"
+          }
+        }
+      }
+    },
+    "Word bank bankrupt" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "בנק המילים פשט רגל"
           }
         }
       }
@@ -718,6 +3253,39 @@
         }
       }
     },
+    "Word king" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מלך המילים"
+          }
+        }
+      }
+    },
+    "Word weakling" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "חלש מילים"
+          }
+        }
+      }
+    },
+    "Wordless wonder" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "פלא חסר מילים"
+          }
+        }
+      }
+    },
     "words" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -731,6 +3299,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "מילים"
+          }
+        }
+      }
+    },
+    "Words obey me" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "המילים מצייתות לי"
           }
         }
       }
@@ -751,12 +3330,56 @@
         }
       }
     },
+    "Wrong again" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "שוב טעות"
+          }
+        }
+      }
+    },
+    "Wrongling" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "טועה-לוג"
+          }
+        }
+      }
+    },
     "You %@" : {
       "localizations" : {
         "he" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "אתה %@"
+          }
+        }
+      }
+    },
+    "You can’t win" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אין לך סיכוי לנצח"
+          }
+        }
+      }
+    },
+    "You skipped linguistics" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "דילגת על בלשנות"
           }
         }
       }
@@ -768,6 +3391,116 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "אתה נגד בינה מלאכותית"
+          }
+        }
+      }
+    },
+    "You wish" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "היית רוצה"
+          }
+        }
+      }
+    },
+    "Your end" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "סופך הגיע"
+          }
+        }
+      }
+    },
+    "Your grammar is cringe" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הדקדוק שלך מביך"
+          }
+        }
+      }
+    },
+    "Your loss" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ההפסד שלך"
+          }
+        }
+      }
+    },
+    "Your tense is wrong" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הטיית הזמן שלך שגויה"
+          }
+        }
+      }
+    },
+    "Zap lord" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אדון הזאפ"
+          }
+        }
+      }
+    },
+    "Zap zap" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "זאפ זאפ"
+          }
+        }
+      }
+    },
+    "Zap!" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "זאפ!"
+          }
+        }
+      }
+    },
+    "Zapped again" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "זאפ שוב"
+          }
+        }
+      }
+    },
+    "Zero effort" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אפס מאמץ"
           }
         }
       }

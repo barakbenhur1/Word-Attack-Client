@@ -7,17 +7,15 @@
 
 import SwiftUI
 
-struct FetchingView<VM: ViewModel>: View {
-    @State var vm: VM
+struct FetchingView: View {
+    let word: String
     
-    var body: some View {
-        fetchingView()
-    }
+    var body: some View { fetchingView() }
     
     @ViewBuilder private func fetchingView() -> some View {
         VStack {
             Spacer()
-            if vm.wordValue == "" { ServerLoadingView(title: "Fetching Word".localized) }
+            if word.isEmpty { ServerLoadingView(title: "Fetching Word".localized) }
             Spacer()
         }
     }

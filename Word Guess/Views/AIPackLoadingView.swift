@@ -16,7 +16,7 @@ public struct AIPackLoadingView: View {
     public var messages: [String] = AIPackLoadingView.defaultWarmupMessages
     
     // UX knobs
-    public var cycleEvery: TimeInterval = 1.1         // seconds per status line
+    public var cycleEvery: TimeInterval = 3         // seconds per status line
     public var orbSize: CGFloat = 88
     public var cornerRadius: CGFloat = 20
     public var showsCancel: Bool = false
@@ -27,11 +27,17 @@ public struct AIPackLoadingView: View {
     
     // Time anchor for cycling text
     @State private var appearDate: Date = .distantPast
+    @State private var colors: [Color] = [
+        .red,
+        .orange,
+        .yellow,
+        .green,
+    ]
     
     public init(
         title: String = "Loading AI Model…",
         messages: [String] = AIPackLoadingView.defaultWarmupMessages,
-        cycleEvery: TimeInterval = 1.1,
+        cycleEvery: TimeInterval = 0.25,
         orbSize: CGFloat = 88,
         cornerRadius: CGFloat = 20,
         showsCancel: Bool = true,
@@ -39,7 +45,7 @@ public struct AIPackLoadingView: View {
     ) {
         self.title = title.localized
         self.messages = messages
-        self.cycleEvery = max(0.6, cycleEvery)
+        self.cycleEvery = max(0, cycleEvery)
         self.orbSize = orbSize
         self.cornerRadius = cornerRadius
         self.showsCancel = showsCancel
@@ -47,43 +53,44 @@ public struct AIPackLoadingView: View {
     }
     
     public var body: some View {
-        VStack(spacing: 18) {
-            // Pretty, calm orb
-            WarmupOrb(size: orbSize)
-                .accessibilityHidden(true)
-            
+        VStack(spacing: -10) {
             // Title + rotating status text
-            TimelineView(.animation) { context in
-                let t = context.date.timeIntervalSince(appearDate)
-                let i = max(0, Int(floor(t / cycleEvery))) % max(messages.count, 1)
-                VStack(spacing: 8) {
-                    Text(title)
-                        .font(.system(.headline, design: .rounded).weight(.semibold))
-                        .foregroundStyle(Palette.titleFill)
-                        .multilineTextAlignment(.center)
-                        .accessibilityAddTraits(.isHeader)
+            VStack(spacing: 0) {
+                Text(title)
+                    .font(.system(.headline, design: .rounded).weight(.semibold))
+                    .foregroundStyle(Palette.titleFill)
+                    .multilineTextAlignment(.center)
+                    .accessibilityAddTraits(.isHeader)
+                
+                ZStack {
+                    // Pretty, calm orb
+                    WarmupOrb(size: orbSize)
+                        .accessibilityHidden(true)
                     
-                    ZStack {
-                        // Crossfade between lines (or static if Reduce Motion)
-                        Text(messages[i])
-                            .font(.system(.subheadline, design: .rounded))
-                            .foregroundStyle(Palette.subtitleFill)
+                    // Crossfade between lines (or static if Reduce Motion)
+                    TimelineView(.animation) { context in
+                        let t = context.date.timeIntervalSince(appearDate)
+                        let i = max(0, Int(floor(t / cycleEvery))) % max(messages.count, 1)
+                        Text(messages[i].localized)
+                            .font(.system(size: 160, design: .rounded).weight(.thin))
+                            .foregroundStyle(colors[i % max(colors.count, 1)].opacity(0.15))
                             .multilineTextAlignment(.center)
                             .lineLimit(2)
-                            .minimumScaleFactor(0.9)
                             .transition(.opacity)
+                            .offset(x: -25, y: -15)
+                            .animation(reduceMotion ? nil : .easeInOut(duration: 0.35), value: i)
                     }
-                    .animation(reduceMotion ? nil : .easeInOut(duration: 0.35), value: i)
                 }
-                .padding(.horizontal, 16)
             }
+            .padding(.horizontal, 16)
             
             // Indeterminate shimmer bar
-            ShimmerProgressBar(height: 6)
-                .accessibilityLabel("Model is Loading up")
+            //            ShimmerProgressBar(height: 6)
+            //                .accessibilityLabel("Model is Loading up")
             
             if showsCancel {
-                Button(role: .cancel) { onCancel?() } label: {
+                Button(role: .cancel) { onCancel?() }
+                label: {
                     Label("Cancel", systemImage: "xmark")
                         .labelStyle(.titleAndIcon)
                         .font(.system(size: 15, weight: .medium, design: .rounded))
@@ -92,6 +99,7 @@ public struct AIPackLoadingView: View {
                 }
                 .buttonStyle(.bordered)
                 .tint(Palette.buttonTint)
+                .padding(.top, 15)
                 .accessibilityLabel("Cancel")
             }
         }
@@ -117,21 +125,10 @@ public struct AIPackLoadingView: View {
 
 public extension AIPackLoadingView {
     static let defaultWarmupMessages: [String] = [
-        "Booting runtime…",
-        "Initializing compute backend…",
-        "Loading tokenizer & vocab…",
-        "Mapping weights into memory…",
-        "Allocating KV cache…",
-        "Loading up attention kernels…",
-        "Compiling graph optimizations…",
-        "JIT-compiling ops…",
-        "Priming caches…",
-        "Seeding RNG…",
-        "Validating model checksum…",
-        "Syncing configuration…",
-        "Establishing secure session…",
-        "Final checks…",
-        "Almost ready…"
+        "◜   ",
+        "   ◝",
+        "   ◞",
+        "◟   ",
     ]
 }
 

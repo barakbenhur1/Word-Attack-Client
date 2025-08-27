@@ -295,6 +295,17 @@ final class BestGuessProducer: Singleton {
         dprint(debug, "cap = \(cap)")
         dprint(debug, "banned = \(Array(banned).sorted())")
         
+        // === NEW: yForbidden (indices where each letter was marked Y) ===
+        var yForbidden: [String: Set<Int>] = [:]
+        for j in 0..<n {
+            for key in posSeen[j] {
+                let parts = key.split(separator: "|"); guard parts.count == 2 else { continue }
+                if parts[1] == "Y" {
+                    yForbidden[String(parts[0]), default: []].insert(j)
+                }
+            }
+        }
+        
         // 3) Count greens already present (consume allowance at index-level).
         var greenCount: [String: Int] = [:]
         for j in 0..<n {
@@ -340,7 +351,7 @@ final class BestGuessProducer: Singleton {
             dprint(true, "yellowCount = \(yellowCount)")
         }
         
-        // 4) Build candidates per index from posSeen.
+        // 4) Build candidates per index from posSeen (+ inferred Y’s).
         func parse(_ key: String) -> Guess? {
             let parts = key.split(separator: "|")
             guard parts.count == 2 else { return nil }
@@ -352,6 +363,15 @@ final class BestGuessProducer: Singleton {
             case "X": return (ch, .noMatch)
             default:  return nil
             }
+        }
+        
+        // residual helper
+        @inline(__always)
+        func residual(_ ch: String) -> Int {
+            let lim = cap[ch] ?? Int.max
+            let need = min(minOcc[ch] ?? 0, lim)
+            let g    = greenSeen[ch] ?? 0
+            return max(0, need - g)
         }
         
         var candidates: [[Guess]] = Array(repeating: [], count: n)
@@ -366,8 +386,8 @@ final class BestGuessProducer: Singleton {
                     if !banned.contains(g.char) { greens.append(g) }
                 case .partialMatch:
                     if !banned.contains(g.char) {
-                        let residual = (cap[g.char] ?? Int.max) - (greenCount[g.char] ?? 0)
-                        if residual > 0 { yellows.append(g) }
+                        let res = (cap[g.char] ?? Int.max) - (greenCount[g.char] ?? 0)
+                        if res > 0 { yellows.append(g) }
                     }
                 case .noMatch:
                     grays.append(g)
@@ -375,13 +395,25 @@ final class BestGuessProducer: Singleton {
                 }
             }
             
+            // === NEW: add inferred Y’s when there is no green at this index ===
+            if greens.isEmpty {
+                let seenYHere = Set(yellows.map { $0.char })
+                for (ch, _) in minOcc {
+                    if banned.contains(ch) { continue }
+                    if residual(ch) <= 0 { continue }
+                    if seenYHere.contains(ch) { continue }
+                    if (yForbidden[ch] ?? []).contains(j) { continue } // Wordle semantics: Y means "not here"
+                    yellows.append((ch, .partialMatch))
+                }
+            }
+            // === end NEW ===
+            
             if !greens.isEmpty {
-                // ✅ Keep greens, and only add Y for *other* letters (never same letter),
-                // and only when a genuine residual is needed.
+                // ✅ Keep greens; also keep Y of other letters only when informative.
                 var list = greens.sorted { $0.char < $1.char }
-                let greenChars = Set(greens.map { $0.char }) // letters that are green at this index
+                let greenChars = Set(greens.map { $0.char })
                 for y in yellows.sorted(by: { $0.char < $1.char }) where !greenChars.contains(y.char) {
-                    let needExtraCopy = (minOcc[y.char] ?? 0) > (greenSeen[y.char] ?? 0)
+                    let needExtraCopy = residual(y.char) > 0
                     let lonelyYellow  = !greenLetters.contains(y.char) && (yellowCount[y.char] == 1)
                     if needExtraCopy || lonelyYellow {
                         list.append(y)
@@ -406,7 +438,7 @@ final class BestGuessProducer: Singleton {
             }
         }
         
-        // 5) DFS enumerate with caps; Y/G consume cap, X does not.
+        // 5) DFS enumerate with caps; if any green exists at an index, restrict to G only.
         var results: [[Guess]] = []
         var seenRows = Set<String>()
         var used: [String: Int] = [:]
@@ -422,14 +454,11 @@ final class BestGuessProducer: Singleton {
                 }
                 return
             }
-            
             let rawOpts = candidates[j]
             if rawOpts.isEmpty { return }
-            
-            // If any green exists at this index, restrict to greens only (prevents Y where G exists).
             let opts = rawOpts.contains(where: { $0.color == .exactMatch })
-                ? rawOpts.filter { $0.color == .exactMatch }
-                : rawOpts
+            ? rawOpts.filter { $0.color == .exactMatch }
+            : rawOpts
             
             for g in opts {
                 switch g.color {
@@ -565,7 +594,7 @@ final class BestGuessProducer: Singleton {
     fileprivate func tag(_ c: CharColor) -> String {
         if c == .exactMatch { return "G" }
         if c == .partialMatch { return "Y" }
-        if c == .noMatch { return "X" }
+        if c == .noMatch     { return "X" }
         return "_"
     }
     

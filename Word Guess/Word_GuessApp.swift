@@ -6,13 +6,12 @@
 //
 
 import SwiftUI
+import AVFAudio
 import FirebaseAuth
+import GoogleMobileAds
 
 @Observable
-class LanguageSetting: ObservableObject {
-    // initialise this from UserDefaults if you like
-    var locale = Locale.current
-}
+class LanguageSetting: ObservableObject { var locale = Locale.current }
 
 @main
 struct WordGuessApp: App {
@@ -25,6 +24,16 @@ struct WordGuessApp: App {
     private let router = Router()
     private let login = LoginViewModel()
     
+    init() {
+        GADMobileAds.sharedInstance().start(completionHandler: nil)
+        GADMobileAds.sharedInstance().requestConfiguration.testDeviceIdentifiers = [
+            "b1f8623026df56ee0408eaae157025db"
+        ]
+        
+        try? AVAudioSession.sharedInstance().setCategory(.ambient, mode: .default, options: [])
+        try? AVAudioSession.sharedInstance().setActive(true)
+    }
+    
     var body: some Scene {
         WindowGroup {
             RouterView {
@@ -32,7 +41,6 @@ struct WordGuessApp: App {
                 else if loginHaneler.hasGender { DifficultyView() }
                 else { ServerLoadingView() }
             }
-            .environmentObject(loginHaneler)
             .onAppear {
                 guard let currentUser = Auth.auth().currentUser else { return }
                 guard let givenName = currentUser.displayName else { return }
@@ -58,6 +66,7 @@ struct WordGuessApp: App {
         .environmentObject(router)
         .environmentObject(audio)
         .environmentObject(persistenceController)
+        .environmentObject(loginHaneler)
         .environment(local)
         .environment(\.locale, local.locale)
         .environment(\.managedObjectContext, persistenceController.container.viewContext)
