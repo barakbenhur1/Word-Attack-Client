@@ -10,6 +10,12 @@ import SwiftUI
 struct AppTitle: View {
     private let title = "Word Guess".localized
     
+    let wordZapColors: [CharColor] = [
+        .exactMatch,  // Emerald Green (Correct)
+        .partialMatch,   // Amber Yellow (Present)
+        .noMatch,  // Graphite Gray (Absent)
+    ]
+    
     var body: some View {
         let start = String(title[0..<4])
         let end = String(title[4..<title.count])
@@ -19,7 +25,7 @@ struct AppTitle: View {
                 ForEach(.constant(array), id: \.self) { c in
                     if let i = array.firstIndex(of: c.wrappedValue) {
                         ZStack {
-                            i == 0 || i == 3 ? CharColor.exactMatch.color : i == 2 ? CharColor.partialMatch.color : CharColor.noMatch.color
+                            wordZapColors[i % wordZapColors.count].color
                             Text(c.wrappedValue)
                                 .font(.largeTitle)
                         }
@@ -40,7 +46,7 @@ struct AppTitle: View {
                 ForEach(.constant(array), id: \.self) { c in
                     if let i = array.firstIndex(of: c.wrappedValue) {
                         ZStack {
-                            i == 1 ? CharColor.exactMatch.color : i == 0 ? CharColor.partialMatch.color : CharColor.noMatch.color
+                            wordZapColors[i % wordZapColors.count].color
                             Text(c.wrappedValue)
                                 .font(.largeTitle)
                         }

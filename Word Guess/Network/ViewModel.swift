@@ -11,9 +11,9 @@ import Foundation
 class ViewModel: ObservableObject {
     var wordValue: String { return "" }
     
-    internal func calculateColors(with guess: [String], length: Int) -> [CharColor] {
+    internal func calculateColors(with guess: [String]) -> [CharColor] {
         var colors = [CharColor](repeating: .noMatch,
-                                 count: length)
+                                 count: guess.count)
         
         var containd = [String: Int]()
         
@@ -23,14 +23,14 @@ class ViewModel: ObservableObject {
             else { containd[key]! += 1 }
         }
         
-        for i in 0..<guess.count {
+        for i in 0..<min(guess.count ,wordValue.count) {
             if guess[i].lowercased().isEquel(wordValue[i].lowercased()) {
                 containd[guess[i].lowercased().returnChar(isFinal: false)]! -= 1
                 colors[i] = .exactMatch
             }
         }
         
-        for i in 0..<guess.count {
+        for i in 0..<min(guess.count ,wordValue.count) {
             guard !guess[i].lowercased().isEquel(wordValue[i].lowercased()) else { continue }
             if wordValue.lowercased().toSuffixChars().contains(guess[i].lowercased().returnChar(isFinal: true)) && containd[guess[i].lowercased().returnChar(isFinal: false)]! > 0 {
                 containd[guess[i].lowercased().returnChar(isFinal: false)]! -= 1

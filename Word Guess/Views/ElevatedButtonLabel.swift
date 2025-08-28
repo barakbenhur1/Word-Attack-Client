@@ -23,6 +23,15 @@ public struct ElevatedButtonStyle: ButtonStyle {
         }
         
         // Built-ins (✅ with start/end points)
+        public static let login = Palette (
+            gradient: LinearGradient(
+                colors: [
+                    .white,
+                    Color(hue: 0.61, saturation: 0.73, brightness: 0.96)
+                ],
+                startPoint: .topLeading, endPoint: .bottomTrailing)
+        )
+        
         public static let teal  = Palette(
             gradient: LinearGradient(
                 colors: [
@@ -132,18 +141,23 @@ public struct ElevatedButtonStyle: ButtonStyle {
 public struct ElevatedButtonLabel: View {
     public var title: LocalizedStringKey
     public var systemImage: String? = nil  // or put emoji directly in title
+    public var image: String? = nil  // or put emoji directly in title
     public var alignment: Alignment = .center
     
-    public init(_ title: LocalizedStringKey, systemImage: String? = nil, alignment: Alignment = .center) {
+    public init(_ title: LocalizedStringKey, systemImage: String? = nil, image: String? = nil, alignment: Alignment = .center) {
         self.title = title
         self.systemImage = systemImage
+        self.image = image
         self.alignment = alignment
     }
     
     public var body: some View {
         HStack(spacing: 12) {
-            if let s = systemImage {
-                Image(systemName: s)
+            if let systemImage {
+                Image(systemName: systemImage)
+                    .font(.system(size: 18, weight: .semibold, design: .rounded))
+            } else if let image {
+                Image(image)
                     .font(.system(size: 18, weight: .semibold, design: .rounded))
             }
             Text(title)

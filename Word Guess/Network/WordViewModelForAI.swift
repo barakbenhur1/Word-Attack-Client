@@ -12,8 +12,12 @@ import Alamofire
 class WordViewModelForAI: ViewModel {
     private let network: Network
     var word: WordForAiMode
-    var isError: Bool
     var aiDownloaded: Bool = ModelStorage.localHasUsableModels()
+    var fatalError: Bool { errorCount >= maxErrorCount }
+    var numberOfErrors: Int { errorCount }
+    
+    private let maxErrorCount: Int
+    private var errorCount: Int
     
     override var wordValue: String { word.value }
     
@@ -21,27 +25,29 @@ class WordViewModelForAI: ViewModel {
         network = Network(root: "words")
         word = .empty
         aiDownloaded = false
-        isError = false
+        maxErrorCount = 3
+        errorCount = 0
     }
-    
     
     func initMoc() async {
         await MainActor.run { [weak self] in
             guard let self else { return }
             let local = LanguageSetting()
             let language = local.locale.identifier.components(separatedBy: "_").first
-            withAnimation { self.word = .init(value: language == "he" ? "אבגדה" : "abcde") }
+            word = .init(value: language == "he" ? "אבגדה" : "abcde")
         }
     }
     
     func word(email: String) async {
         let value: WordForAiMode? = await network.send(route: "word",
-                                                              parameters: ["email": email])
+                                                       parameters: ["email": email])
+        
+        guard let value else { return await handleError() }
         await MainActor.run { [weak self] in
             guard let self else { return }
-            guard let value else { return isError = true }
             Trace.log("🛟", "word is \(value.value)", Fancy.mag)
-            withAnimation { self.word = value }
+            word = value
+            errorCount = 0
         }
     }
     
@@ -50,6 +56,14 @@ class WordViewModelForAI: ViewModel {
                                   aiMatrix: [[String]], aiColors: [[CharColor]]) -> [BestGuess] {
         return BestGuessProducerProvider.guesser.perIndexCandidatesSparse(matrix: matrix, colors: colors,
                                                                 aiMatrix: aiMatrix, aiColors: aiColors,
-                                                                /*debug: true*/)
+                                                                debug: true)
+    }
+    
+    private func handleError() async {
+        await MainActor.run { [weak self] in
+            guard let self else { return }
+            word = .empty
+            errorCount += 1
+        }
     }
 }

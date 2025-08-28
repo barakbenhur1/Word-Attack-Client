@@ -19,15 +19,18 @@ struct CharColor: Comparable {
                                                                  startPoint: .leading,
                                                                  endPoint: .trailing))
     static let noMatch: CharColor = .init(id: 1,
-                                          color: .linearGradient(colors: [.gray.opacity(0.6), .gray],
+                                          color: .linearGradient(colors: [Color(red: 99/255, green: 110/255, blue: 114/255).opacity(0.6),
+                                                                          Color(red: 99/255, green: 110/255, blue: 114/255)],
                                                                  startPoint: .leading,
                                                                  endPoint: .trailing))
     static let partialMatch: CharColor = .init(id: 2,
-                                               color: .linearGradient(colors: [.yellow.opacity(0.6), .yellow],
+                                               color: .linearGradient(colors: [Color(red: 255/255, green: 193/255, blue: 7/255).opacity(0.6),
+                                                                               Color(red: 255/255, green: 193/255, blue: 7/255)],
                                                                       startPoint: .leading,
                                                                       endPoint: .trailing))
     static let exactMatch: CharColor = .init(id: 3,
-                                             color: .linearGradient(colors: [.green.opacity(0.6), .green],
+                                             color: .linearGradient(colors: [Color(red: 46/255, green: 204/255, blue: 113/255).opacity(0.6),
+                                                                             Color(red: 46/255, green: 204/255, blue: 113/255)],
                                                                     startPoint: .leading,
                                                                     endPoint: .trailing))
     
@@ -182,7 +185,9 @@ struct WordView<VM: ViewModel>: View {
         .animation(.easeOut(duration: 0.8), value: cleanCells)
         .realisticCell(color: cleanCells ? .white.opacity(0.8) : colors[i].baseColor.opacity(0.8))
         .elevated(cornerRadius: 4)
-        .realStone(cornerRadius: 4)
+        .realStone(cornerRadius: 4,
+                   crackCount: Int.random(in: 3...5),
+                   seed: UInt64.random(in: 1337...2337))
     }
     
     @ViewBuilder

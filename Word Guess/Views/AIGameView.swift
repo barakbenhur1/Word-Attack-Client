@@ -26,12 +26,13 @@ struct AIGameView<VM: WordViewModelForAI>: View {
     
     private let rows: Int = 5
     private var length: Int { DifficultyType.ai.getLength() }
+    
     private var email: String? { loginHandeler.model?.email }
     private var gender: String? { loginHandeler.model?.gender }
     
     private let fullHP :Int = 100
-    private let hitPoints = 5
-    private let noGuessHitPoints = 10
+    private let hitPoints = 10
+    private let noGuessHitPoints = 40
     
     @State private var pack = AIPackManager()
     
@@ -62,6 +63,7 @@ struct AIGameView<VM: WordViewModelForAI>: View {
     @State private var showExitPopup: Bool
     @State private var showCelebrate: Bool
     @State private var showMourn: Bool
+    @State private var showError: Bool
     @State private var wordNumber = 0
     @State private var aiDifficulty: AIDifficulty {
         didSet {
@@ -86,10 +88,10 @@ struct AIGameView<VM: WordViewModelForAI>: View {
         didSet {
             switch turn {
             case .player:
-                guard current > 0 && aiMatrix.count > current - 1 else { break }
+                guard current > 0 && aiMatrix.count > current - 1 && aiColors.count > current - 1 else { break }
                 ai?.saveToHistory(guess: (aiMatrix[current - 1].joined(), aiColors[current - 1].map { $0.getColor() }.joined()))
             case .ai:
-                guard aiMatrix.count > current && aiMatrix[current].filter({ !$0.isEmpty }).isEmpty else { break }
+                guard matrix.count > current && colors.count > current && aiMatrix.count > current && aiMatrix[current].filter({ !$0.isEmpty }).isEmpty else { break }
                 ai?.saveToHistory(guess: (matrix[current].joined(), colors[current].map { $0.getColor() }.joined()))
             }
             
@@ -110,7 +112,10 @@ struct AIGameView<VM: WordViewModelForAI>: View {
     
     private var language: String? { return local.locale.identifier.components(separatedBy: "_").first }
     
-    private var firstGuess: (_ string: String) -> GuessHistory { { string in return (string, vm.calculateColors(with: string.map { "\($0)" }, length: length).map { $0.getColor() }.joined()) } }
+    private var firstGuess: (_ string: String) -> GuessHistory { { string in
+        guard !string.isEmpty else { return ("", "") }
+        return (string, vm.calculateColors(with: string.map { "\($0)" }).map { $0.getColor() }.joined()) }
+    }
     
     private var allBestGuesses: [BestGuess] { return vm.perIndexCandidatesSparse(matrix: matrix,
                                                                      colors: colors,
@@ -127,8 +132,15 @@ struct AIGameView<VM: WordViewModelForAI>: View {
         initalConfigirationForWord()
     }
     
+    
     private func handleError() {
-        guard vm.isError else { return }
+        guard !vm.fatalError else { return showError = true }
+        guard vm.word == .empty && vm.numberOfErrors > 0 else { return }
+        guard let email else { return closeViewAfterErorr() }
+        Task(priority: .userInitiated) { await vm.word(email: email) }
+    }
+    
+    private func closeViewAfterErorr() {
         keyboard.show = true
         audio.stop()
         router.navigateBack()
@@ -162,6 +174,8 @@ struct AIGameView<VM: WordViewModelForAI>: View {
         self.showCelebrate = false
         
         self.showMourn = false
+        
+        self.showError = false
         
         self.current = 0
         
@@ -263,8 +277,7 @@ struct AIGameView<VM: WordViewModelForAI>: View {
     
     private func calculatePlayerTurn(i: Int) {
         guard i == current else { return }
-        colors[i] = vm.calculateColors(with: matrix[i],
-                                 length: length)
+        colors[i] = vm.calculateColors(with: matrix[i])
        
         if chackWord(index: i, matrix: matrix) { makeHitOnAI(hitPoints: rows * hitPoints - current * hitPoints) }
         else if current == rows - 1 {
@@ -277,8 +290,7 @@ struct AIGameView<VM: WordViewModelForAI>: View {
     
     private func calculateAITurn(i: Int) {
         guard i == current else { return }
-        aiColors[i] = vm.calculateColors(with: aiMatrix[i],
-                                   length: length)
+        aiColors[i] = vm.calculateColors(with: aiMatrix[i])
         
         if chackWord(index: i, matrix: aiMatrix) { makeHitOnPlayer(hitPoints: rows * hitPoints - current * hitPoints) }
         else if current < rows - 1 { current = i + 1 }
@@ -303,14 +315,14 @@ struct AIGameView<VM: WordViewModelForAI>: View {
         }
         .onChange(of: vm.aiDownloaded, initializeAI)
         .onChange(of: ai?.showPhraseValue, handlePhrase)
-        .onTapGesture {
-            switch aiDifficulty {
-            case .easy: aiDifficulty = .medium
-            case .medium: aiDifficulty = .hard
-            case .hard: aiDifficulty = .boss
-            case .boss: aiDifficulty = .easy
-            }
-        }
+//        .onTapGesture {
+//            switch aiDifficulty {
+//            case .easy: aiDifficulty = .medium
+//            case .medium: aiDifficulty = .hard
+//            case .hard: aiDifficulty = .boss
+//            case .boss: aiDifficulty = .easy
+//            }
+//        }
     }
     
     @ViewBuilder private func contant() -> some View {
@@ -349,6 +361,12 @@ struct AIGameView<VM: WordViewModelForAI>: View {
             audio.stop()
             router.navigateBack()
         }, message: { Text("By exiting you will lose all progress") })
+        .customAlert("Network error",
+                     type: .fail,
+                     isPresented: $showError,
+                     actionText: "OK",
+                     action: closeViewAfterErorr,
+                     message: { Text("something went wrong") })
     }
     
     @ViewBuilder private func topBar() -> some View {
@@ -395,7 +413,7 @@ struct AIGameView<VM: WordViewModelForAI>: View {
     }
     
     @ViewBuilder private func gameBody(proxy: GeometryProxy) -> some View {
-        if !vm.isError && vm.word != .empty {
+        if !vm.fatalError && vm.word != .empty {
             VStack(spacing: 8) {
                 ZStack(alignment: .bottom) {
                     ZStack(alignment: .top) {
@@ -539,7 +557,7 @@ struct AIGameView<VM: WordViewModelForAI>: View {
             ZStack(alignment: .topLeading) { gameBody(proxy: proxy) }
                 .ignoresSafeArea(.keyboard)
                 .task { await vm.word(email: loginHandeler.model!.email) }
-                .onChange(of: vm.isError, handleError)
+                .onChange(of: vm.numberOfErrors, handleError)
                 .onChange(of: vm.word, handleWordChange)
                 .ignoresSafeArea(.keyboard)
         }
@@ -563,7 +581,7 @@ struct AIGameView<VM: WordViewModelForAI>: View {
     }
     
     @ViewBuilder private func overlayViews(proxy: GeometryProxy) -> some View {
-        if !vm.isError && !endFetchAnimation && !keyboard.show { FetchingView(word: vm.wordValue) }
+        if !vm.fatalError && !endFetchAnimation && !keyboard.show { FetchingView(word: vm.wordValue) }
         else { aiIntro() }
     }
     
@@ -658,14 +676,15 @@ struct AIGameView<VM: WordViewModelForAI>: View {
         
         cleanCells = false
         
-        turn = .player
-        
         ai?.manageMemory(with: []) {
             switch aiDifficulty {
             case .boss: return vm.wordValue
             default: return nil
             }
         }
+        
+        guard turn != .player else { return }
+        withAnimation(.easeInOut(duration: 0.6)) { turn = .player }
     }
 }
 

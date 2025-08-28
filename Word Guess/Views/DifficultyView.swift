@@ -150,7 +150,6 @@ struct DifficultyView: View {
                 .padding()
             }
             .clipShape(RoundedRectangle(cornerRadius: 60))
-//            .elevated(cornerRadius: 60)
             
             logoutButton()
                 .padding(.all, 20)

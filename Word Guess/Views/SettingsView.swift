@@ -8,7 +8,7 @@
 import SwiftUI
 
 enum SettingsOption: String {
-    case language = "language", sound = "sound", clearAI = "ai"
+    case language = "language", sound = "sound", ai = "ai"
 }
 
 struct SettingsOptionButton: Identifiable {
@@ -22,7 +22,7 @@ struct SettingsView: View {
     @EnvironmentObject private var router: Router
     
     @State private var items: [SettingsOptionButton] = [.init(type: .sound),
-                                                        .init(type: .clearAI),
+                                                        .init(type: .ai),
                                                         .init(type: .language)]
     
     @State private var showResetAI: Bool = false
@@ -64,7 +64,7 @@ struct SettingsView: View {
                                     guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
                                     Task { await MainActor.run { UIApplication.shared.open(url) } }
                                 case .sound: audio.isOn.toggle()
-                                case .clearAI: showResetAI = true
+                                case .ai: showResetAI = true
                                 }
                             } label: {
                                 ZStack {
@@ -87,7 +87,7 @@ struct SettingsView: View {
                                             .foregroundStyle(.black)
                                             .tint(.cyan)
                                             .toggleStyle(.switch)
-                                    case .clearAI:
+                                    case .ai:
                                         HStack {
                                             Text(item.type.rawValue.localized)
                                                 .font(.headline)

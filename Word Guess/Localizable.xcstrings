@@ -238,6 +238,12 @@
     "ai" : {
       "extractionState" : "manual",
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "AI"
+          }
+        },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
@@ -1699,10 +1705,16 @@
     "Loading AI Model…" : {
       "extractionState" : "manual",
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Loading AI\nModel…"
+          }
+        },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "טוען מודל בינה מלאכותית…"
+            "value" : "טוען מודל\nבינה מלאכותית…"
           }
         }
       }
@@ -1736,6 +1748,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "מילה לועזית אבדה"
+          }
+        }
+      }
+    },
+    "Login with google" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "התחברות עם גוגל"
           }
         }
       }
@@ -1845,17 +1867,6 @@
         }
       }
     },
-    "Model is Loading up" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "המודל נטען"
-          }
-        }
-      }
-    },
     "Morph master" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1931,6 +1942,9 @@
           }
         }
       }
+    },
+    "Network error" : {
+
     },
     "Nice fail" : {
       "extractionState" : "manual",
@@ -2668,26 +2682,6 @@
         }
       }
     },
-    "Sign in" : {
-      "localizations" : {
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "התחברות"
-          }
-        }
-      }
-    },
-    "Sign in with Google" : {
-      "localizations" : {
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "התחברות עם גוגל"
-          }
-        }
-      }
-    },
     "skip" : {
       "localizations" : {
         "en" : {
@@ -2725,6 +2719,9 @@
           }
         }
       }
+    },
+    "something went wrong" : {
+
     },
     "sound" : {
       "extractionState" : "manual",

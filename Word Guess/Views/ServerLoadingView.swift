@@ -23,6 +23,7 @@ public struct ServerLoadingView: View {
     @Environment(\.sizeCategory) private var sizeCategory
     @State private var appearDate: Date = .distantPast
     @State private var frozenIndex: Int? = nil
+    @State private var opacity:  CGFloat = 0
     
     public init(title: String = "Working on it…",
                 messages: [String] = ServerLoadingView.defaultServerMessages,
@@ -48,14 +49,14 @@ public struct ServerLoadingView: View {
         // ---- Fixed metrics to prevent vertical movement ----
         let textWidth     = ringSize * 0.92
         let titleHeight   = uiLineHeight(.headline) + 2          // single-line title
-        let messageHeight = uiLineHeight(.subheadline) * 2 + 4   // reserve up to 2 lines
+//        let messageHeight = uiLineHeight(.subheadline) * 2 + 4  // reserve up to 2 lines
         
         // Precompute the content height (ring + spacing + text + optional cancel)
         let baseContentHeight = (ringSize + 32)    // ring stack fixed frame
         + 18                  // spacing
         + titleHeight
         + 8
-        + messageHeight
+//        + messageHeight
         let cancelBlock: CGFloat = showsCancel ? (44 + 8) : 0    // approx button + spacing
         
         VStack(spacing: 18) {
@@ -80,7 +81,7 @@ public struct ServerLoadingView: View {
                 
                 // Center logo chip (swap to your logo if you like)
                 Circle()
-                    .fill(LoadPalette.centerFill)
+                    .fill(LoadPalette.track)
                     .frame(width: ringSize * 0.38, height: ringSize * 0.38)
                     .shadow(color: .black.opacity(0.10), radius: 12, x: 0, y: 8)
                     .accessibilityHidden(true)
@@ -88,16 +89,16 @@ public struct ServerLoadingView: View {
             .frame(width: ringSize + 32, height: ringSize + 32) // <- fixed ring stack
             
             // ---------- TITLE + STATUS (fixed width & height) ----------
-            TimelineView(.animation) { context in
-                let t = context.date.timeIntervalSince(appearDate)
-                let count = messages.count
+//            TimelineView(.animation) { context in
+//                let t = context.date.timeIntervalSince(appearDate)
+//                let count = messages.count
                 
                 // Compute live index
-                let liveIdx = count > 0 ? max(0, Int(floor(t / cycleEvery))) % count : 0
+//                let liveIdx = count > 0 ? max(0, Int(floor(t / cycleEvery))) % count : 0
                 
                 // Display index freezes during dismiss
-                let displayIdx = frozenIndex ?? liveIdx
-                let current = (count > 0) ? messages[displayIdx] : ""
+//                let displayIdx = frozenIndex ?? liveIdx
+//                let current = (count > 0) ? messages[displayIdx] : ""
                 
                 VStack(spacing: 8) {
                     // Title: fixed height
@@ -109,27 +110,27 @@ public struct ServerLoadingView: View {
                         .accessibilityAddTraits(.isHeader)
                     
                     // Status text: lock to 2-line height, crossfade only when active
-                    ZStack {
-                        Text(current)
-                            .id(displayIdx) // drives crossfade
-                            .font(.system(.subheadline, design: .rounded))
-                            .foregroundStyle(LoadPalette.subtitle)
-                            .multilineTextAlignment(.center)
-                            .lineLimit(2)
-                            .minimumScaleFactor(0.9)
-                            .frame(width: textWidth, height: messageHeight, alignment: .center)
-                            .fixedSize(horizontal: false, vertical: true)
-                            .transition(.opacity)
-                    }
-                    .animation(isActive && frozenIndex == nil
-                               ? (reduceMotion ? nil : .easeInOut(duration: 0.35))
-                               : nil,
-                               value: displayIdx)
+//                    ZStack {
+//                        Text(current)
+//                            .id(displayIdx) // drives crossfade
+//                            .font(.system(.subheadline, design: .rounded))
+//                            .foregroundStyle(LoadPalette.subtitle)
+//                            .multilineTextAlignment(.center)
+//                            .lineLimit(2)
+//                            .minimumScaleFactor(0.9)
+//                            .frame(width: textWidth, height: messageHeight, alignment: .center)
+//                            .fixedSize(horizontal: false, vertical: true)
+//                            .transition(.opacity)
+//                    }
+//                    .animation(isActive && frozenIndex == nil
+//                               ? (reduceMotion ? nil : .easeInOut(duration: 0.35))
+//                               : nil,
+//                               value: displayIdx)
                 }
                 .padding(.horizontal, 16)
-            }
+//            }
             // Don’t animate container layout when the message index changes
-            .transaction { $0.animation = nil }
+//            .transaction { $0.animation = nil }
             
             if showsCancel {
                 Button(role: .cancel) { onCancel?() } label: {
@@ -160,6 +161,11 @@ public struct ServerLoadingView: View {
         .onAppear {
             appearDate = Date()
             UIImpactFeedbackGenerator(style: .soft).impactOccurred()
+            
+            Task(priority: .utility) {
+                try? await Task.sleep(nanoseconds: 100_000_000)
+                withAnimation { opacity = 1 }
+            }
         }
         .ignoresSafeArea(.keyboard)
         // Freeze the current message index the instant we start dismissing
@@ -172,6 +178,7 @@ public struct ServerLoadingView: View {
                 frozenIndex = liveIdx
             }
         }
+        .opacity(opacity)
     }
     
     // UIKit line height for a given text style (respects Dynamic Type)

@@ -43,6 +43,7 @@ struct GameView<VM: WordViewModel>: View {
     @State private var timeAttackAnimationDone = true
     @State private var endFetchAnimation = false
     @State private var interstitialAdManager = InterstitialAdsManager(adUnitID: "GameInterstitial")
+    @State private var showError: Bool = false
     
     @State private var cleanCells = false
     
@@ -67,8 +68,7 @@ struct GameView<VM: WordViewModel>: View {
             for j in 0..<guesswork[i].count {
                 matrix[i][j] = guesswork[i][j]
             }
-            colors[i] = vm.calculateColors(with: matrix[i],
-                                     length: length)
+            colors[i] = vm.calculateColors(with: matrix[i])
         }
         
         guard !keyboard.show || vm.word.number == 0 || vm.word.number % InterstitialAdInterval != 0 else { return }
@@ -111,7 +111,14 @@ struct GameView<VM: WordViewModel>: View {
             guard interstitialAdManager.interstitialAdLoaded else { return }
             interstitialAdManager.displayInterstitialAd { initalConfigirationForWord() }
         }
+        .customAlert("Network error",
+                     type: .fail,
+                     isPresented: $showError,
+                     actionText: "OK",
+                     action: handleError,
+                     message: { Text("something went wrong") })
     }
+    
     
     @ViewBuilder private func topBar() -> some View {
         HStack {
@@ -367,8 +374,7 @@ struct GameView<VM: WordViewModel>: View {
     }
     
     private func nextLine(i: Int)  {
-        colors[i] = vm.calculateColors(with: matrix[i],
-                                 length: length)
+        colors[i] = vm.calculateColors(with: matrix[i])
         
         let guess = matrix[i].joined()
         

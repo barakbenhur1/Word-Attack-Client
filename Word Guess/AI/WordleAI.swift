@@ -970,14 +970,30 @@ private extension WordleAI {
             applySoftRepeatPenalty(at: pos, used: used, result: result, constraints: constraints, id2c: id2c, logits: &masked)
             forceDeficitIfNeeded(at: pos, constraints: constraints, used: used, invMap: inv, logits: &masked)
             avoidExtraCopiesWhileDeficit(at: pos, constraints: constraints, used: used, id2c: id2c, logits: &masked)
+            applyEarlyTurnDuplicateCap(turnIndex: turnIndex, used: used, constraints: constraints, id2c: id2c, logits: &masked) // early turn anti-spam
             maskDuplicatesUnlessRequired(at: pos, constraints: constraints, used: used, id2c: id2c, logits: &masked)
             
             var nextId = sampleRestricted(logits: masked, candidates: clean, temperature: temp, topK: topK)
             var ch = id2c[nextId]
+            
+            // Post-sample guard: enforce early duplicate cap even if sampler chose a masked token.
+            if let picked = ch,
+               exceedsEarlyCap(picked, used: used, constraints: constraints, turnIndex: turnIndex) {
+                if let alt = bestAltUnderEarlyCap(logits: masked, candidates: clean, id2c: id2c,
+                                                  used: used, constraints: constraints, turnIndex: turnIndex) {
+                    nextId = alt.id
+                    ch = alt.ch
+                } else {
+                    let fb = pickFallbackChar(position: pos, used: used, constraints: constraints, lang: lang)
+                    ch = fb; if let forced = inv[fb]?.first { nextId = forced }
+                }
+            }
+            
             if ch == nil || !isAllowed(ch!, at: pos, used: used, constraints: constraints) {
                 let fb = pickFallbackChar(position: pos, used: used, constraints: constraints, lang: lang)
                 ch = fb; if let forced = inv[fb]?.first { nextId = forced }
             }
+            
             if let c = ch { result.append(c); used[c, default: 0] += 1 }
             do { logits = try decodeOnce(nextId: nextId) }
             catch {
@@ -1029,14 +1045,30 @@ private extension WordleAI {
             applySoftRepeatPenalty(at: pos, used: used, result: result, constraints: constraints, id2c: id2c, logits: &masked)
             forceDeficitIfNeeded(at: pos, constraints: constraints, used: used, invMap: inv, logits: &masked)
             avoidExtraCopiesWhileDeficit(at: pos, constraints: constraints, used: used, id2c: id2c, logits: &masked)
+            applyEarlyTurnDuplicateCap(turnIndex: turnIndex, used: used, constraints: constraints, id2c: id2c, logits: &masked) // early turn anti-spam
             maskDuplicatesUnlessRequired(at: pos, constraints: constraints, used: used, id2c: id2c, logits: &masked)
             
             var nextId = sampleRestricted(logits: masked, candidates: clean, temperature: temp, topK: topK)
             var ch = id2c[nextId]
+            
+            // Post-sample guard
+            if let picked = ch,
+               exceedsEarlyCap(picked, used: used, constraints: constraints, turnIndex: turnIndex) {
+                if let alt = bestAltUnderEarlyCap(logits: masked, candidates: clean, id2c: id2c,
+                                                  used: used, constraints: constraints, turnIndex: turnIndex) {
+                    nextId = alt.id
+                    ch = alt.ch
+                } else {
+                    let fb = pickFallbackChar(position: pos, used: used, constraints: constraints, lang: lang)
+                    ch = fb; if let forced = inv[fb]?.first { nextId = forced }
+                }
+            }
+            
             if ch == nil || !isAllowed(ch!, at: pos, used: used, constraints: constraints) {
                 let fb = pickFallbackChar(position: pos, used: used, constraints: constraints, lang: lang)
                 ch = fb; if let forced = inv[fb]?.first { nextId = forced }
             }
+            
             if let c = ch { result.append(c); used[c, default: 0] += 1 }
             logits = try svc.step(tokenId: Int32(nextId), expectedVocab: spec.vocab)
         }
@@ -1137,15 +1169,31 @@ private extension WordleAI {
             applySoftRepeatPenalty(at: pos, used: used, result: result, constraints: constraints, id2c: id2c, logits: &masked)
             forceDeficitIfNeeded(at: pos, constraints: constraints, used: used, invMap: inv, logits: &masked)
             avoidExtraCopiesWhileDeficit(at: pos, constraints: constraints, used: used, id2c: id2c, logits: &masked)
+            applyEarlyTurnDuplicateCap(turnIndex: turnIndex, used: used, constraints: constraints, id2c: id2c, logits: &masked) // early turn anti-spam
             maskDuplicatesUnlessRequired(at: pos, constraints: constraints, used: used, id2c: id2c, logits: &masked)
             
             var nextId = sampleRestricted(logits: masked, candidates: clean, temperature: temp, topK: topK)
             var ch = id2c[nextId]
+            
+            // Post-sample guard
+            if let picked = ch,
+               exceedsEarlyCap(picked, used: used, constraints: constraints, turnIndex: turnIndex) {
+                if let alt = bestAltUnderEarlyCap(logits: masked, candidates: clean, id2c: id2c,
+                                                  used: used, constraints: constraints, turnIndex: turnIndex) {
+                    nextId = alt.id
+                    ch = alt.ch
+                } else {
+                    Trace.log("🚫", "over-masked @\(pos) → fallback char", Fancy.gray)
+                    let fb = pickFallbackChar(position: pos, used: used, constraints: constraints, lang: lang)
+                    ch = fb; if let forced = inv[fb]?.first { nextId = forced }
+                }
+            }
+            
             if ch == nil || !isAllowed(ch!, at: pos, used: used, constraints: constraints) {
-                Trace.log("🚫", "over-masked @\(pos) → fallback char", Fancy.gray)
                 let fb = pickFallbackChar(position: pos, used: used, constraints: constraints, lang: lang)
                 ch = fb; if let forced = inv[fb]?.first { nextId = forced }
             }
+            
             if let c = ch { result.append(c); used[c, default: 0] += 1 }
             ids.removeFirst(); ids.append(nextId)
             logits = try predictLogitsFallback(inputIds: ids, model: model)
@@ -1314,6 +1362,39 @@ private extension WordleAI {
         }
     }
     
+    // EARLY DUPLICATE CAP POLICY
+    // Apply until history.count > 3, i.e., active for history.count ∈ {0,1,2,3}.
+    private enum EarlyDupCapPolicy {
+        static let applyWhileHistoryCountAtMost = 3  // extend/shorten the phase here
+        static var maxCopiesPerLetter: (_ index: Int) -> (Int) { { index in return index < applyWhileHistoryCountAtMost ? 1 : 2 } } // tighten/loosen the cap here
+    }
+    
+    @inline(__always)
+    func normChar(_ ch: Character) -> Character { return String(ch).lowercased().first ?? ch }  // English needs lowercasing; Hebrew finals are treated as distinct glyphs elsewhere.
+    
+    /// Early-game hard cap: while history.count ≤ 3, do not allow >2 copies of the same
+    /// letter unless history has proven minCount[ch] ≥ 3.
+    func applyEarlyTurnDuplicateCap(
+        turnIndex: Int,
+        used: [Character:Int],
+        constraints: MaskedConstraints,
+        id2c: [Int: Character],
+        logits: inout [Float]
+    ) {
+        guard turnIndex <= EarlyDupCapPolicy.applyWhileHistoryCountAtMost else { return }
+        let cap = EarlyDupCapPolicy.maxCopiesPerLetter(turnIndex)
+        
+        // Normalize "used" to lowercase keys.
+        var usedN: [Character:Int] = [:]
+        for (k, v) in used { usedN[normChar(k), default: 0] += v }
+        
+        for (tid, chrRaw) in id2c where tid < logits.count {
+            let ch = normChar(chrRaw)
+            let required = constraints.minCount[ch, default: 0]
+            if required < cap + 1, usedN[ch, default: 0] >= cap { logits[tid] = -1e30 }
+        }
+    }
+    
     func maskDuplicatesUnlessRequired(at pos: Int, constraints: MaskedConstraints, used: [Character:Int],
                                       id2c: [Int: Character], logits: inout [Float]) {
         var remaining = 0
@@ -1324,6 +1405,7 @@ private extension WordleAI {
             if used[ch, default: 0] >= allow { logits[tid] = -1e30 }
         }
     }
+    
     func forceDeficitIfNeeded(at pos: Int, constraints: MaskedConstraints, used: [Character:Int],
                               invMap: [Character:[Int]], logits: inout [Float]) {
         let remainingSlots = 5 - pos
@@ -1335,6 +1417,7 @@ private extension WordleAI {
         guard deficit > 0, deficit >= remainingSlots else { return }
         for i in 0..<logits.count where !keep.contains(i) { logits[i] = -1e30 }
     }
+    
     func isAllowed(_ ch: Character, at position: Int, used: [Character:Int], constraints: MaskedConstraints) -> Bool {
         if constraints.disallow.contains(ch) { return false }
         if constraints.bannedAt[position].contains(ch) { return false }
@@ -1342,18 +1425,22 @@ private extension WordleAI {
         if let mx = constraints.maxCount[ch], used[ch, default: 0] >= mx { return false }
         return true
     }
+    
     func invert(_ id2c: [Int: Character]) -> [Character:[Int]] {
         var out: [Character:[Int]] = [:]
         for (tid, ch) in id2c { out[ch, default: []].append(tid) }
         for (k, v) in out { out[k] = v.sorted() }
         return out
     }
+    
     func filteredId2c(_ id2c: [Int: Character], vocab: Int) -> [Int: Character] {
         var out: [Int: Character] = [:]; out.reserveCapacity(min(id2c.count, vocab))
         for (tid, ch) in id2c where tid >= 0 && tid < vocab { out[tid] = ch }
         return out
     }
+    
     func tokenStartsWithSpace(tokenId: Int) -> Bool { tokenizer.decode([tokenId]).first == " " }
+    
     func pickFallbackChar(position: Int, used: [Character:Int], constraints: MaskedConstraints, lang: Language) -> Character {
         for ch in fallbackOrder(for: lang) {
             let need = constraints.minCount[ch, default: 0]
@@ -1367,7 +1454,48 @@ private extension WordleAI {
         }
         return (lang == .en) ? "e" : "י"
     }
-    func fallbackOrder(for lang: Language) -> [Character] { lang == .en ? Array("etaoinshrdlcumwfgypbvkjxqz") : Array("יוהרלמאשתנכבדסגפצחעקטז") }
+    
+    func fallbackOrder(for lang: Language) -> [Character] {
+        lang == .en ? Array("etaoinshrdlcumwfgypbvkjxqz") : Array("יוהרלמאשתנכבדסגפצחעקטז")
+    }
+    
+    // MARK: Post-sample early-cap guard
+    
+    @inline(__always)
+    func exceedsEarlyCap(_ ch: Character, used: [Character:Int], constraints: MaskedConstraints, turnIndex: Int) -> Bool {
+        guard turnIndex <= EarlyDupCapPolicy.applyWhileHistoryCountAtMost else { return false }
+        let cap = EarlyDupCapPolicy.maxCopiesPerLetter(turnIndex)
+        let c = normChar(ch)
+        let required = constraints.minCount[c, default: 0]
+        if required >= cap + 1 { return false } // proven need for triple+
+        var usedN: [Character:Int] = [:]
+        for (k, v) in used { usedN[normChar(k), default: 0] += v }
+        return usedN[c, default: 0] >= cap
+    }
+    
+    /// Best legal alternative under the early-cap (highest logit among allowed letters).
+    func bestAltUnderEarlyCap(
+        logits: [Float],
+        candidates: [Int],
+        id2c: [Int:Character],
+        used: [Character:Int],
+        constraints: MaskedConstraints,
+        turnIndex: Int
+    ) -> (id: Int, ch: Character)? {
+        var bestId = -1
+        var bestVal = -Float.infinity
+        var bestCh: Character? = nil
+        for id in candidates where id < logits.count {
+            guard let c0 = id2c[id] else { continue }
+            let c = normChar(c0)
+            if exceedsEarlyCap(c, used: used, constraints: constraints, turnIndex: turnIndex) { continue }
+            if logits[id] > bestVal {
+                bestVal = logits[id]; bestId = id; bestCh = c0
+            }
+        }
+        if let ch = bestCh, bestId >= 0 { return (bestId, ch) }
+        return nil
+    }
 }
 
 // MARK: - Model utils & sampling

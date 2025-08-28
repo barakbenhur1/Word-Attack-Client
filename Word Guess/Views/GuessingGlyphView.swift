@@ -127,7 +127,7 @@ public struct GuessingGlyphView: View {
                 let glyph = index == 0 ? glyphSymbol.capitalizedFirst : glyphSymbol
                 
                 let eased = phase * phase * (3 - 2 * phase)
-                let angle = Angle.degrees(50 * sin(eased * 2 * .pi))
+                let angle = Angle.degrees(10 * sin(eased * 2 * .pi))
                 let scale = 1.0 + 0.03 * sin(eased * 2 * .pi)
                 
                 baseStyledText(glyph)

@@ -67,6 +67,8 @@ public struct AIPackLoadingView: View {
                     WarmupOrb(size: orbSize)
                         .accessibilityHidden(true)
                     
+                    let isHE = Locale.current.identifier.components(separatedBy: "_").first == "he"
+                    
                     // Crossfade between lines (or static if Reduce Motion)
                     TimelineView(.animation) { context in
                         let t = context.date.timeIntervalSince(appearDate)
@@ -75,9 +77,9 @@ public struct AIPackLoadingView: View {
                             .font(.system(size: 160, design: .rounded).weight(.thin))
                             .foregroundStyle(colors[i % max(colors.count, 1)].opacity(0.15))
                             .multilineTextAlignment(.center)
-                            .lineLimit(2)
+                            .lineLimit(1)
                             .transition(.opacity)
-                            .offset(x: -25, y: -15)
+                            .offset(x: isHE ? 25 : -25, y: -15)
                             .animation(reduceMotion ? nil : .easeInOut(duration: 0.35), value: i)
                     }
                 }
@@ -124,7 +126,7 @@ public struct AIPackLoadingView: View {
 // MARK: - Default Copy
 
 public extension AIPackLoadingView {
-    static let defaultWarmupMessages: [String] = [
+    static let defaultWarmupMessages: [String] =  [
         "◜   ",
         "   ◝",
         "   ◞",
@@ -245,11 +247,11 @@ enum Palette {
     static var cardShadow: Color { Color.black.opacity(0.20) }
     
     // Text
-    static var titleFill: Color { Color.primary.opacity(0.92) }
-    static var subtitleFill: Color { Color.secondary.opacity(0.86) }
+    static var titleFill: Color { Color.primary.opacity(0.82) }
+    static var subtitleFill: Color { Color.secondary.opacity(0.72) }
     
     // Button
-    static var buttonTint: Color { Color.accentColor.opacity(0.9) }
+    static var buttonTint: Color { Color.teal.opacity(0.6) }
     
     // Progress
     static var progressTrack: Color { Color.secondary.opacity(0.20) }

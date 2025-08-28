@@ -24,9 +24,9 @@ final class BestGuessProducer: Singleton {
     
     // MARK: New sparse API (preferred)
     // Returns only indices that have something to show, enforcing:
-    // 1) Prefer G alone: lock greens to their positions.
-    // 2) Prefer Y alone: rehome Y’s to free slots (no G) so each such slot has at most one Y.
-    // 3) If a Y can’t be rehomed, allow placing it with a G; if still impossible, keep at one of its original Y indices.
+    // 1) Lock greens to their positions.
+    // 2) Show Y only where that letter was actually seen as Y in history (no rehoming / no fabricated “not-here”).
+    // 3) Never place Y where the same letter is green.
     func perIndexCandidatesSparse(
         matrix: [[String]],
         colors: [[CharColor]],
@@ -78,7 +78,7 @@ final class BestGuessProducer: Singleton {
         // Greens by index; Y-forbidden positions per letter; original Y indices per letter
         var greensAt: [Int: Set<String>] = [:]        // index -> set of green letters (normally one)
         var yForbidden: [String: Set<Int>] = [:]      // letter -> indexes where it was Y (so not allowed there)
-        var yOriginalAt: [String: Set<Int>] = [:]     // letter -> indexes where it appeared as Y (for fallback)
+        var yOriginalAt: [String: Set<Int>] = [:]     // letter -> indexes where it appeared as Y (for display)
         var lettersPresent = Set<String>()            // letters known to be present (had any Y or G)
         
         for j in 0..<n {
@@ -134,72 +134,28 @@ final class BestGuessProducer: Singleton {
             if still > 0 { need[ch] = still }
         }
         
-        // Helpful: for any letter, which indices have that SAME letter as green?
+        // indices that have the same letter as green
         func indicesWithGreen(_ ch: String) -> Set<Int> {
             var res: Set<Int> = []
             for (idx, set) in greensAt where set.contains(ch) { res.insert(idx) }
             return res
         }
         
-        // 4) Assign Y's
-        let greenOccupied = Set(greensAt.keys)
-        var takenYIndex = Set<Int>()           // ensure “Y alone” where possible (one Y per free index)
+        // 4) Assign Y's — ONLY to their original Y indices (no rehoming).
         var assignY: [Int:[String]] = [:]      // index -> [letters placed as Y here]
-        
-        struct NeedItem { let ch: String; let options: [Int] }
-        
-        // Pass A: avoid green indices (place Y in free slots only)
-        var passA: [NeedItem] = []
         for (ch, k) in need {
             guard !banned.contains(ch) else { continue }
-            let forb = (yForbidden[ch] ?? []).union(indicesWithGreen(ch)) // <- never Y where same letter is G
-            let opts = Array(Set(0..<n).subtracting(greenOccupied).subtracting(forb)).sorted()
-            for _ in 0..<k { passA.append(NeedItem(ch: ch, options: opts)) }
-        }
-        passA.sort { $0.options.count < $1.options.count } // constrained first
-        var remaining: [String:Int] = [:]
-        for item in passA {
-            if let idx = item.options.first(where: { !takenYIndex.contains($0) }) {
-                assignY[idx, default: []].append(item.ch)
-                takenYIndex.insert(idx)
-            } else {
-                remaining[item.ch, default: 0] += 1
-            }
-        }
-        
-        // Pass B: allow green indices too (still try to keep 1 Y per index), but never if same letter is G there
-        if !remaining.isEmpty {
-            var passB: [NeedItem] = []
-            for (ch, k) in remaining {
-                let forb = (yForbidden[ch] ?? []).union(indicesWithGreen(ch)) // <- same safeguard
-                let opts = Array(Set(0..<n).subtracting(forb)).sorted()
-                for _ in 0..<k { passB.append(NeedItem(ch: ch, options: opts)) }
-            }
-            passB.sort { $0.options.count < $1.options.count }
-            remaining.removeAll()
-            
-            for item in passB {
-                if let idx = item.options.first(where: { !takenYIndex.contains($0) }) {
-                    assignY[idx, default: []].append(item.ch)
-                    takenYIndex.insert(idx)
-                } else {
-                    remaining[item.ch, default: 0] += 1
-                }
-            }
-        }
-        
-        // Pass C (fallback): keep at original Y indices (may co-exist with G and other Y’s),
-        // BUT NEVER place Y where the same letter is G.
-        if !remaining.isEmpty {
-            for (ch, k) in remaining {
-                var homes = Array((yOriginalAt[ch] ?? []).subtracting(indicesWithGreen(ch)))
-                if homes.isEmpty { continue } // nowhere valid to show; skip for display
-                homes.sort()
-                // Distribute round-robin over original Y indices
-                for t in 0..<k {
-                    let idx = homes[t % homes.count]
-                    assignY[idx, default: []].append(ch)
-                }
+            var homes = Array((yOriginalAt[ch] ?? []).subtracting(indicesWithGreen(ch)))
+            if homes.isEmpty { continue } // nowhere valid to show; skip for display
+            homes.sort()
+            var left = k
+            var t = 0
+            while left > 0 {
+                let idx = homes[t % homes.count]
+                assignY[idx, default: []].append(ch)
+                t += 1
+                left -= 1
+                if homes.count == 1 && left == 0 { break }
             }
         }
         
@@ -209,15 +165,14 @@ final class BestGuessProducer: Singleton {
         
         for j in 0..<n {
             var bucket: [Guess] = []
-            // Lock greens (prefer G alone)
+            // Greens first
             if let gset = greensAt[j], !gset.isEmpty {
                 for ch in gset.sorted() where !banned.contains(ch) {
                     bucket.append((ch, .exactMatch))
                 }
             }
-            // Assigned Y for this index (either free placement or fallback)
+            // Original Y’s for this index
             if let ys = assignY[j], !ys.isEmpty {
-                // If a same-letter green exists here, it was filtered earlier; keep that invariant.
                 for ch in ys.sorted() where !banned.contains(ch) {
                     bucket.append((ch, .partialMatch))
                 }
@@ -228,11 +183,13 @@ final class BestGuessProducer: Singleton {
         }
         
         if debug {
+#if DEBUG
             dprint(true, "— perIndexCandidatesSparse —")
             for item in out {
                 let pretty = item.colordLetters.map { "\($0.char)\(tag($0.color))" }.joined(separator: " ")
                 dprint(true, "[\(item.index)] -> [\(pretty)]")
             }
+#endif
         }
         
         return out
@@ -295,17 +252,6 @@ final class BestGuessProducer: Singleton {
         dprint(debug, "cap = \(cap)")
         dprint(debug, "banned = \(Array(banned).sorted())")
         
-        // === NEW: yForbidden (indices where each letter was marked Y) ===
-        var yForbidden: [String: Set<Int>] = [:]
-        for j in 0..<n {
-            for key in posSeen[j] {
-                let parts = key.split(separator: "|"); guard parts.count == 2 else { continue }
-                if parts[1] == "Y" {
-                    yForbidden[String(parts[0]), default: []].insert(j)
-                }
-            }
-        }
-        
         // 3) Count greens already present (consume allowance at index-level).
         var greenCount: [String: Int] = [:]
         for j in 0..<n {
@@ -351,7 +297,7 @@ final class BestGuessProducer: Singleton {
             dprint(true, "yellowCount = \(yellowCount)")
         }
         
-        // 4) Build candidates per index from posSeen (+ inferred Y’s).
+        // 4) Build candidates per index from posSeen.
         func parse(_ key: String) -> Guess? {
             let parts = key.split(separator: "|")
             guard parts.count == 2 else { return nil }
@@ -363,15 +309,6 @@ final class BestGuessProducer: Singleton {
             case "X": return (ch, .noMatch)
             default:  return nil
             }
-        }
-        
-        // residual helper
-        @inline(__always)
-        func residual(_ ch: String) -> Int {
-            let lim = cap[ch] ?? Int.max
-            let need = min(minOcc[ch] ?? 0, lim)
-            let g    = greenSeen[ch] ?? 0
-            return max(0, need - g)
         }
         
         var candidates: [[Guess]] = Array(repeating: [], count: n)
@@ -386,8 +323,8 @@ final class BestGuessProducer: Singleton {
                     if !banned.contains(g.char) { greens.append(g) }
                 case .partialMatch:
                     if !banned.contains(g.char) {
-                        let res = (cap[g.char] ?? Int.max) - (greenCount[g.char] ?? 0)
-                        if res > 0 { yellows.append(g) }
+                        let residual = (cap[g.char] ?? Int.max) - (greenCount[g.char] ?? 0)
+                        if residual > 0 { yellows.append(g) }
                     }
                 case .noMatch:
                     grays.append(g)
@@ -395,25 +332,12 @@ final class BestGuessProducer: Singleton {
                 }
             }
             
-            // === NEW: add inferred Y’s when there is no green at this index ===
-            if greens.isEmpty {
-                let seenYHere = Set(yellows.map { $0.char })
-                for (ch, _) in minOcc {
-                    if banned.contains(ch) { continue }
-                    if residual(ch) <= 0 { continue }
-                    if seenYHere.contains(ch) { continue }
-                    if (yForbidden[ch] ?? []).contains(j) { continue } // Wordle semantics: Y means "not here"
-                    yellows.append((ch, .partialMatch))
-                }
-            }
-            // === end NEW ===
-            
             if !greens.isEmpty {
-                // ✅ Keep greens; also keep Y of other letters only when informative.
+                // Keep greens; also keep Y of *other* letters only when informative.
                 var list = greens.sorted { $0.char < $1.char }
                 let greenChars = Set(greens.map { $0.char })
                 for y in yellows.sorted(by: { $0.char < $1.char }) where !greenChars.contains(y.char) {
-                    let needExtraCopy = residual(y.char) > 0
+                    let needExtraCopy = (minOcc[y.char] ?? 0) > (greenSeen[y.char] ?? 0)
                     let lonelyYellow  = !greenLetters.contains(y.char) && (yellowCount[y.char] == 1)
                     if needExtraCopy || lonelyYellow {
                         list.append(y)
@@ -649,7 +573,9 @@ final class BestGuessProducer: Singleton {
     }
     @inline(__always)
     fileprivate func dprint(_ enabled: Bool, _ s: @autoclosure () -> String) {
+#if DEBUG
         if enabled { print(s()) }
+#endif
     }
 }
 
