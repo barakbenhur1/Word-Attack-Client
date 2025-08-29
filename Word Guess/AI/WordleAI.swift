@@ -721,9 +721,9 @@ private extension WordleAI {
         static var resume: (_ difficulty: AIDifficulty) -> Bool {
             { difficulty in
                 switch difficulty {
-                case .easy: return CGFloat.random(in: 0...1) >= 0.5
-                case .medium: return CGFloat.random(in: 0...1) >= 0.8
-                default: return false
+                case .easy: return CGFloat.random(in: 0...1) > 0.5
+                case .medium: return CGFloat.random(in: 0...1) > 0.2
+                default: return true
                 }
             }
         }
