@@ -76,6 +76,7 @@ struct AIGameView<VM: WordViewModelForAI>: View {
     
     @State private var gameState: GameState {
         didSet {
+            ai?.hidePhrase()
             switch gameState {
             case .inProgress: break
             case .lose: showMourn = true
@@ -299,7 +300,7 @@ struct AIGameView<VM: WordViewModelForAI>: View {
             makeHitOnAI(hitPoints: noGuessHitPoints)
             Task(priority: .userInitiated) {
                 try? await Task.sleep(nanoseconds: 2_000_000_000)
-                await MainActor.run { cleanCells = true }
+//                await MainActor.run { cleanCells = true }
                 guard let email else { return }
                 await vm.word(email: email)
             }
@@ -606,7 +607,7 @@ struct AIGameView<VM: WordViewModelForAI>: View {
             if correct {
                 Task(priority: .userInitiated) {
                     try? await Task.sleep(nanoseconds: 2_000_000_000)
-                    await MainActor.run { cleanCells = true }
+//                    await MainActor.run { cleanCells = true }
                     guard let email else { return }
                     await vm.word(email: email)
                 }
@@ -673,6 +674,8 @@ struct AIGameView<VM: WordViewModelForAI>: View {
         aiColors = [[CharColor]](repeating: [CharColor](repeating: .noGuess,
                                                         count: length),
                                  count: rows)
+        
+        ai?.hidePhrase()
         
         cleanCells = false
         

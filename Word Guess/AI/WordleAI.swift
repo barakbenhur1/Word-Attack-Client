@@ -10,31 +10,6 @@ import UIKit
 import SwiftUICore
 #endif
 
-// MARK: - Pretty trace
-
-enum Fancy {
-    static let reset  = "\u{001B}[0m"
-    static let gray   = "\u{001B}[90m"
-    static let blue   = "\u{001B}[34m"
-    static let green  = "\u{001B}[32m"
-    static let yellow = "\u{001B}[33m"
-    static let mag    = "\u{001B}[35m"
-    static let cyan   = "\u{001B}[36m"
-    static let red    = "\u{001B}[31m"
-}
-
-enum Trace {
-#if DEBUG
-    static var enabled = true
-#else
-    static var enabled = false
-#endif
-    static func log(_ tag: String, _ s: @autoclosure () -> String, _ color: String = Fancy.gray) {
-        guard enabled else { return }
-        print("\(color)\(tag) \(s())\(Fancy.reset)")
-    }
-}
-
 // MARK: - Public API
 
 public typealias GuessHistory = (word: String, feedback: String)
@@ -447,7 +422,7 @@ final class WordleAI: Singleton {
             var c = MaskedConstraints(lang: lang, length: 5)
             c.reset(wordLength: 5, lang: lang)
             c.ingest(history: history, lang: lang)
-            if let forced = obviousAnswerIfAny(constraints: c, lang: lang) {
+            if let forced = obviousAnswerIfAny(constraints: c, lang: lang, difficulty: difficulty) {
                 Trace.log("✅", "Obvious answer from constraints → \(forced)", Fancy.green)
                 return forced
             }
@@ -742,21 +717,155 @@ private extension WordleAI {
         return word
     }
     
-    // MARK: Obvious-answer fast path
-    func obviousAnswerIfAny(constraints: MaskedConstraints, lang: Language) -> String? {
-        let pool = (lang == .en) ? wordStringSetEN : wordStringSetHE
-        guard !pool.isEmpty else { return nil }
-        var candidate: String? = nil
-        var seen = 0
-        for w in pool {
-            if satisfies(word: w, constraints: constraints) {
-                seen += 1
-                if seen == 1 { candidate = w }
-                if seen > 1 { return nil }
+    private enum ObviousAnswerPolicy {
+        static var resume: (_ difficulty: AIDifficulty) -> Bool {
+            { difficulty in
+                switch difficulty {
+                case .easy: return CGFloat.random(in: 0...1) >= 0.5
+                case .medium: return CGFloat.random(in: 0...1) >= 0.8
+                default: return false
+                }
             }
         }
-        return candidate
     }
+    
+    // MARK: Obvious-answer fast path
+    /// Returns a word if (and only if) the constraints force a SINGLE unique solution.
+    /// 1) Try fast dictionary pool (if present) — same behaviour as before but safer.
+    /// 2) Fall back to a tiny exact solver that works without any dictionary.
+    func obviousAnswerIfAny(constraints: MaskedConstraints, lang: Language, difficulty: AIDifficulty) -> String? {
+        guard ObviousAnswerPolicy.resume(difficulty) else { return nil }
+        if let fromDict = obviousFromDictionary(constraints: constraints, lang: lang) {
+            return fromDict
+        }
+        return solveUniqueUnderConstraints(constraints: constraints, lang: lang)
+    }
+    
+    // ---- 1) Fast path: dictionary (token-derived) if available
+     func obviousFromDictionary(constraints: MaskedConstraints, lang: Language) -> String? {
+         let pool: Set<String> = (lang == .en) ? wordStringSetEN : wordStringSetHE
+         guard !pool.isEmpty else { return nil }
+
+         var seen = 0
+         var candidate: String? = nil
+         for w in pool {
+             if satisfies(word: w, constraints: constraints) {
+                 seen += 1
+                 if seen == 1 { candidate = w }
+                 if seen > 1 { return nil } // more than one → not obvious
+             }
+         }
+         return (seen == 1) ? candidate : nil
+     }
+    
+    // ---- 2) Exact solver without dictionary
+        /// Backtracks positions with pruning based on bannedAt/fixed/min/max counts.
+        /// Returns a word iff there is exactly one solution.
+        func solveUniqueUnderConstraints(constraints c0: MaskedConstraints, lang: Language) -> String? {
+            let c = c0 // local mutable copy
+
+            // Alphabet derived from the tokenizer’s single-letter tokens (includes Hebrew finals)
+            let alphaSet: Set<Character> = (lang == .en)
+                ? Set(letterMapEN.values)
+                : Set(letterMapHE.values)
+
+            // Allowed letters per position after hard bans and fixed positions
+            var slots: [Set<Character>] = Array(repeating: alphaSet, count: c.length)
+            for i in 0..<c.length {
+                if let fx = c.fixed[i] {
+                    slots[i] = [fx]
+                } else {
+                    var s = alphaSet
+                    // global disallow
+                    for ch in c.disallow { s.remove(ch) }
+                    // position bans
+                    for ch in c.bannedAt[i] { s.remove(ch) }
+                    slots[i] = s
+                }
+                if slots[i].isEmpty { return nil } // impossible immediately
+            }
+            
+            // Order positions small→large domain for faster pruning
+            let order = (0..<c.length).sorted { slots[$0].count < slots[$1].count }
+            
+            // Upper bound map (letters without explicit bound get +∞ via Int.max)
+            func maxAllowed(_ ch: Character) -> Int {
+                return c.maxCount[ch] ?? Int.max
+            }
+            
+            // Feasibility check: can we still meet minCount for every letter?
+            func feasibleMinCounts(_ used: [Character:Int], _ idx: Int) -> Bool {
+                // remaining positions:
+                let remainingPositions = order[idx...]
+                // quick capacity check for each ch with a positive deficit
+                for (ch, need) in c.minCount where need > 0 {
+                    let have = used[ch, default: 0]
+                    let deficit = need - have
+                    if deficit <= 0 { continue }
+                    
+                    // Count how many remaining slots allow this ch (and are not already over max)
+                    var capacity = 0
+                    if have < maxAllowed(ch) {
+                        for pos in remainingPositions {
+                            if slots[pos].contains(ch) {
+                                capacity += 1
+                            }
+                        }
+                    }
+                    if capacity < deficit { return false }
+                }
+                return true
+            }
+            
+            // Backtracking state
+            var used: [Character:Int] = [:]
+            var solutionCount = 0
+            var theSolution = Array(repeating: Character(" "), count: c.length)
+            
+            func dfs(_ k: Int, _ acc: inout [Character]) {
+                if solutionCount > 1 { return } // early exit if already ambiguous
+                if k == order.count {
+                    // verify all minCounts met
+                    for (ch, need) in c.minCount {
+                        if used[ch, default: 0] < need { return }
+                    }
+                    solutionCount += 1
+                    if solutionCount == 1 { theSolution = acc }
+                    return
+                }
+                
+                let pos = order[k]
+                // Try letters that are still allowed here
+                for ch in slots[pos] {
+                    // max bound
+                    if used[ch, default: 0] >= maxAllowed(ch) { continue }
+                    
+                    // place ch
+                    used[ch, default: 0] += 1
+                    acc[pos] = ch
+                    
+                    // prune: minCount feasibility for the remainder
+                    if feasibleMinCounts(used, k + 1) {
+                        dfs(k + 1, &acc)
+                    }
+                    
+                    // undo
+                    used[ch]! -= 1
+                    if used[ch] == 0 { used.removeValue(forKey: ch) }
+                    
+                    if solutionCount > 1 { return } // early stop if already ambiguous
+                }
+            }
+            
+            var acc = Array(repeating: Character(" "), count: c.length)
+            // quick global sanity: if any slot is huge and bans are light, this could explode;
+            // guard against pathological cases to avoid work (rare in practice for Wordle)
+            let roughSpace = slots.reduce(1) { min(Int.max, $0 * max(1, $1.count)) }
+            if roughSpace > 500_000 { return nil } // too unconstrained → not "obvious"
+            
+            dfs(0, &acc)
+            return (solutionCount == 1) ? String(theSolution) : nil
+        }
     
     func satisfies(word: String, constraints: MaskedConstraints) -> Bool {
         let w = word.lowercased()
@@ -938,13 +1047,14 @@ private extension WordleAI {
         let (kAligned, vAligned, alignedLen) = alignKVsForDecode(ks: k0, vs: v0)
         pastK = kAligned; pastV = vAligned
         curLen = min(usedLen, alignedLen)
+        let pastK = pastK, pastV = pastV
         Trace.log("ℹ️", "KV layers K=\(pastK.count) V=\(pastV.count)")
         
         var constraints = MaskedConstraints(lang: lang, length: 5)
         constraints.reset(wordLength: 5, lang: lang)
         constraints.ingest(history: history, lang: lang)
         
-        if let forced = obviousAnswerIfAny(constraints: constraints, lang: lang) {
+        if let forced = obviousAnswerIfAny(constraints: constraints, lang: lang, difficulty: difficulty) {
             Trace.log("✅", "Obvious answer from constraints → \(forced)", Fancy.green)
             return forced
         }
@@ -1014,7 +1124,7 @@ private extension WordleAI {
         constraints.reset(wordLength: 5, lang: lang)
         constraints.ingest(history: history, lang: lang)
         
-        if let forced = obviousAnswerIfAny(constraints: constraints, lang: lang) {
+        if let forced = obviousAnswerIfAny(constraints: constraints, lang: lang, difficulty: difficulty) {
             Trace.log("✅", "Obvious answer from constraints → \(forced)", Fancy.green)
             return forced
         }
@@ -1143,7 +1253,7 @@ private extension WordleAI {
         constraints.reset(wordLength: 5, lang: lang)
         constraints.ingest(history: history, lang: lang)
         
-        if let forced = obviousAnswerIfAny(constraints: constraints, lang: lang) {
+        if let forced = obviousAnswerIfAny(constraints: constraints, lang: lang, difficulty: difficulty) {
             Trace.log("✅", "Obvious answer from constraints → \(forced)", Fancy.green)
             return forced
         }
@@ -1281,6 +1391,8 @@ private struct MaskedConstraints {
             if v.r < v.k { maxCount[ch] = min(maxCount[ch] ?? v.r, v.r) }
             if v.k > 0, v.r == 0 { maxCount[ch] = 0; disallow.insert(ch) }
         }
+        
+        let minCount = minCount, maxCount = maxCount
         Trace.log("🧩", "min:\(minCount) max:\(maxCount)", Fancy.green)
     }
     func apply(at position: Int, used: [Character: Int], id2c: [Int: Character], logits: inout [Float], negInf: Float) {
