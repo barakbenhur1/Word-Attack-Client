@@ -629,25 +629,21 @@ struct AIGameView<VM: WordViewModelForAI>: View {
                 }
                 .padding(.top, -10)
                 .padding(.bottom, -20)
-               
+                
                 ForEach(0..<rows, id: \.self) { i in
                     ZStack {
                         switch turn {
                         case .player:
-                        let hasPrevAIGuess =
-                                i > 0 &&
-                                current == i &&
-                                aiMatrix[current - 1].contains { !$0.isEmpty }   // tidy & fast
-                            
-                            let canFocus = current == i
-
+                            let hasPrevAIGuess = i > 0 && current == i && aiMatrix[current - 1].contains { !$0.isEmpty }
+                            let placeHolderData = hasPrevAIGuess ? allBestGuesses : nil
+                            let gainFocus = Binding(get: { current == i }, set: { _ in })
                             WordView(
                                 cleanCells: $cleanCells,
                                 current: $current,
                                 length: length,
-                                placeHolderData: hasPrevAIGuess ? allBestGuesses : nil,
+                                placeHolderData: placeHolderData,
                                 word: $matrix[i],
-                                gainFocus: Binding(get: { canFocus }, set: { _ in }),
+                                gainFocus: gainFocus,
                                 colors: $colors[i],
                                 done: { calculatePlayerTurn(i: i) }
                             )
@@ -655,12 +651,9 @@ struct AIGameView<VM: WordViewModelForAI>: View {
                             .disabled(disabled || current != i)
                             .shadow(radius: 4)
                             .rotation3DEffect(.degrees(turn == .ai ? 180 : 0), axis: (x: 0, y: 1, z: 0))
-
+                            
                         case .ai:
-                            let isAIRowActive =
-                                current == i &&
-                                matrix[current].contains { !$0.isEmpty }
-
+                            let isAIRowActive = current == i && matrix[current].contains { !$0.isEmpty }
                             WordView(
                                 cleanCells: $cleanCells,
                                 isAI: true,
@@ -680,7 +673,6 @@ struct AIGameView<VM: WordViewModelForAI>: View {
                     }
                     .rotation3DEffect(.degrees(turn == .ai ? 180 : 0), axis: (x: 0, y: 1, z: 0))
                 }
-
                 
                 if endFetchAnimation {
                     AppTitle()

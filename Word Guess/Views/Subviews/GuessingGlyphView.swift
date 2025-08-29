@@ -37,7 +37,7 @@ public struct GuessingGlyphView: View {
                 changesPerSecond: Double = 1.2,
                 fontSize: CGFloat = 18,
                 weight: Font.Weight = .medium,
-                initialHoldDuration: TimeInterval = 2.2,
+                initialHoldDuration: TimeInterval = 2.4,
                 holdStagger: TimeInterval = 0.12,
                 holdGlyph: String = "?",
                 waveDirection: WaveDirection = .autoByLayout) {

@@ -56,7 +56,7 @@ class WordViewModelForAI: ViewModel {
                                   aiMatrix: [[String]], aiColors: [[CharColor]]) -> [BestGuess] {
         return BestGuessProducerProvider.guesser.perIndexCandidatesSparse(matrix: matrix, colors: colors,
                                                                 aiMatrix: aiMatrix, aiColors: aiColors,
-                                                                debug: true)
+                                                                /*debug: true*/)
     }
     
     private func handleError() async {
