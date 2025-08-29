@@ -90,23 +90,46 @@ struct AIGameView<VM: WordViewModelForAI>: View {
         didSet {
             switch turn {
             case .player:
-                guard current > 0 && aiMatrix.count > current - 1 && aiColors.count > current - 1 else { break }
-                ai?.saveToHistory(guess: (aiMatrix[current - 1].joined(), aiColors[current - 1].map { $0.getColor() }.joined()))
+                let idx = current - 1
+                guard idx >= 0,
+                      aiMatrix.indices.contains(idx),
+                      aiColors.indices.contains(idx) else { break }
+                let guess   = aiMatrix[idx].joined()
+                let pattern = aiColors[idx].map { $0.getColor() }.joined()
+                ai?.saveToHistory(guess: (guess, pattern))
+
             case .ai:
-                guard matrix.count > current && colors.count > current && aiMatrix.count > current && aiMatrix[current].filter({ !$0.isEmpty }).isEmpty else { break }
-                ai?.saveToHistory(guess: (matrix[current].joined(), colors[current].map { $0.getColor() }.joined()))
+                let idx = current
+                guard matrix.indices.contains(idx),
+                      colors.indices.contains(idx),
+                      aiMatrix.indices.contains(idx),
+                      aiMatrix[idx].allSatisfy(\.isEmpty) else { break }
+                let guess   = matrix[idx].joined()
+                let pattern = colors[idx].map { $0.getColor() }.joined()
+                ai?.saveToHistory(guess: (guess, pattern))
             }
             
             guard turn == .ai else { return }
+            
             Task(priority: .high) {
                 guard let ai else { return }
-                let aiWord = await ai.getFeedback(with: aiDifficulty).capitalizedFirst.toArray()
+                let row = current // snapshot to avoid races
+                
+                let aiWord = await ai.getFeedback(with: aiDifficulty)
+                    .capitalizedFirst
+                    .toArray()
+                
                 try? await Task.sleep(nanoseconds: 1_000_000_000)
+                
                 var arr = [String](repeating: "", count: aiWord.count)
                 for i in 0..<aiWord.count {
                     arr[i] = aiWord[i].returnChar(isFinal: i == aiWord.count - 1)
                     try? await Task.sleep(nanoseconds: 500_000_000)
-                    aiMatrix[current] = arr
+                    await MainActor.run {
+                        if aiMatrix.indices.contains(row) {
+                            aiMatrix[row] = arr
+                        }
+                    }
                 }
             }
         }
@@ -119,9 +142,14 @@ struct AIGameView<VM: WordViewModelForAI>: View {
                                                                                  aiMatrix: aiMatrix,
                                                                                  aiColors: aiColors) }
     
-    private var firstGuess: (_ string: String) -> GuessHistory? { { string in
-        guard string.count != length else { return nil }
-        return (string, vm.calculateColors(with: string.map { "\($0)" }).map { $0.getColor() }.joined()) }
+    private var firstGuess: (String) -> GuessHistory? {
+        { s in
+            guard s.count < length else { return nil }
+            let pattern = vm.calculateColors(with: s.map { String($0) })
+                .map { $0.getColor() }   // <- call the method, not a key path
+                .joined()
+            return (s, pattern)
+        }
     }
     
     private func handleWordChange() {
@@ -435,15 +463,6 @@ struct AIGameView<VM: WordViewModelForAI>: View {
         }
         .onChange(of: vm.aiDownloaded, initializeAI)
         .onChange(of: ai?.showPhraseValue, handlePhrase)
-        //        .onTapGesture {
-        //            switch aiDifficulty {
-        //            case .easy: withAnimation { aiDifficulty = .medium }
-        //            case .medium: withAnimation { aiDifficulty = .hard }
-        //            case .hard: withAnimation { aiDifficulty = .boss }
-        //            case .boss: withAnimation { aiDifficulty = .easy }
-        //            }
-        //            aiHP = fullHP
-        //        }
     }
     
     @ViewBuilder private func contant() -> some View {
@@ -610,44 +629,58 @@ struct AIGameView<VM: WordViewModelForAI>: View {
                 }
                 .padding(.top, -10)
                 .padding(.bottom, -20)
-                
+               
                 ForEach(0..<rows, id: \.self) { i in
                     ZStack {
                         switch turn {
                         case .player:
-                            WordView(cleanCells: $cleanCells,
-                                     current: $current,
-                                     length: length,
-                                     placeHolderData: i > 0 && current == i && !aiMatrix[current - 1].filter({ s in !s.isEmpty }).isEmpty ? allBestGuesses : nil,
-                                     word: $matrix[i],
-                                     gainFocus: .constant(!showAiIntro && endFetchAnimation),
-                                     colors: $colors[i],
-                                     done: { calculatePlayerTurn(i: i) })
+                        let hasPrevAIGuess =
+                                i > 0 &&
+                                current == i &&
+                                aiMatrix[current - 1].contains { !$0.isEmpty }   // tidy & fast
+                            
+                            let canFocus = current == i
+
+                            WordView(
+                                cleanCells: $cleanCells,
+                                current: $current,
+                                length: length,
+                                placeHolderData: hasPrevAIGuess ? allBestGuesses : nil,
+                                word: $matrix[i],
+                                gainFocus: Binding(get: { canFocus }, set: { _ in }),
+                                colors: $colors[i],
+                                done: { calculatePlayerTurn(i: i) }
+                            )
+                            .allowsHitTesting(!disabled && current == i)
                             .disabled(disabled || current != i)
                             .shadow(radius: 4)
-                            .rotation3DEffect(.degrees(turn == .ai ? 180 : 0),
-                                              axis: (x: 0, y: 1, z: 0))
-                            
+                            .rotation3DEffect(.degrees(turn == .ai ? 180 : 0), axis: (x: 0, y: 1, z: 0))
+
                         case .ai:
-                            WordView(cleanCells: $cleanCells,
-                                     isAI: true,
-                                     current: $current,
-                                     length: length,
-                                     isCurrentRow: current == i && !matrix[current].filter({ s in !s.isEmpty }).isEmpty,
-                                     word: $aiMatrix[i],
-                                     gainFocus: .constant(false),
-                                     colors: $aiColors[i],
-                                     done: { calculateAITurn(i: i) })
+                            let isAIRowActive =
+                                current == i &&
+                                matrix[current].contains { !$0.isEmpty }
+
+                            WordView(
+                                cleanCells: $cleanCells,
+                                isAI: true,
+                                current: $current,
+                                length: length,
+                                isCurrentRow: isAIRowActive,
+                                word: $aiMatrix[i],
+                                gainFocus: .constant(false),
+                                colors: $aiColors[i],
+                                done: { calculateAITurn(i: i) }
+                            )
+                            .allowsHitTesting(false)
                             .disabled(true)
                             .shadow(radius: 4)
-                            .rotation3DEffect(.degrees(180),
-                                              axis: (x: 0, y: 1, z: 0))
-                            
+                            .rotation3DEffect(.degrees(180), axis: (x: 0, y: 1, z: 0))
                         }
                     }
-                    .rotation3DEffect(.degrees(turn == .ai ? 180 : 0),
-                                      axis: (x: 0, y: 1, z: 0))
+                    .rotation3DEffect(.degrees(turn == .ai ? 180 : 0), axis: (x: 0, y: 1, z: 0))
                 }
+
                 
                 if endFetchAnimation {
                     AppTitle()

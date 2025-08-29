@@ -162,12 +162,12 @@ struct WordView<VM: ViewModel>: View {
     @ViewBuilder
     private func charView(i: Int) -> some View {
         let placeHolderForCell = placeHolderForCell(i)
-        let usePlaceHolderText = cleanCells ||
-        (isAI && !isCurrentRow) ||
-        (!isAI && (placeHolderData == nil || placeHolderForCell.filter { _, color in color != .noGuess && color != .noMatch }.isEmpty))
+        let aiPlaceHolder = isAI && !isCurrentRow
+        let playerPlaceHolder = !isAI && (placeHolderData == nil || placeHolderForCell.filter { _, color in color != .noGuess && color != .noMatch }.isEmpty)
+        
+        let usePlaceHolderText = cleanCells || aiPlaceHolder || playerPlaceHolder
         
         CharView(
-            isAI: isAI,
             text: cleanCells ? .constant("") : $word[i],
             usePlaceHolder: usePlaceHolderText,
             didType: { text in onDidType(text: text,
@@ -176,6 +176,7 @@ struct WordView<VM: ViewModel>: View {
         .frame(maxHeight: .infinity)
         .textInputAutocapitalization(i == 0 ? .sentences : .never)
         .autocorrectionDisabled()
+        .keyboardType(.asciiCapable)
         .focused($fieldFocus, equals: FieldFocus(rawValue: i)!)
         .onSubmit { fieldFocus = FieldFocus(rawValue: i)! }
         .onTapGesture { fieldFocus = FieldFocus(rawValue: i)! }
@@ -184,7 +185,7 @@ struct WordView<VM: ViewModel>: View {
         .realisticCell(color: cleanCells ? .white.opacity(0.8) : colors[i].baseColor.opacity(0.8))
         .elevated(cornerRadius: 4)
         .realStone(cornerRadius: 4,
-                   crackCount: Int.random(in: 3...5),
+                   crackCount: Int.random(in: 3...6),
                    seed: UInt64.random(in: 1337...2337))
     }
     

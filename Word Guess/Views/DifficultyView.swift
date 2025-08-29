@@ -43,6 +43,20 @@ struct DifficultyView: View {
         .init(type: .hard),
     ]
     
+    private func onAppear() {
+        audio.stopAudio(true)
+        UIApplication.shared.hideKeyboard()
+    }
+    
+    private func onDisappear() {
+        audio.stopAudio(false)
+    }
+    
+    private func task() {
+        guard tutorialItem == nil else { return }
+        router.navigateTo(.game(diffculty: .tutorial))
+    }
+    
     var body: some View {
         ZStack {
             LinearGradient(colors: [.red,
@@ -56,9 +70,9 @@ struct DifficultyView: View {
             .ignoresSafeArea()
             
             contant()
-                .onDisappear { audio.stopAudio(false) }
-                .onAppear { audio.stopAudio(true) }
-                .task { guard tutorialItem != nil else { return router.navigateTo(.game(diffculty: .tutorial)) } }
+                .onDisappear { onDisappear() }
+                .onAppear { onAppear() }
+                .task { task() }
         }
     }
     
@@ -67,7 +81,7 @@ struct DifficultyView: View {
             VStack {
                 topButtons()
                     .padding(.vertical, 10)
-
+                
                 buttonList()
             }
             .padding(.horizontal, 20)
@@ -103,9 +117,8 @@ struct DifficultyView: View {
             
             Spacer()
             
-            Button {
-                router.navigateTo(.score)
-            } label: {
+            Button { router.navigateTo(.score) }
+            label: {
                 VStack {
                     Image(systemName: "person.3.fill")
                         .resizable()
@@ -179,7 +192,7 @@ struct DifficultyView: View {
                 await MainActor.run { router.navigateTo(.game(diffculty: type)) }
             }
         } label: { ElevatedButtonLabel(LocalizedStringKey(type.rawValue)) }
-        .buttonStyle(style)
+            .buttonStyle(style)
     }
     
     @ViewBuilder private func logoutButton() -> some View {

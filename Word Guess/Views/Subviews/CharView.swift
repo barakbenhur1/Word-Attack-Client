@@ -10,7 +10,6 @@ import Combine
 
 struct CharView: View {
     @EnvironmentObject private var local: LanguageSetting
-    var isAI = false
     @Binding var text: String
     let usePlaceHolder: Bool
     var didType: ((String) -> ())? = nil
@@ -23,10 +22,24 @@ struct CharView: View {
         .accentColor(.black.opacity(0.2))
         .frame(maxHeight: .infinity)
         .multilineTextAlignment(.center)
-        .hideSystemInputAssistant()
         .onReceive(Just(text)) { _ in
             text.limitToAllowedCharacters(language: language)
             didType?(text)
+        }
+    }
+}
+
+struct ReadonlyCharCell: View {
+    @Binding var text: String
+    let usePlaceHolder: Bool
+    var body: some View {
+        ZStack {
+            TextField(usePlaceHolder ? "?" : "",
+                      text: $text)
+            .accentColor(.black.opacity(0.2))
+            .frame(maxHeight: .infinity)
+            .multilineTextAlignment(.center)
+            .disabled(true)
         }
     }
 }

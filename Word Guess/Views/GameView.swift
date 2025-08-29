@@ -241,7 +241,7 @@ struct GameView<VM: WordViewModel>: View {
                                  current: $current,
                                  length: length,
                                  word: $matrix[i],
-                                 gainFocus: .constant(true),
+                                 gainFocus: Binding(get: { current == i }, set: { _ in }),
                                  colors: $colors[i]) {
                             guard i == current else { return }
                             nextLine(i: i)
@@ -367,7 +367,7 @@ struct GameView<VM: WordViewModel>: View {
     private func navBack() {
         audio.stop()
         if diffculty == .tutorial {
-            hideKeyboard()
+            UIApplication.shared.hideKeyboard()
             coreData.new()
         }
         router.navigateBack()

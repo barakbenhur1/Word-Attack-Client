@@ -50,7 +50,7 @@ struct LoginView<VM: LoginViewModel>: View {
     }
     
     private func action() {
-        hideKeyboard()
+        UIApplication.shared.hideKeyboard()
         loading = true
         Task(priority: .userInitiated) {
             auth.googleAuth(
@@ -73,7 +73,7 @@ struct LoginView<VM: LoginViewModel>: View {
     }
 }
 
-extension View {
+extension UIApplication {
     func hideKeyboard() {
         UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder),
                                         to: nil,

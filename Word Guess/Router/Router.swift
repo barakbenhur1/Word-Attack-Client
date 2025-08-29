@@ -20,12 +20,7 @@ class Router: ObservableObject {
     
     var path: NavigationPath = NavigationPath()
     
-    private var navigationAnimation: Bool = false {
-        didSet {
-            UINavigationBar.setAnimationsEnabled(navigationAnimation)
-        }
-    }
-    
+    private var navigationAnimation: Bool = false { didSet { UINavigationBar.setAnimationsEnabled(navigationAnimation) } }
     
     // Builds the views
     @ViewBuilder func view(for route: Route) -> some View {
@@ -47,6 +42,7 @@ class Router: ObservableObject {
     
     // Used by views to navigate to another view
     func navigateTo(_ appRoute: Route) {
+        UIApplication.shared.hideKeyboard()
         navigationAnimation = appRoute != .game(diffculty: .tutorial)
         path.append(appRoute)
     }
@@ -54,6 +50,7 @@ class Router: ObservableObject {
     // Used to go back to the previous screen
     func navigateBack() {
         guard !path.isEmpty else { return }
+        UIApplication.shared.hideKeyboard()
         path.removeLast()
     }
 }
