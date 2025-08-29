@@ -52,12 +52,12 @@
 		4F1BDC9B2E4F0F9A00A4B3DD /* Exceptions for "Word Guess" folder in "Word Guess" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			assetTagsByRelativePath = {
-				"AI Model/WordleGPT_runtime_spec.json" = ("ai-pack-v1", );
-				"AI Model/config.json" = ("ai-pack-v1", );
-				"AI Model/special_tokens_map.json" = ("ai-pack-v1", );
-				"AI Model/tokenizer.json" = ("ai-pack-v1", );
-				"AI Model/tokenizer.model" = ("ai-pack-v1", );
-				"AI Model/tokenizer_config.json" = ("ai-pack-v1", );
+				"AI/AI Model/WordleGPT_runtime_spec.json" = ("ai-pack-v1", );
+				"AI/AI Model/config.json" = ("ai-pack-v1", );
+				"AI/AI Model/special_tokens_map.json" = ("ai-pack-v1", );
+				"AI/AI Model/tokenizer.json" = ("ai-pack-v1", );
+				"AI/AI Model/tokenizer.model" = ("ai-pack-v1", );
+				"AI/AI Model/tokenizer_config.json" = ("ai-pack-v1", );
 			};
 			target = 4FD6D2372CB9A1F400755D03 /* Word Guess */;
 		};

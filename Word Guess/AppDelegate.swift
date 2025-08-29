@@ -10,6 +10,7 @@ import FacebookLogin
 import FirebaseCore
 import FirebaseAuth
 import GoogleMobileAds
+import AVFAudio
 
 class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
     func application(_ application: UIApplication,didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
@@ -26,11 +27,14 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         
         FirebaseApp.configure()
         
+        application.registerForRemoteNotifications()
+        
         GADMobileAds.sharedInstance().start(completionHandler: nil)
         
-        GADMobileAds.sharedInstance().requestConfiguration.testDeviceIdentifiers = ["bb89a5de06dcfb7fad22837648455185", "c76030813578328369b797a6939baf04"]
+        GADMobileAds.sharedInstance().requestConfiguration.testDeviceIdentifiers = ["b1f8623026df56ee0408eaae157025db", "bb89a5de06dcfb7fad22837648455185", "c76030813578328369b797a6939baf04"]
         
-        application.registerForRemoteNotifications()
+        try? AVAudioSession.sharedInstance().setCategory(.ambient, mode: .default, options: [])
+        try? AVAudioSession.sharedInstance().setActive(true)
         
         return true
     }

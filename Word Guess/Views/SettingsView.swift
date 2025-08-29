@@ -27,87 +27,35 @@ struct SettingsView: View {
     
     @State private var showResetAI: Bool = false
     
+    @State private var difficulty = UserDefaults.standard.string(forKey: "aiDifficulty") ?? AIDifficulty.easy.rawValue.name
+    
     private var language: String? { return local.locale.identifier.components(separatedBy: "_").first }
+    
+    private func action(item: SettingsOptionButton) {
+        switch item.type {
+        case .language: showLanguage()
+        case .sound: audio.isOn.toggle()
+        case .ai: showResetAI = true
+        }
+    }
+    
+    private func showLanguage() {
+        guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
+        UIApplication.shared.open(url)
+    }
+    
+    private func resetAI() {
+        difficulty = AIDifficulty.easy.rawValue.name
+        UserDefaults.standard.set(nil, forKey: "aiDifficulty")
+    }
     
     var body: some View {
         ZStack {
-            LinearGradient(colors: [.red,
-                                    .yellow,
-                                    .green,
-                                    .blue],
-                           startPoint: .topLeading,
-                           endPoint: .bottomTrailing)
-            .blur(radius: 4)
-            .opacity(0.1)
-            .ignoresSafeArea()
-            
+            background()
             VStack {
-                ZStack {
-                    HStack {
-                        BackButton()
-                        Spacer()
-                    }
-                    .environment(\.layoutDirection, language == "he" ? .rightToLeft : .leftToRight)
-                    
-                    Text("Settings")
-                        .font(.largeTitle)
-                        .padding(.vertical, 10)
-                }
-                .padding(.horizontal, 10)
-                
-                List {
-                    Group {
-                        ForEach(items) { item in
-                            Button {
-                                switch item.type {
-                                case .language:
-                                    guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
-                                    Task { await MainActor.run { UIApplication.shared.open(url) } }
-                                case .sound: audio.isOn.toggle()
-                                case .ai: showResetAI = true
-                                }
-                            } label: {
-                                ZStack {
-                                    switch item.type {
-                                    case .language:
-                                        HStack {
-                                            Text(item.type.rawValue.localized)
-                                                .font(.headline)
-                                                .foregroundStyle(.black)
-                                            
-                                            Spacer()
-                                            
-                                            Text(language == "he" ? "Hebrew" : "English")
-                                                .font(.headline)
-                                                .foregroundStyle(.cyan)
-                                        }
-                                    case .sound:
-                                        Toggle(item.type.rawValue.localized, isOn: $audio.isOn)
-                                            .font(.headline)
-                                            .foregroundStyle(.black)
-                                            .tint(.cyan)
-                                            .toggleStyle(.switch)
-                                    case .ai:
-                                        HStack {
-                                            Text(item.type.rawValue.localized)
-                                                .font(.headline)
-                                                .foregroundStyle(.black)
-                                            
-                                            Spacer()
-                                            
-                                            Text("Reset Difficulty")
-                                                .font(.headline)
-                                                .foregroundStyle(.cyan)
-                                        }
-                                    }
-                                }
-                                .padding()
-                            }
-                        }
-                    }
-                    .listRowBackground(Color.clear)
-                }
-                .listStyle(.plain)
+                topView()
+                list()
+                AdView(adUnitID: "SettingsBanner")
             }
         }
         .customAlert("Reset AI Difficulty",
@@ -115,7 +63,89 @@ struct SettingsView: View {
                      isPresented: $showResetAI,
                      actionText: "OK",
                      cancelButtonText: "Cancel",
-                     action: { UserDefaults.standard.set(nil, forKey: "aiDifficulty") },
+                     action: resetAI,
                      message: { Text("Are you sure you want to reset AI difficulty process is unreversible") })
+    }
+    
+    @ViewBuilder private func background() -> some View {
+        LinearGradient(colors: [.red,
+                                .yellow,
+                                .green,
+                                .blue],
+                       startPoint: .topLeading,
+                       endPoint: .bottomTrailing)
+        .blur(radius: 4)
+        .opacity(0.1)
+        .ignoresSafeArea()
+    }
+    
+    @ViewBuilder private func list() -> some View {
+        List {
+            Group {
+                ForEach(items) { item in
+                    Button { action(item: item) }
+                    label: { label(item: item) }
+                }
+            }
+            .listRowBackground(Color.clear)
+        }
+        .listStyle(.plain)
+    }
+    
+    @ViewBuilder private func topView() -> some View {
+        ZStack {
+            HStack {
+                BackButton()
+                Spacer()
+            }
+            .environment(\.layoutDirection, language == "he" ? .rightToLeft : .leftToRight)
+            
+            Text("Settings")
+                .font(.largeTitle)
+                .padding(.vertical, 10)
+        }
+        .padding(.horizontal, 10)
+    }
+    
+    @ViewBuilder private func label(item: SettingsOptionButton) -> some View {
+        ZStack {
+            switch item.type {
+            case .language:
+                HStack {
+                    Text(item.type.rawValue.localized)
+                        .font(.headline)
+                        .foregroundStyle(.black)
+                    
+                    Spacer()
+                    
+                    Text(language == "he" ? "Hebrew" : "English")
+                        .font(.headline)
+                        .foregroundStyle(.cyan)
+                }
+            case .sound:
+                Toggle(item.type.rawValue.localized, isOn: $audio.isOn)
+                    .font(.headline)
+                    .foregroundStyle(.black)
+                    .tint(.cyan)
+                    .toggleStyle(.switch)
+            case .ai:
+                HStack {
+                    Text(item.type.rawValue.localized)
+                        .font(.headline)
+                        .foregroundStyle(.black)
+                    
+                    Text(difficulty)
+                        .font(.subheadline)
+                        .foregroundStyle(.black)
+                    
+                    Spacer()
+                    
+                    Text("Reset Difficulty")
+                        .font(.headline)
+                        .foregroundStyle(.cyan)
+                }
+            }
+        }
+        .padding()
     }
 }

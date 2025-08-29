@@ -286,6 +286,8 @@
 	</array>
 	<key>ScoreBanner</key>
 	<string>ca-app-pub-6040820758186818/5481654941</string>
+	<key>SettingsBanner</key>
+	<string>ca-app-pub-6040820758186818/1611225525</string>
 	<key>TopBanner</key>
 	<string>ca-app-pub-6040820758186818/7249226283</string>
 	<key>UIAppFonts</key>

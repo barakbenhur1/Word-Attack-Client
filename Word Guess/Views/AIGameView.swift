@@ -39,6 +39,7 @@ struct AIGameView<VM: WordViewModelForAI>: View {
     @State private var vm = VM()
     @State private var keyboard = KeyboardHeightHelper()
     @State private var endFetchAnimation = false
+    @State private var didStart = false
     @State private var interstitialAdManager = InterstitialAdsManager(adUnitID: "GameInterstitial")
     
     @State private var aiHpAnimation: HpAnimationParams = (0, CGFloat(0), CGFloat(0), CGFloat(30))
@@ -113,15 +114,15 @@ struct AIGameView<VM: WordViewModelForAI>: View {
     
     private var language: String? { return local.locale.identifier.components(separatedBy: "_").first }
     
-    private var firstGuess: (_ string: String) -> GuessHistory { { string in
-        guard !string.isEmpty else { return ("", "") }
+    private var allBestGuesses: [BestGuess] { return vm.perIndexCandidatesSparse(matrix: matrix,
+                                                                                 colors: colors,
+                                                                                 aiMatrix: aiMatrix,
+                                                                                 aiColors: aiColors) }
+    
+    private var firstGuess: (_ string: String) -> GuessHistory? { { string in
+        guard string.count != length else { return nil }
         return (string, vm.calculateColors(with: string.map { "\($0)" }).map { $0.getColor() }.joined()) }
     }
-    
-    private var allBestGuesses: [BestGuess] { return vm.perIndexCandidatesSparse(matrix: matrix,
-                                                                     colors: colors,
-                                                                     aiMatrix: aiMatrix,
-                                                                     aiColors: aiColors) }
     
     private func handleWordChange() {
         initMatrixState()
@@ -133,7 +134,6 @@ struct AIGameView<VM: WordViewModelForAI>: View {
         initalConfigirationForWord()
     }
     
-    
     private func handleError() {
         guard !vm.fatalError else { return showError = true }
         guard vm.word == .empty && vm.numberOfErrors > 0 else { return }
@@ -141,10 +141,118 @@ struct AIGameView<VM: WordViewModelForAI>: View {
         Task(priority: .userInitiated) { await vm.word(email: email) }
     }
     
-    private func closeViewAfterErorr() {
-        keyboard.show = true
+    private func handleStartup() async {
+        await vm.word(email: loginHandeler.model!.email)
+        didStart = vm.word != .empty
+    }
+    
+    private func backButtonTap() {
+        if endFetchAnimation { showExitPopup = true }
+        else { closeView() }
+    }
+    
+    private func closeView() {
+        ai?.deassign()
         audio.stop()
         router.navigateBack()
+    }
+    
+    private func closeViewAfterErorr() {
+        keyboard.show = true
+        closeView()
+    }
+    
+    private func chackWord(index i: Int, matrix: [[String]]) -> Bool {
+        let guess = matrix[i].joined()
+        
+        if guess.lowercased() == vm.word.value.lowercased() || i == rows - 1 {
+            disabled = true
+            audio.stop()
+            
+            let correct = guess.lowercased() == vm.word.value.lowercased()
+            
+            if correct {
+                Task(priority: .userInitiated) {
+                    try? await Task.sleep(nanoseconds: 2_000_000_000)
+                    //                    await MainActor.run { cleanCells = true }
+                    guard let email else { return }
+                    await vm.word(email: email)
+                }
+                
+                return true
+            }
+            
+            return false
+        } else {
+            disabled = turn == .player
+            
+            Task(priority: .userInitiated) {
+                try? await Task.sleep(nanoseconds: 1_000_000_000)
+                await MainActor.run { withAnimation(.easeInOut(duration: 0.8)) { turn = .init(rawValue: 1 - turn.rawValue)! } }
+            }
+            
+            return false
+        }
+    }
+    
+    private func makeHitOnPlayer(hitPoints: Int) { makeHit(hp: $playerHP, hpParams: $playerHpAnimation, hitPoints: hitPoints) }
+    private func makeHitOnAI(hitPoints: Int) { makeHit(hp: $aiHP, hpParams: $aiHpAnimation, hitPoints: hitPoints) }
+    private func makeHit(hp: Binding<Int>, hpParams: Binding<HpAnimationParams>, hitPoints: Int) {
+        current = .max
+        ai?.hidePhrase()
+        
+        hpParams.wrappedValue.value = hitPoints
+        
+        withAnimation(.linear(duration: 1.4)) {
+            hpParams.wrappedValue.offset = -30
+            hpParams.wrappedValue.opacity = 1
+            hpParams.wrappedValue.scale = 1.6
+        }
+        
+        Task(priority: .userInitiated) {
+            try? await Task.sleep(nanoseconds: 1_440_000_000)
+            guard hpParams.wrappedValue.opacity == 1 else { return }
+            await MainActor.run {
+                withAnimation(.linear(duration: 0.4)) {
+                    hpParams.wrappedValue.opacity = 0
+                    hpParams.wrappedValue.scale = 0
+                    let newHP = hp.wrappedValue - hitPoints
+                    hp.wrappedValue = max(0, newHP)
+                }
+            }
+            
+            try? await Task.sleep(nanoseconds: 400_000_000)
+            hpParams.wrappedValue.value = 0
+            hpParams.wrappedValue.offset = 30
+        }
+    }
+    
+    private func initMatrixState() {
+        matrix = [[String]](repeating: [String](repeating: "", count: length),
+                            count: rows)
+        
+        colors = [[CharColor]](repeating: [CharColor](repeating: .noGuess, count: length),
+                               count: rows)
+        
+        aiMatrix = [[String]](repeating: [String](repeating: "", count: length),
+                              count: rows)
+        
+        aiColors = [[CharColor]](repeating: [CharColor](repeating: .noGuess, count: length),
+                                 count: rows)
+        
+        ai?.hidePhrase()
+        
+        cleanCells = false
+        
+        ai?.manageMemory(with: []) {
+            switch aiDifficulty {
+            case .boss: return vm.wordValue
+            default: return nil
+            }
+        }
+        
+        guard turn != .player else { return }
+        withAnimation(.easeInOut(duration: 0.6)) { turn = .player }
     }
     
     init() {
@@ -153,7 +261,7 @@ struct AIGameView<VM: WordViewModelForAI>: View {
         self.matrix = [[String]](repeating: [String](repeating: "",
                                                      count: DifficultyType.ai.getLength()),
                                  count: rows)
-       
+        
         self.colors = [[CharColor]](repeating: [CharColor](repeating: .noGuess,
                                                            count: DifficultyType.ai.getLength()),
                                     count: rows)
@@ -218,20 +326,15 @@ struct AIGameView<VM: WordViewModelForAI>: View {
     
     private func handleAi() {
         guard playerHP > 0 else { return }
-        if aiHP == 0 {
-            switch aiDifficulty {
-            case .easy:
-                aiDifficulty = .medium
-                aiHP = fullHP
-            case .medium:
-                aiDifficulty = .hard
-                aiHP = fullHP
-            case .hard:
-                aiDifficulty = .boss
-                aiHP = fullHP
-            case .boss: gameState = .win
-            }
+        guard aiHP == 0 else { return }
+        switch aiDifficulty {
+        case .easy: withAnimation { aiDifficulty = .medium }
+        case .medium: withAnimation { aiDifficulty = .hard }
+        case .hard: withAnimation { aiDifficulty = .boss }
+        case .boss: gameState = .win
         }
+        guard gameState == .inProgress else { return  }
+        aiHP = fullHP
     }
     
     private func handleWin() {
@@ -279,7 +382,7 @@ struct AIGameView<VM: WordViewModelForAI>: View {
     private func calculatePlayerTurn(i: Int) {
         guard i == current else { return }
         colors[i] = vm.calculateColors(with: matrix[i])
-       
+        
         if chackWord(index: i, matrix: matrix) { makeHitOnAI(hitPoints: rows * hitPoints - current * hitPoints) }
         else if current == rows - 1 {
             Task.detached(priority: .userInitiated) {
@@ -300,11 +403,27 @@ struct AIGameView<VM: WordViewModelForAI>: View {
             makeHitOnAI(hitPoints: noGuessHitPoints)
             Task(priority: .userInitiated) {
                 try? await Task.sleep(nanoseconds: 2_000_000_000)
-//                await MainActor.run { cleanCells = true }
+                //                await MainActor.run { cleanCells = true }
                 guard let email else { return }
                 await vm.word(email: email)
             }
         }
+    }
+    
+    private func initalConfigirationForWord() {
+        Task(priority: .userInitiated) {
+            try? await Task.sleep(nanoseconds: (keyboard.show ? 0 : 500_000_000))
+            audio.playSound(sound: "backround",
+                            type: "mp3",
+                            loop: true)
+            
+            try? await Task.sleep(nanoseconds: 1_500_000_000)
+            await MainActor.run { endFetchAnimation = true }
+        }
+        
+        disabled = false
+        current = 0
+        ai?.addDetachedFirstGuess(with: firstGuess)
     }
     
     var body: some View {
@@ -316,14 +435,15 @@ struct AIGameView<VM: WordViewModelForAI>: View {
         }
         .onChange(of: vm.aiDownloaded, initializeAI)
         .onChange(of: ai?.showPhraseValue, handlePhrase)
-//        .onTapGesture {
-//            switch aiDifficulty {
-//            case .easy: aiDifficulty = .medium
-//            case .medium: aiDifficulty = .hard
-//            case .hard: aiDifficulty = .boss
-//            case .boss: aiDifficulty = .easy
-//            }
-//        }
+        //        .onTapGesture {
+        //            switch aiDifficulty {
+        //            case .easy: withAnimation { aiDifficulty = .medium }
+        //            case .medium: withAnimation { aiDifficulty = .hard }
+        //            case .hard: withAnimation { aiDifficulty = .boss }
+        //            case .boss: withAnimation { aiDifficulty = .easy }
+        //            }
+        //            aiHP = fullHP
+        //        }
     }
     
     @ViewBuilder private func contant() -> some View {
@@ -349,19 +469,15 @@ struct AIGameView<VM: WordViewModelForAI>: View {
                      type: gameState == .win ? .success : .fail,
                      isPresented: $showGameEndPopup,
                      actionText: "OK",
-                     action: {
-            audio.stop()
-            router.navigateBack()
-        }, message: { Text("You \(gameState == .win ? "win".localized : "lose".localized)") })
+                     action: closeView,
+                     message: { Text("You \(gameState == .win ? "win".localized : "lose".localized)") })
         .customAlert("Exit",
                      type: .info,
                      isPresented: $showExitPopup,
                      actionText: "OK",
                      cancelButtonText: "Cancel",
-                     action: {
-            audio.stop()
-            router.navigateBack()
-        }, message: { Text("By exiting you will lose all progress") })
+                     action: closeView,
+                     message: { Text("By exiting you will lose all progress") })
         .customAlert("Network error",
                      type: .fail,
                      isPresented: $showError,
@@ -414,7 +530,7 @@ struct AIGameView<VM: WordViewModelForAI>: View {
     }
     
     @ViewBuilder private func gameBody(proxy: GeometryProxy) -> some View {
-        if !vm.fatalError && vm.word != .empty {
+        if !vm.fatalError && didStart {
             VStack(spacing: 8) {
                 ZStack(alignment: .bottom) {
                     ZStack(alignment: .top) {
@@ -468,7 +584,7 @@ struct AIGameView<VM: WordViewModelForAI>: View {
                                         HPBar(value: Double(aiHP),
                                               maxValue: Double(fullHP))
                                         .frame(width: 100)
-
+                                        
                                         Text("- \(aiHpAnimation.value)")
                                             .font(.body.weight(.heavy))
                                             .multilineTextAlignment(.center)
@@ -557,28 +673,12 @@ struct AIGameView<VM: WordViewModelForAI>: View {
         ZStack(alignment: .topLeading) {
             ZStack(alignment: .topLeading) { gameBody(proxy: proxy) }
                 .ignoresSafeArea(.keyboard)
-                .task { await vm.word(email: loginHandeler.model!.email) }
+                .task { await handleStartup() }
                 .onChange(of: vm.numberOfErrors, handleError)
                 .onChange(of: vm.word, handleWordChange)
                 .ignoresSafeArea(.keyboard)
         }
         .padding(.top, 64)
-    }
-    
-    private func initalConfigirationForWord() {
-        Task(priority: .high) {
-            try? await Task.sleep(nanoseconds: (keyboard.show ? 0 : 500_000_000))
-            audio.playSound(sound: "backround",
-                            type: "mp3",
-                            loop: true)
-            
-            try? await Task.sleep(nanoseconds: 1_500_000_000)
-            await MainActor.run { endFetchAnimation = true }
-        }
-        
-        disabled = false
-        current = 0
-        ai?.addDetachedFirstGuess(with: firstGuess)
     }
     
     @ViewBuilder private func overlayViews(proxy: GeometryProxy) -> some View {
@@ -588,106 +688,11 @@ struct AIGameView<VM: WordViewModelForAI>: View {
     
     @ViewBuilder func backButton() -> some View {
         HStack {
-            BackButton(action: { showExitPopup = true })
+            BackButton(action: backButtonTap)
                 .padding(.top, 20)
             Spacer()
         }
         .padding(.bottom, 20)
-    }
-    
-    private func chackWord(index i: Int, matrix: [[String]]) -> Bool {
-        let guess = matrix[i].joined()
-        
-        if guess.lowercased() == vm.word.value.lowercased() || i == rows - 1 {
-            disabled = true
-            audio.stop()
-            
-            let correct = guess.lowercased() == vm.word.value.lowercased()
-            
-            if correct {
-                Task(priority: .userInitiated) {
-                    try? await Task.sleep(nanoseconds: 2_000_000_000)
-//                    await MainActor.run { cleanCells = true }
-                    guard let email else { return }
-                    await vm.word(email: email)
-                }
-                
-                return true
-            }
-            
-            return false
-        } else {
-            disabled = turn == .player
-            
-            Task(priority: .userInitiated) {
-                try? await Task.sleep(nanoseconds: 1_000_000_000)
-                await MainActor.run { withAnimation(.easeInOut(duration: 0.8)) { turn = .init(rawValue: 1 - turn.rawValue)! } }
-            }
-            
-            return false
-        }
-    }
-    
-    private func makeHitOnPlayer(hitPoints: Int) { makeHit(hp: $playerHP, hpParams: $playerHpAnimation, hitPoints: hitPoints) }
-    private func makeHitOnAI(hitPoints: Int) { makeHit(hp: $aiHP, hpParams: $aiHpAnimation, hitPoints: hitPoints) }
-    private func makeHit(hp: Binding<Int>, hpParams: Binding<HpAnimationParams>, hitPoints: Int) {
-        current = .max
-        ai?.hidePhrase()
-        
-        hpParams.wrappedValue.value = hitPoints
-        
-        withAnimation(.linear(duration: 1.4)) {
-            hpParams.wrappedValue.offset = -30
-            hpParams.wrappedValue.opacity = 1
-            hpParams.wrappedValue.scale = 1.6
-        }
-        
-        Task(priority: .userInitiated) {
-            try? await Task.sleep(nanoseconds: 1_440_000_000)
-            guard hpParams.wrappedValue.opacity == 1 else { return }
-            await MainActor.run {
-                withAnimation(.linear(duration: 0.4)) {
-                    hpParams.wrappedValue.opacity = 0
-                    hpParams.wrappedValue.scale = 0
-                    let newHP = hp.wrappedValue - hitPoints
-                    hp.wrappedValue = max(0, newHP)
-                }
-            }
-            
-            try? await Task.sleep(nanoseconds: 400_000_000)
-            hpParams.wrappedValue.value = 0
-            hpParams.wrappedValue.offset = 30
-        }
-    }
-    
-    private func initMatrixState() {
-        matrix = [[String]](repeating: [String](repeating: "",
-                                                count: length),
-                            count: rows)
-        colors = [[CharColor]](repeating: [CharColor](repeating: .noGuess,
-                                                      count: length),
-                               count: rows)
-        
-        aiMatrix = [[String]](repeating: [String](repeating: "",
-                                                  count: length),
-                              count: rows)
-        aiColors = [[CharColor]](repeating: [CharColor](repeating: .noGuess,
-                                                        count: length),
-                                 count: rows)
-        
-        ai?.hidePhrase()
-        
-        cleanCells = false
-        
-        ai?.manageMemory(with: []) {
-            switch aiDifficulty {
-            case .boss: return vm.wordValue
-            default: return nil
-            }
-        }
-        
-        guard turn != .player else { return }
-        withAnimation(.easeInOut(duration: 0.6)) { turn = .player }
     }
 }
 

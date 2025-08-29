@@ -90,13 +90,12 @@ class WordleAIViewModel {
         history = guessHistory
     }
     
-    func addDetachedFirstGuess(with formatter: @escaping (_ value: String) -> GuessHistory) {
+    func addDetachedFirstGuess(with formatter: @escaping (_ value: String) -> GuessHistory?) {
         Task(priority: .high) { [weak self] in
             guard let self else { return }
             guard let guess = try? await solver().pickFirstGuessFromModel(lang: lang) else { return }
-            let add = formatter(guess.map { String($0).returnChar(isFinal: $0 == guess.last) }.joined())
-            guard !add.word.isEmpty &&  !add.feedback.isEmpty else { return }
-            saveToHistory(guess: add)
+            guard let formattedGuess = formatter(guess.map { String($0).returnChar(isFinal: $0 == guess.last) }.joined()) else { return }
+            saveToHistory(guess: formattedGuess)
         }
     }
     

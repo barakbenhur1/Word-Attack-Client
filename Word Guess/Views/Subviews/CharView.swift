@@ -23,6 +23,7 @@ struct CharView: View {
         .accentColor(.black.opacity(0.2))
         .frame(maxHeight: .infinity)
         .multilineTextAlignment(.center)
+        .hideSystemInputAssistant()
         .onReceive(Just(text)) { _ in
             text.limitToAllowedCharacters(language: language)
             didType?(text)

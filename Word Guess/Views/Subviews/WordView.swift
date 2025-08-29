@@ -170,10 +170,8 @@ struct WordView<VM: ViewModel>: View {
             isAI: isAI,
             text: cleanCells ? .constant("") : $word[i],
             usePlaceHolder: usePlaceHolderText,
-            didType: { text in
-                onDidType(text: text,
-                          index: i)
-            }
+            didType: { text in onDidType(text: text,
+                                         index: i) }
         )
         .frame(maxHeight: .infinity)
         .textInputAutocapitalization(i == 0 ? .sentences : .never)
@@ -200,6 +198,7 @@ struct WordView<VM: ViewModel>: View {
             .autocorrectionDisabled()
             .background(guess.color.color.blur(radius: 4))
             .clipShape(RoundedRectangle(cornerRadius: 4))
+            .hideSystemInputAssistant()
             .disabled(true)
             .opacity(0.2)
     }

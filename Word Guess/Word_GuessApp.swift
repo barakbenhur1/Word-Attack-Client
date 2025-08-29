@@ -6,9 +6,7 @@
 //
 
 import SwiftUI
-import AVFAudio
 import FirebaseAuth
-import GoogleMobileAds
 
 @Observable
 class LanguageSetting: ObservableObject { var locale = Locale.current }
@@ -23,16 +21,6 @@ struct WordGuessApp: App {
     private let local = LanguageSetting()
     private let router = Router()
     private let login = LoginViewModel()
-    
-    init() {
-        GADMobileAds.sharedInstance().start(completionHandler: nil)
-        GADMobileAds.sharedInstance().requestConfiguration.testDeviceIdentifiers = [
-            "b1f8623026df56ee0408eaae157025db"
-        ]
-        
-        try? AVAudioSession.sharedInstance().setCategory(.ambient, mode: .default, options: [])
-        try? AVAudioSession.sharedInstance().setActive(true)
-    }
     
     var body: some Scene {
         WindowGroup {
@@ -49,25 +37,23 @@ struct WordGuessApp: App {
                                            email: email)
                 Task.detached(priority: .high) {
                     let gender = await login.gender(email: email)
-                    await MainActor.run {
-                        loginHaneler.model?.gender = gender
-                    }
+                    await MainActor.run { loginHaneler.model?.gender = gender }
                 }
             }
             .onAppear {
                 guard let email = loginHaneler.model?.email else { return }
-                Task.detached { await LoginViewModel().changeLanguage(email: email) }
+                Task.detached(priority: .high) { await login.changeLanguage(email: email) }
             }
             .onChange(of: local.locale) {
                 guard let email = loginHaneler.model?.email else { return }
-                Task.detached { await LoginViewModel().changeLanguage(email: email) }
+                Task.detached(priority: .high) { await login.changeLanguage(email: email) }
             }
         }
         .environmentObject(router)
         .environmentObject(audio)
         .environmentObject(persistenceController)
         .environmentObject(loginHaneler)
-        .environment(local)
+        .environmentObject(local)
         .environment(\.locale, local.locale)
         .environment(\.managedObjectContext, persistenceController.container.viewContext)
     }

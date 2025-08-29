@@ -19,6 +19,7 @@ class ScoreboardViewModel: ObservableObject {
     }
     
     func items(email: String) async {
+        guard !email.isEmpty else { return }
         let value: [Day]? = await network.send(route: "scoreboard",
                                                parameters: ["email": email])
         guard let value else { return }

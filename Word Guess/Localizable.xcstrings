@@ -25,16 +25,6 @@
         }
       }
     },
-    "->" : {
-      "localizations" : {
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "->"
-          }
-        }
-      }
-    },
     "?" : {
       "localizations" : {
         "he" : {
@@ -81,16 +71,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "+ %lld"
-          }
-        }
-      }
-    },
-    "<-" : {
-      "localizations" : {
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "<-"
           }
         }
       }
@@ -164,7 +144,7 @@
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "😳 בנוני"
+            "value" : "😳 בינוני"
           }
         }
       }
@@ -1265,6 +1245,16 @@
         }
       }
     },
+    "Guessed" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "נוחש"
+          }
+        }
+      }
+    },
     "Guessing glyph animation" : {
       "localizations" : {
         "he" : {
@@ -1944,7 +1934,14 @@
       }
     },
     "Network error" : {
-
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "שגיאת רשת"
+          }
+        }
+      }
     },
     "Nice fail" : {
       "extractionState" : "manual",
@@ -2001,6 +1998,16 @@
         }
       }
     },
+    "No data yet" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אין מידע עדיין"
+          }
+        }
+      }
+    },
     "No match" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2008,6 +2015,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "לא תואם"
+          }
+        }
+      }
+    },
+    "No results yet" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אין תוצאות עדיין"
           }
         }
       }
@@ -2052,22 +2069,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "שום דבר אישי"
-          }
-        }
-      }
-    },
-    "Number Of Words Answered" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Guessed Words"
-          }
-        },
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "מילים שנוחשו"
           }
         }
       }
@@ -2302,6 +2303,16 @@
         }
       }
     },
+    "Play a game to see your daily leaderboard." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "שחק במשחק בכדיי לראות את הדירוג שלך בלוח"
+          }
+        }
+      }
+    },
     "Plural? Wrong!" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2489,10 +2500,16 @@
     "Reset Difficulty" : {
       "extractionState" : "manual",
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reset"
+          }
+        },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "אתחל את רמת הקושי"
+            "value" : "אתחל"
           }
         }
       }
@@ -2585,6 +2602,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "לוח התוצאות"
+          }
+        }
+      }
+    },
+    "SCOREBOARD" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "דירוג"
           }
         }
       }
@@ -2721,7 +2748,14 @@
       }
     },
     "something went wrong" : {
-
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "משהו השתבש"
+          }
+        }
+      }
     },
     "sound" : {
       "extractionState" : "manual",
@@ -3020,18 +3054,12 @@
         }
       }
     },
-    "Total Number Of Words" : {
+    "Total" : {
       "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Total Words"
-          }
-        },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "כל המילים"
+            "value" : "סך הכל"
           }
         }
       }
