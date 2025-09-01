@@ -177,8 +177,8 @@ extension Network {
         static var value: String {
             get {
 #if DEBUG
-                return "http://localhost:3000"
-                //                return Network.base
+                //                return "http://localhost:3000"
+                return Network.base
 #else
                 return Network.base
 #endif
