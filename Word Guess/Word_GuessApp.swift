@@ -76,8 +76,8 @@ struct WordGuessApp: App {
     
     private func deepLink(url: URL?) {
         guard let url else { return }
-        router.popToRoot()
         Task(priority: .userInitiated) {
+            await router.popToRoot()
             try? await Task.sleep(nanoseconds: 1_000_000_000)
             await MainActor.run {
                 switch url.absoluteString {

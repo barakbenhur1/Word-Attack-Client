@@ -54,9 +54,9 @@ class Router: ObservableObject {
         path.removeLast()
     }
     
-    func popToRoot() {
+    func popToRoot() async {
         guard !path.isEmpty else { return }
-        UIApplication.shared.hideKeyboard()
-        path.removeLast(path.count)
+        await UIApplication.shared.hideKeyboard()
+        await MainActor.run { path.removeLast(path.count) }
     }
 }
