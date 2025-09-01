@@ -7,9 +7,18 @@
 
 import Foundation
 import WidgetKit
+import SwiftUICore
 
 public enum Difficulty: String, Codable, CaseIterable {
     case easy, medium, hard
+    
+    var color: Color {
+        switch self {
+        case .easy: Color(hue: 0.33, saturation: 0.75, brightness: 0.32)
+        case .medium: Color(hue: 0.15, saturation: 0.90, brightness: 0.60)
+        case .hard: Color(hue: 0.97, saturation: 0.8,  brightness: 0.38)
+        }
+    }
     
     // Handy helpers if you need cycling elsewhere
     public func next() -> Difficulty {
@@ -29,8 +38,6 @@ public struct AIStats: Codable, Equatable {
     public let name: String
     public let imageName: String?
 }
-
-// NOTE: LeaderboaredPlaceData is defined elsewhere in your project.
 
 enum SharedStore {
     static let appGroupID  = "group.com.barak.wordzap"   // ← your real App Group

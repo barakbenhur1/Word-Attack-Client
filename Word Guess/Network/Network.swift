@@ -63,7 +63,7 @@ class Network: Networkble {
     enum DeviceTokenService {
         static var apiBase: String {
             // Point to your Node server (https + real host in production)
-            // e.g., "https://api.wordzap.app"
+            // e.g., "https://word-attack.onrender.com"
             return BaseUrl.value
         }
         

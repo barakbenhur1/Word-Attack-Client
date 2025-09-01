@@ -27,7 +27,7 @@ struct WordZapProvider: TimelineProvider {
 #if DEBUG
     private let cycleSeconds: TimeInterval = 20           // fast in simulator
 #else
-    private let cycleSeconds: TimeInterval = 60 * 10      // 10 minutes on device
+    private let cycleSeconds: TimeInterval = 60 * 4      // 4 minutes on device
 #endif
     
     private let order: [Difficulty] = [.easy, .medium, .hard]
@@ -129,7 +129,7 @@ struct WordZapWidgetView: View {
     
     // MARK: Unified chip
     @ViewBuilder
-    private func chip(_ text: String, icon: String? = nil, expand: Bool = true) -> some View {
+    private func chip(_ text: String, icon: String? = nil, expand: Bool = true, color: Color = .primary) -> some View {
         HStack(spacing: 8) {
             if let icon {
                 Image(systemName: icon)
@@ -138,7 +138,7 @@ struct WordZapWidgetView: View {
             }
             Text(text)
                 .font(.caption.weight(.semibold))
-                .foregroundColor(.primary)
+                .foregroundColor(color)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
                 .layoutPriority(1)
@@ -192,7 +192,7 @@ struct WordZapWidgetView: View {
             Grid(horizontalSpacing: 8, verticalSpacing: 6) {
                 GridRow {
                     chip(shortDate, icon: "calendar")
-                    chip(diff,      icon: "flag.checkered")
+                    chip(diff,      icon: "flag.checkered", color: d.color)
                     chip(answers,   icon: "text.cursor")
                 }
                 GridRow {
@@ -203,10 +203,9 @@ struct WordZapWidgetView: View {
             }
         }
         .padding(12)
-        .widgetURL(URL(string: "wordzap://play?difficulty=\(d.rawValue)"))
     }
     
-    // MARK: Large — left full-text chips + right AI (same height)
+    // MARK: Large
     private var largeLayout: some View {
         let shortDate = entry.date.formatted(.dateTime.day().month(.abbreviated))
         let d         = entry.difficulty
@@ -221,7 +220,7 @@ struct WordZapWidgetView: View {
                 Link(destination: URL(string: "wordzap://play?difficulty=\(d.rawValue)")!) {
                     VStack(alignment: .leading, spacing: 10) {
                         chip("Today: \(shortDate)",                                          icon: "calendar")
-                        chip("Difficulty: \(d.rawValue.capitalized)",                        icon: "flag.checkered")
+                        chip("Difficulty: \(d.rawValue.capitalized)",                        icon: "flag.checkered", color: d.color)
                         chip("Place: \(entry.place.map { "#\($0)" } ?? "—")",                icon: "trophy")
                         chip("Score: \(entry.score != nil ? "\(entry.score!)" : "—")",       icon: "sum")
                         chip("Answers: \(entry.answers != nil ? "\(entry.answers!)" : "-")", icon: "text.cursor")
