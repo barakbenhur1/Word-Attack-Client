@@ -68,7 +68,7 @@ public struct BackButton: View {
                 if let title {
                     Text(title).font(font)
                         .lineLimit(1)
-                        .minimumScaleFactor(0.9)
+                        .minimumScaleFactor(0.1)
                 }
             }
             .foregroundStyle(foregroundStyle)

@@ -44,18 +44,17 @@ struct WordGuessApp: App {
                                            email: email)
                 Task.detached(priority: .high) {
                     await refreshWordZapPlaces(email: email)
+                    await login.changeLanguage(email: email)
                     let gender = await login.gender(email: email)
                     await MainActor.run { loginHaneler.model?.gender = gender }
                 }
             }
-            .onAppear {
-                guard let email = loginHaneler.model?.email else { return }
-                Task.detached(priority: .high) { await login.changeLanguage(email: email) }
-                guard let deepLinkUrl else { return }
-                deepLink(url: deepLinkUrl)
-                self.deepLinkUrl = nil
-            }
             .onDisappear { tooltipPusher.stop() }
+            .onChange(of: loginHaneler.model) {
+                guard loginHaneler.model != nil else { return }
+                deepLink(url: deepLinkUrl)
+                deepLinkUrl = nil
+            }
             .onChange(of: local.locale) {
                 guard let email = loginHaneler.model?.email else { return }
                 Task.detached(priority: .high) { await login.changeLanguage(email: email) }
@@ -75,19 +74,26 @@ struct WordGuessApp: App {
         .environment(\.managedObjectContext, persistenceController.container.viewContext)
     }
     
-    private func deepLink(url: URL) {
-        switch url.absoluteString {
-        case "home": break
-        case let absoluteString where absoluteString.contains("ai"): router.navigateTo(.game(diffculty: .ai))
-        case let absoluteString where absoluteString.contains("difficulty"):
-            let comp = absoluteString.components(separatedBy: "=")
-            switch comp.last {
-            case "easy":   router.navigateTo(.game(diffculty: .easy))
-            case "medium": router.navigateTo(.game(diffculty: .medium))
-            case "hard":   router.navigateTo(.game(diffculty: .hard))
-            default: break
+    private func deepLink(url: URL?) {
+        guard let url else { return }
+        router.popToRoot()
+        Task(priority: .userInitiated) {
+            try? await Task.sleep(nanoseconds: 1_000_000_000)
+            await MainActor.run {
+                switch url.absoluteString {
+                case "home": break
+                case let absoluteString where absoluteString.contains("ai"): router.navigateTo(.game(diffculty: .ai))
+                case let absoluteString where absoluteString.contains("difficulty"):
+                    let comp = absoluteString.components(separatedBy: "=")
+                    switch comp.last {
+                    case "easy":   router.navigateTo(.game(diffculty: .easy))
+                    case "medium": router.navigateTo(.game(diffculty: .medium))
+                    case "hard":   router.navigateTo(.game(diffculty: .hard))
+                    default: break
+                    }
+                default: break
+                }
             }
-        default: break
         }
     }
 }

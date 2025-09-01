@@ -172,24 +172,22 @@ struct WordZapWidgetView: View {
             Spacer(minLength: 2)
         }
         .padding(.horizontal, 6)
-        .widgetURL(URL(string: "wordzap://home"))
     }
     
     // MARK: Medium — compact chips
     private var mediumLayout: some View {
         let shortDate = entry.date.formatted(.dateTime.day().month(.abbreviated))
-        let d        = entry.difficulty
-        let answers  = entry.answers.map(String.init) ?? "—"
-        let score    = entry.score.map { $0.formatted(.number.grouping(.automatic)) } ?? "—"
-        let place    = entry.place.map { "#\($0)" } ?? "—"
-        let diff     = d.rawValue.capitalized
+        let d         = entry.difficulty
+        let answers   = entry.answers.map(String.init) ?? "—"
+        let score     = entry.score.map { $0.formatted(.number.grouping(.automatic)) } ?? "—"
+        let place     = entry.place.map { "#\($0)" } ?? "—"
+        let diff      = d.rawValue.capitalized
         
-        return VStack(spacing: 8) {
+        return VStack(spacing: 4) {
             AppTitle()
                 .font(.headline)
                 .foregroundColor(.primary)
                 .frame(maxWidth: .infinity, alignment: .center)
-//                .widgetURL(URL(string: "wordzap://home"))
             
             Grid(horizontalSpacing: 8, verticalSpacing: 6) {
                 GridRow {
@@ -218,30 +216,30 @@ struct WordZapWidgetView: View {
                 .font(.title3).bold()
                 .foregroundColor(.primary)
                 .frame(maxWidth: .infinity, alignment: .center)
-//                .widgetURL(URL(string: "wordzap://home"))
 
             HStack(alignment: .top, spacing: 12) {
-                VStack(alignment: .leading, spacing: 10) {
-                    chip("Today: \(shortDate)",                                          icon: "calendar",       expand: true)
-                    chip("Difficulty: \(d.rawValue.capitalized)",                        icon: "flag.checkered", expand: true)
-                    chip("Place: \(entry.place.map { "#\($0)" } ?? "—")",                icon: "trophy",         expand: true)
-                    chip("Score: \(entry.score != nil ? "\(entry.score!)" : "—")",       icon: "sum",            expand: true)
-                    chip("Answers: \(entry.answers != nil ? "\(entry.answers!)" : "-")", icon: "text.cursor",    expand: true)
+                Link(destination: URL(string: "wordzap://play?difficulty=\(d.rawValue)")!) {
+                    VStack(alignment: .leading, spacing: 10) {
+                        chip("Today: \(shortDate)",                                          icon: "calendar")
+                        chip("Difficulty: \(d.rawValue.capitalized)",                        icon: "flag.checkered")
+                        chip("Place: \(entry.place.map { "#\($0)" } ?? "—")",                icon: "trophy")
+                        chip("Score: \(entry.score != nil ? "\(entry.score!)" : "—")",       icon: "sum")
+                        chip("Answers: \(entry.answers != nil ? "\(entry.answers!)" : "-")", icon: "text.cursor")
+                    }
+                    .padding(14)
+                    .softGlass()
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .padding(14)
-                .softGlass()
-                .frame(maxWidth: .infinity, alignment: .leading)
-               
-                .widgetURL(URL(string: "wordzap://play?difficulty=\(d.rawValue)"))
 
-                AICardWithTooltip(
-                    name: entry.aiName ?? "AI Opponent",
-                    imageName: entry.aiImageName,
-                    tooltip: entry.aiTooltip
-                )
-                .frame(width: 120)
-                .softGlass()
-                .widgetURL(URL(string: "wordzap://ai"))
+                Link(destination: URL(string:  "wordzap://ai")!) {
+                    AICardWithTooltip(
+                        name: entry.aiName ?? "AI Opponent",
+                        imageName: entry.aiImageName,
+                        tooltip: entry.aiTooltip
+                    )
+                    .frame(width: 120)
+                    .softGlass()
+                }
             }
         }
         .padding(16)
@@ -273,9 +271,10 @@ private struct AICardWithTooltip: View {
                             )
                     }
                 }
+                .frame(height: 86)
                 .shadow(radius: 3, y: 2)
             }
-            .padding(.top, 10)
+
             
             Text(name)
                 .font(.callout.weight(.semibold))
@@ -297,7 +296,7 @@ private struct TooltipBubble: View {
             Text(text)
                 .font(.caption2.weight(.semibold))
                 .lineLimit(2)
-                .minimumScaleFactor(0.8)
+                .minimumScaleFactor(0.5)
                 .multilineTextAlignment(.center)
                 .foregroundColor(.primary)
                 .padding(.horizontal, 10)

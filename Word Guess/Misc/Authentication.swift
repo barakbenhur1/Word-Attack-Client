@@ -11,7 +11,7 @@ import Firebase
 import FacebookLogin
 import GoogleSignIn
 
-struct GoogleAuthModel: Codable {
+struct GoogleAuthModel: Codable, Equatable {
     var givenName: String = ""
     var lastName: String = ""
     var email: String = ""

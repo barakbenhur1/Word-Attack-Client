@@ -31,6 +31,7 @@ class LoginViewModel: ObservableObject {
         return value?.gender ?? "male"
     }
     
+    @discardableResult
     func changeLanguage(email: String) async -> Bool {
         guard let language = Locale.current.identifier.components(separatedBy: "_").first else { return false }
         let value: EmptyModel? = await network.send(route: "changeLanguage",

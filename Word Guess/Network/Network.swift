@@ -139,8 +139,8 @@ extension Network {
     internal func send<T: Codable>(method: HttpMethod = .post, route: String, parameters: [String: Any] = [:]) async -> T? {
         let url = url(route)
         let result: Result<T, NetworkError> = await send(method: method,
-                                                   url: url,
-                                                   parameters: parameters)
+                                                         url: url,
+                                                         parameters: parameters)
         
         switch result {
         case .success(let success):
@@ -177,8 +177,8 @@ extension Network {
         static var value: String {
             get {
 #if DEBUG
-                //                return "http://localhost:3000"
-                return Network.base
+                                return "http://localhost:3000"
+//                return Network.base
 #else
                 return Network.base
 #endif
