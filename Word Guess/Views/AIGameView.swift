@@ -70,6 +70,7 @@ struct AIGameView<VM: WordViewModelForAI>: View {
         didSet {
             ai?.hidePhrase()
             UserDefaults.standard.set(aiDifficulty.rawValue.name, forKey: "aiDifficulty")
+            Task(priority: .utility) { await SharedStore.writeAIStatsAsync(.init(name: aiDifficulty.rawValue.name, imageName:  aiDifficulty.rawValue.image)) }
         }
     }
     
@@ -324,8 +325,10 @@ struct AIGameView<VM: WordViewModelForAI>: View {
         
         self.gameState = .inProgress
         
+        let difficulty = UserDefaults.standard.string(forKey: "aiDifficulty")
+        
 #if DEBUG
-        switch UserDefaults.standard.string(forKey: "aiDifficulty") ?? AIDifficulty.easy.rawValue.name {
+        switch difficulty ?? AIDifficulty.easy.rawValue.name {
         case AIDifficulty.easy.rawValue.name: self.aiDifficulty = .easy
         case AIDifficulty.medium.rawValue.name: self.aiDifficulty = .medium
         case AIDifficulty.hard.rawValue.name: self.aiDifficulty = .hard
@@ -334,7 +337,7 @@ struct AIGameView<VM: WordViewModelForAI>: View {
         }
         //        self.aiDifficulty = .boss // change back to easy
 #else
-        switch UserDefaults.standard.string(forKey: "aiDifficulty") ?? AIDifficulty.easy.rawValue.name {
+        switch difficulty ?? AIDifficulty.easy.rawValue.name {
         case AIDifficulty.easy.rawValue.name: self.aiDifficulty = .easy
         case AIDifficulty.medium.rawValue.name: self.aiDifficulty = .medium
         case AIDifficulty.hard.rawValue.name: self.aiDifficulty = .hard

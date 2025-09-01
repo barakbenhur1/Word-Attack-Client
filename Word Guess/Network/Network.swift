@@ -5,7 +5,6 @@
 //  Created by Barak Ben Hur on 18/10/2024.
 //
 
-
 import Foundation
 
 protocol DataSource: ObservableObject {}
@@ -27,6 +26,7 @@ private enum NetworkError: Error {
     case badStatus
     case noData
     case failedToDecodeResponse
+    case custom(error: Error)
 }
 
 // MARK: HttpMethod
@@ -60,6 +60,35 @@ class Network: Networkble {
         Network.base = base
     }
     
+    enum DeviceTokenService {
+        static var apiBase: String {
+            // Point to your Node server (https + real host in production)
+            // e.g., "https://api.wordzap.app"
+            return BaseUrl.value
+        }
+        
+        static func register(email: String? ,token: String, environment: String, userId: String?) async {
+            guard let email else { return }
+            guard let url = URL(string: "\(apiBase)/devices/register") else { return }
+            var req = URLRequest(url: url)
+            req.httpMethod = "POST"
+            req.addValue("application/json", forHTTPHeaderField: "Content-Type")
+            let body: [String: Any] = [
+                "token": token,
+                "email": email,
+                "environment": environment,   // "sandbox" or "prod"
+                "bundleId": "com.barak.wordzap",
+                "userId": userId ?? ""
+            ]
+            req.httpBody = try? JSONSerialization.data(withJSONObject: body)
+            do {
+                _ = try await URLSession.shared.data(for: req)
+            } catch {
+                print("Device token register failed:", error)
+            }
+        }
+    }
+    
     // MARK: send - to network
     /// - Parameters:
     ///  - method
@@ -67,7 +96,7 @@ class Network: Networkble {
     ///  - parameters
     ///  - complition
     ///  - error
-    private func send<T: Codable>(method: HttpMethod, url: String, parameters: [String: Any]) async -> Result<T, String> {
+    private func send<T: Codable>(method: HttpMethod, url: String, parameters: [String: Any]) async -> Result<T, NetworkError> {
         return await withCheckedContinuation({ c in
             do {
                 let request = try Request(method: method, url: url, parameters: parameters).build()
@@ -84,18 +113,16 @@ class Network: Networkble {
                             return c.resume(returning: .success(decodedResponse))
                             
                             // handele expetions
-                        } catch let err { return c.resume(returning: .failure(err.localizedDescription)) }
+                        } catch let err { return c.resume(returning: .failure(.custom(error: err))) }
                     }
                     
                     // return error
-                    c.resume(returning: .failure(err.localizedDescription))
+                    c.resume(returning: .failure(.custom(error: err)))
                     
                 }.resume()
                 
                 // handele expetions
-            } catch let err {
-                c.resume(returning: .failure(err.localizedDescription))
-            }
+            } catch let err { c.resume(returning: .failure(.custom(error: err))) }
         })
     }
 }
@@ -111,7 +138,7 @@ extension Network {
     ///  - error
     internal func send<T: Codable>(method: HttpMethod = .post, route: String, parameters: [String: Any] = [:]) async -> T? {
         let url = url(route)
-        let result: Result<T, String> = await send(method: method,
+        let result: Result<T, NetworkError> = await send(method: method,
                                                    url: url,
                                                    parameters: parameters)
         
@@ -150,8 +177,8 @@ extension Network {
         static var value: String {
             get {
 #if DEBUG
-//                                return "http://localhost:3000"
-                return Network.base
+                return "http://localhost:3000"
+                //                return Network.base
 #else
                 return Network.base
 #endif
@@ -231,6 +258,8 @@ extension NetworkError: LocalizedError {
             return "No data"
         case .failedToDecodeResponse:
             return "Failed to decode response into the given type"
+        case .custom(error: let error):
+            return error.localizedDescription
         }
     }
 }

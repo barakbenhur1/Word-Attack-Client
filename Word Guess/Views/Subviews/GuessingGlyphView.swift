@@ -21,7 +21,7 @@ public struct GuessingGlyphView: View {
     
     // Hold phase
     public var initialHoldDuration: TimeInterval = 1.0
-    public var holdStagger: TimeInterval = 0.08        // extra delay per *visual* index
+    public var holdStagger: TimeInterval = 0.2        // extra delay per *visual* index
     public var holdGlyph: String = "?"
     
     // NEW: wave direction control
@@ -60,19 +60,10 @@ public struct GuessingGlyphView: View {
     // Visual rank used for the "?" hold staggering
     private var visualIndex: Int {
         guard stringLangth > 0 else { return index }
-        
         switch waveDirection {
-        case .autoByLayout:
-            // reading order (works for LTR and RTL automatically)
-            return index
-            
-        case .leftToRight:
-            // physical left → right, regardless of locale
-            return (layoutDirection == .rightToLeft) ? (stringLangth - 1 - index) : index
-            
-        case .rightToLeft:
-            // physical right → left, regardless of locale
-            return (layoutDirection == .rightToLeft) ? index : (stringLangth - 1 - index)
+        case .autoByLayout: return index
+        case .leftToRight: return (layoutDirection == .rightToLeft) ? (stringLangth - 1 - index) : index
+        case .rightToLeft: return (layoutDirection == .rightToLeft) ? index : (stringLangth - 1 - index)
         }
     }
     

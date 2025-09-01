@@ -14,14 +14,16 @@ enum WordLanguage: String {
 
 @Observable
 class WordViewModel: ViewModel {
-    private let network: Network
+    private let wordService: WordService
+    private let scoreService: ScoreService
     var word: WordData
     var isError: Bool
     
     override var wordValue: String { word.word.value }
     
     required override init() {
-        network = Network(root: "words")
+        wordService = .init()
+        scoreService = .init()
         word = .empty
         isError = false
     }
@@ -29,26 +31,12 @@ class WordViewModel: ViewModel {
     func initMoc() async {
         await MainActor.run { [weak self] in
             guard let self else { return }
-            let local = LanguageSetting()
-            let language = local.locale.identifier.components(separatedBy: "_").first
-            withAnimation { self.word = .init(score: 0, word: .init(value: language == "he" ? "אבגדה" : "abcde", guesswork: []), number: 0, isTimeAttack: false) }
+            withAnimation { self.word = self.wordService.initMoc()  }
         }
     }
     
     func word(diffculty: DifficultyType, email: String) async {
-        guard diffculty != .tutorial else {
-            let local = LanguageSetting()
-            let language = local.locale.identifier.components(separatedBy: "_").first
-            return word = .init(score: 0,
-                                word: .init(value: language == "he" ? "שלום" : "Cool",
-                                            guesswork: []),
-                                number: 0,
-                                isTimeAttack: false)
-        }
-        
-        let value: WordData? = await network.send(route: "getWord",
-                                                  parameters: ["diffculty": diffculty.rawValue.trimmingCharacters(in: .whitespacesAndNewlines),
-                                                               "email": email])
+        let value  = await wordService.word(diffculty: diffculty, email: email)
         await MainActor.run { [weak self] in
             guard let self else { return }
             guard let value else { return isError = true }
@@ -60,10 +48,7 @@ class WordViewModel: ViewModel {
     }
     
     func addGuess(diffculty: DifficultyType, email: String, guess: String) async {
-        let value: EmptyModel? = await network.send(route: "addGuess",
-                                                    parameters: ["diffculty": diffculty.rawValue.trimmingCharacters(in: .whitespacesAndNewlines),
-                                                                 "email": email,
-                                                                 "guess": guess])
+        let value: EmptyModel? = await wordService.addGuess(diffculty: diffculty, email: email, guess: guess)
         
         await MainActor.run { [weak self] in
             guard let self else { return }
@@ -72,14 +57,78 @@ class WordViewModel: ViewModel {
     }
     
     func score(diffculty: DifficultyType, email: String) async {
-        let value: EmptyModel? = await network.send(route: "score",
-                                                    parameters: ["diffculty": diffculty.rawValue.trimmingCharacters(in: .whitespacesAndNewlines),
-                                                                 "email": email])
+        let value: EmptyModel? = await scoreService.score(diffculty: diffculty, email: email)
         
         await MainActor.run { [weak self] in
             guard let self else { return }
             guard value != nil else { return isError = true }
         }
+    }
+    
+    func getPlaceInLeaderboard(email: String) async -> LeaderboaredPlaceData? {
+        let value: LeaderboaredPlaceData? = await scoreService.getPlaceInLeaderboard(email: email)
+        return value
+    }
+}
+
+fileprivate protocol Service { var network: Network { get } }
+
+fileprivate class ScoreService: Service {
+    fileprivate let network: Network
+    required init() {
+        network = Network(root: "score")
+    }
+    func score(diffculty: DifficultyType, email: String) async -> EmptyModel? {
+        let value: EmptyModel? = await network.send(route: "score",
+                                                    parameters: ["diffculty": diffculty.rawValue.trimmingCharacters(in: .whitespacesAndNewlines),
+                                                                 "email": email])
+        
+        return value
+    }
+    
+    func getPlaceInLeaderboard(email: String) async -> LeaderboaredPlaceData? {
+        let value: LeaderboaredPlaceData? = await network.send(route: "place",
+                                                               parameters: ["email": email])
+        return value
+    }
+}
+
+fileprivate class WordService: Service {
+    fileprivate let network: Network
+    required init() {
+        network = Network(root: "words")
+    }
+    
+    func initMoc() -> WordData {
+        let local = LanguageSetting()
+        let language = local.locale.identifier.components(separatedBy: "_").first
+        return .init(score: 0, word: .init(value: language == "he" ? "אבגדה" : "abcde", guesswork: []), number: 0, isTimeAttack: false)
+    }
+    
+    func word(diffculty: DifficultyType, email: String) async -> WordData? {
+        guard diffculty != .tutorial else {
+            let local = LanguageSetting()
+            let language = local.locale.identifier.components(separatedBy: "_").first
+            return .init(score: 0,
+                         word: .init(value: language == "he" ? "שלום" : "Cool",
+                                     guesswork: []),
+                         number: 0,
+                         isTimeAttack: false)
+        }
+        
+        let value: WordData? = await network.send(route: "getWord",
+                                                  parameters: ["diffculty": diffculty.rawValue.trimmingCharacters(in: .whitespacesAndNewlines),
+                                                               "email": email])
+        return value
+    }
+    
+    func addGuess(diffculty: DifficultyType, email: String, guess: String) async -> EmptyModel? {
+        let value: EmptyModel? = await network.send(route: "addGuess",
+                                                    parameters: ["diffculty": diffculty.rawValue.trimmingCharacters(in: .whitespacesAndNewlines),
+                                                                 "email": email,
+                                                                 "guess": guess])
+        
+        return value
     }
 }
 

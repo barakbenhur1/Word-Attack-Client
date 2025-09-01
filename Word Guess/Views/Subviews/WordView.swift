@@ -7,52 +7,6 @@
 
 import SwiftUI
 
-struct CharColor: Comparable {
-    static func == (lhs: CharColor, rhs: CharColor) -> Bool { return lhs.id == rhs.id}
-    static func < (lhs: CharColor, rhs: CharColor) -> Bool { return lhs.id > rhs.id }
-    
-    let id: Int
-    let color: LinearGradient
-    
-    static let noGuess: CharColor = .init(id: 0,
-                                          color: .linearGradient(colors: [.white.opacity(0.6), .white],
-                                                                 startPoint: .leading,
-                                                                 endPoint: .trailing))
-    static let noMatch: CharColor = .init(id: 1,
-                                          color: .linearGradient(colors: [Color(red: 99/255, green: 110/255, blue: 114/255).opacity(0.6),
-                                                                          Color(red: 99/255, green: 110/255, blue: 114/255)],
-                                                                 startPoint: .leading,
-                                                                 endPoint: .trailing))
-    static let partialMatch: CharColor = .init(id: 2,
-                                               color: .linearGradient(colors: [Color(red: 255/255, green: 193/255, blue: 7/255).opacity(0.6),
-                                                                               Color(red: 255/255, green: 193/255, blue: 7/255)],
-                                                                      startPoint: .leading,
-                                                                      endPoint: .trailing))
-    static let exactMatch: CharColor = .init(id: 3,
-                                             color: .linearGradient(colors: [Color(red: 46/255, green: 204/255, blue: 113/255).opacity(0.6),
-                                                                             Color(red: 46/255, green: 204/255, blue: 113/255)],
-                                                                    startPoint: .leading,
-                                                                    endPoint: .trailing))
-    
-    var baseColor: Color {
-        switch self {
-        case let i where i == .exactMatch: return .green
-        case let i where i == .partialMatch: return .yellow
-        case let i where i == .noMatch: return .gray
-        case let i where i == .noGuess: return .white
-        default: return .clear
-        }
-    }
-    
-    func getColor() -> String {
-        switch self {
-        case let i where i.id == CharColor.partialMatch.id : return "🟨"
-        case let i where i.id == CharColor.exactMatch.id : return "🟩"
-        default: return "⬜"
-        }
-    }
-}
-
 struct WordView<VM: ViewModel>: View {
     @EnvironmentObject private var local: LanguageSetting
     

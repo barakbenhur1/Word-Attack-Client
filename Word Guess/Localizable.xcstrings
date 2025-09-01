@@ -149,6 +149,9 @@
         }
       }
     },
+    "A an example control that runs a timer." : {
+
+    },
     "Absolute" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -383,6 +386,9 @@
           }
         }
       }
+    },
+    "Bottom %@" : {
+
     },
     "Bow before me" : {
       "extractionState" : "manual",
@@ -674,6 +680,12 @@
         }
       }
     },
+    "Cycle Difficulty" : {
+
+    },
+    "Daily stats and AI at a glance." : {
+
+    },
     "Damage -12" : {
       "shouldTranslate" : false
     },
@@ -824,6 +836,9 @@
           }
         }
       }
+    },
+    "Direction" : {
+
     },
     "Dominated" : {
       "extractionState" : "manual",
@@ -1303,6 +1318,9 @@
         }
       }
     },
+    "Hello %@" : {
+
+    },
     "Hopeless" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1555,6 +1573,9 @@
         }
       }
     },
+    "L" : {
+
+    },
     "Lacking etymology" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1604,6 +1625,9 @@
           }
         }
       }
+    },
+    "Leading" : {
+
     },
     "Lexeme lost" : {
       "extractionState" : "manual",
@@ -1943,6 +1967,9 @@
         }
       }
     },
+    "Next" : {
+
+    },
     "Nice fail" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2084,6 +2111,9 @@
         }
       }
     },
+    "Off" : {
+
+    },
     "OK" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2094,6 +2124,9 @@
           }
         }
       }
+    },
+    "On" : {
+
     },
     "Orthography fail" : {
       "extractionState" : "manual",
@@ -2388,6 +2421,9 @@
           }
         }
       }
+    },
+    "Previous" : {
+
     },
     "Progress" : {
       "localizations" : {
@@ -2829,6 +2865,12 @@
         }
       }
     },
+    "Start a timer" : {
+
+    },
+    "Start Timer" : {
+
+    },
     "Still wrong" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2950,6 +2992,9 @@
         }
       }
     },
+    "T %@" : {
+
+    },
     "the word is" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2998,6 +3043,12 @@
           }
         }
       }
+    },
+    "Timer" : {
+
+    },
+    "Timer is running" : {
+
     },
     "Tiny lexicon" : {
       "extractionState" : "manual",
@@ -3063,6 +3114,9 @@
           }
         }
       }
+    },
+    "Trailing" : {
+
     },
     "Trash guess" : {
       "extractionState" : "manual",
@@ -3354,6 +3408,9 @@
           }
         }
       }
+    },
+    "WordZap" : {
+
     },
     "Wrong again" : {
       "extractionState" : "manual",

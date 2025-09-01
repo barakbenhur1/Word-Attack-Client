@@ -11,6 +11,9 @@
 		4F1BDC6C2E4BC7FF00A4B3DD /* WordleGPT_decode.mlmodelc in Resources */ = {isa = PBXBuildFile; fileRef = 4F1BDC692E4BC7FF00A4B3DD /* WordleGPT_decode.mlmodelc */; settings = {ASSET_TAGS = ("ai-pack-v1", ); }; };
 		4F370C872CC6A5BF00632E10 /* GoogleUserMessagingPlatform in Frameworks */ = {isa = PBXBuildFile; productRef = 4F370C862CC6A5BF00632E10 /* GoogleUserMessagingPlatform */; };
 		4F370C8D2CC6A72F00632E10 /* GoogleMobileAds in Frameworks */ = {isa = PBXBuildFile; productRef = 4F370C8C2CC6A72F00632E10 /* GoogleMobileAds */; };
+		4FC1113A2E636F30007D1E2B /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4FC111392E636F30007D1E2B /* WidgetKit.framework */; };
+		4FC1113C2E636F30007D1E2B /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4FC1113B2E636F30007D1E2B /* SwiftUI.framework */; };
+		4FC1114B2E636F33007D1E2B /* WordZapWidgetExtensionExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 4FC111372E636F30007D1E2B /* WordZapWidgetExtensionExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		4FCDAC372E53E416001A758F /* SwiftUITooltip in Frameworks */ = {isa = PBXBuildFile; productRef = 4FCDAC362E53E416001A758F /* SwiftUITooltip */; };
 		4FD6D2882CB9A2C000755D03 /* FirebaseAnalyticsOnDeviceConversion in Frameworks */ = {isa = PBXBuildFile; productRef = 4FD6D2872CB9A2C000755D03 /* FirebaseAnalyticsOnDeviceConversion */; };
 		4FD6D28A2CB9A2C000755D03 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 4FD6D2892CB9A2C000755D03 /* FirebaseAuth */; };
@@ -24,6 +27,13 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
+		4FC111492E636F33007D1E2B /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 4FD6D2302CB9A1F400755D03 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 4FC111362E636F30007D1E2B;
+			remoteInfo = WordZapWidgetExtensionExtension;
+		};
 		4FD6D24E2CB9A1F700755D03 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 4FD6D2302CB9A1F400755D03 /* Project object */;
@@ -40,9 +50,27 @@
 		};
 /* End PBXContainerItemProxy section */
 
+/* Begin PBXCopyFilesBuildPhase section */
+		4FC111502E636F33007D1E2B /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				4FC1114B2E636F33007D1E2B /* WordZapWidgetExtensionExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
 		4F1BDC692E4BC7FF00A4B3DD /* WordleGPT_decode.mlmodelc */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = WordleGPT_decode.mlmodelc; path = ../Downloads/working_model/CompiledForODR/WordleGPT_decode.mlmodelc; sourceTree = SOURCE_ROOT; };
 		4F1BDC6A2E4BC7FF00A4B3DD /* WordleGPT_prefill.mlmodelc */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = WordleGPT_prefill.mlmodelc; path = ../Downloads/working_model/CompiledForODR/WordleGPT_prefill.mlmodelc; sourceTree = SOURCE_ROOT; };
+		4FC111372E636F30007D1E2B /* WordZapWidgetExtensionExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = WordZapWidgetExtensionExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		4FC111392E636F30007D1E2B /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
+		4FC1113B2E636F30007D1E2B /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
+		4FC111EC2E637CBC007D1E2B /* WordZapWidgetExtensionExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = WordZapWidgetExtensionExtension.entitlements; sourceTree = "<group>"; };
 		4FD6D2382CB9A1F400755D03 /* Word Guess.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Word Guess.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		4FD6D24D2CB9A1F700755D03 /* Word GuessTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Word GuessTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		4FD6D2572CB9A1F700755D03 /* Word GuessUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Word GuessUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -61,13 +89,44 @@
 			};
 			target = 4FD6D2372CB9A1F400755D03 /* Word Guess */;
 		};
+		4FC1114F2E636F33007D1E2B /* Exceptions for "WordZapWidgetExtension" folder in "WordZapWidgetExtensionExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 4FC111362E636F30007D1E2B /* WordZapWidgetExtensionExtension */;
+		};
+		4FC111B72E6378BD007D1E2B /* Exceptions for "Word Guess" folder in "WordZapWidgetExtensionExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				AI/PhraseProvider.swift,
+				Assets.xcassets,
+				Localizable.xcstrings,
+				Misc/SharedStore.swift,
+				Network/Data/LeaderboaredPlaceData.swift,
+				Network/Network.swift,
+				Network/ViewModel/SocrePlaceProvider.swift,
+				Views/Subviews/AppTitle.swift,
+				Views/Subviews/ToolTipView.swift,
+			);
+			target = 4FC111362E636F30007D1E2B /* WordZapWidgetExtensionExtension */;
+		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		4FC1113D2E636F30007D1E2B /* WordZapWidgetExtension */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				4FC1114F2E636F33007D1E2B /* Exceptions for "WordZapWidgetExtension" folder in "WordZapWidgetExtensionExtension" target */,
+			);
+			path = WordZapWidgetExtension;
+			sourceTree = "<group>";
+		};
 		4FD6D23A2CB9A1F400755D03 /* Word Guess */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
 				4F1BDC9B2E4F0F9A00A4B3DD /* Exceptions for "Word Guess" folder in "Word Guess" target */,
+				4FC111B72E6378BD007D1E2B /* Exceptions for "Word Guess" folder in "WordZapWidgetExtensionExtension" target */,
 			);
 			path = "Word Guess";
 			sourceTree = "<group>";
@@ -85,6 +144,15 @@
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		4FC111342E636F30007D1E2B /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				4FC1113C2E636F30007D1E2B /* SwiftUI.framework in Frameworks */,
+				4FC1113A2E636F30007D1E2B /* WidgetKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		4FD6D2352CB9A1F400755D03 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -121,14 +189,26 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		4FC111382E636F30007D1E2B /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				4FC111392E636F30007D1E2B /* WidgetKit.framework */,
+				4FC1113B2E636F30007D1E2B /* SwiftUI.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		4FD6D22F2CB9A1F400755D03 = {
 			isa = PBXGroup;
 			children = (
+				4FC111EC2E637CBC007D1E2B /* WordZapWidgetExtensionExtension.entitlements */,
 				4F1BDC692E4BC7FF00A4B3DD /* WordleGPT_decode.mlmodelc */,
 				4F1BDC6A2E4BC7FF00A4B3DD /* WordleGPT_prefill.mlmodelc */,
 				4FD6D23A2CB9A1F400755D03 /* Word Guess */,
 				4FD6D2502CB9A1F700755D03 /* Word GuessTests */,
 				4FD6D25A2CB9A1F700755D03 /* Word GuessUITests */,
+				4FC1113D2E636F30007D1E2B /* WordZapWidgetExtension */,
+				4FC111382E636F30007D1E2B /* Frameworks */,
 				4FD6D2392CB9A1F400755D03 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -140,6 +220,7 @@
 				4FD6D2382CB9A1F400755D03 /* Word Guess.app */,
 				4FD6D24D2CB9A1F700755D03 /* Word GuessTests.xctest */,
 				4FD6D2572CB9A1F700755D03 /* Word GuessUITests.xctest */,
+				4FC111372E636F30007D1E2B /* WordZapWidgetExtensionExtension.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -147,6 +228,28 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		4FC111362E636F30007D1E2B /* WordZapWidgetExtensionExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 4FC1114C2E636F33007D1E2B /* Build configuration list for PBXNativeTarget "WordZapWidgetExtensionExtension" */;
+			buildPhases = (
+				4FC111332E636F30007D1E2B /* Sources */,
+				4FC111342E636F30007D1E2B /* Frameworks */,
+				4FC111352E636F30007D1E2B /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				4FC1113D2E636F30007D1E2B /* WordZapWidgetExtension */,
+			);
+			name = WordZapWidgetExtensionExtension;
+			packageProductDependencies = (
+			);
+			productName = WordZapWidgetExtensionExtension;
+			productReference = 4FC111372E636F30007D1E2B /* WordZapWidgetExtensionExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 		4FD6D2372CB9A1F400755D03 /* Word Guess */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 4FD6D2612CB9A1F700755D03 /* Build configuration list for PBXNativeTarget "Word Guess" */;
@@ -154,10 +257,12 @@
 				4FD6D2342CB9A1F400755D03 /* Sources */,
 				4FD6D2352CB9A1F400755D03 /* Frameworks */,
 				4FD6D2362CB9A1F400755D03 /* Resources */,
+				4FC111502E636F33007D1E2B /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				4FC1114A2E636F33007D1E2B /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				4FD6D23A2CB9A1F400755D03 /* Word Guess */,
@@ -238,9 +343,12 @@
 					"ai-pack",
 					"ai-pack-v1",
 				);
-				LastSwiftUpdateCheck = 1600;
+				LastSwiftUpdateCheck = 1640;
 				LastUpgradeCheck = 1640;
 				TargetAttributes = {
+					4FC111362E636F30007D1E2B = {
+						CreatedOnToolsVersion = 16.4;
+					};
 					4FD6D2372CB9A1F400755D03 = {
 						CreatedOnToolsVersion = 16.0;
 					};
@@ -282,11 +390,19 @@
 				4FD6D2372CB9A1F400755D03 /* Word Guess */,
 				4FD6D24C2CB9A1F700755D03 /* Word GuessTests */,
 				4FD6D2562CB9A1F700755D03 /* Word GuessUITests */,
+				4FC111362E636F30007D1E2B /* WordZapWidgetExtensionExtension */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		4FC111352E636F30007D1E2B /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		4FD6D2362CB9A1F400755D03 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -313,6 +429,13 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		4FC111332E636F30007D1E2B /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		4FD6D2342CB9A1F400755D03 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -337,6 +460,11 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		4FC1114A2E636F33007D1E2B /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 4FC111362E636F30007D1E2B /* WordZapWidgetExtensionExtension */;
+			targetProxy = 4FC111492E636F33007D1E2B /* PBXContainerItemProxy */;
+		};
 		4FD6D24F2CB9A1F700755D03 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 4FD6D2372CB9A1F400755D03 /* Word Guess */;
@@ -350,6 +478,62 @@
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
+		4FC1114D2E636F33007D1E2B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = WordZapWidgetExtensionExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 0;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = WordZapWidgetExtension/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = WordZapWidgetExtension;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1;
+				PRODUCT_BUNDLE_IDENTIFIER = Barak.ben.hur.WordGuess.WordZapWidgetExtension;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		4FC1114E2E636F33007D1E2B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = WordZapWidgetExtensionExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 0;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = WordZapWidgetExtension/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = WordZapWidgetExtension;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1;
+				PRODUCT_BUNDLE_IDENTIFIER = Barak.ben.hur.WordGuess.WordZapWidgetExtension;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 		4FD6D25F2CB9A1F700755D03 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			baseConfigurationReferenceAnchor = 4FD6D23A2CB9A1F400755D03 /* Word Guess */;
@@ -484,8 +668,9 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = "Word Guess/Word Guess.entitlements";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 0.11;
+				CURRENT_PROJECT_VERSION = 0;
 				DEVELOPMENT_ASSET_PATHS = "\"Word Guess/Preview Content\"";
 				EMBED_ASSET_PACKS_IN_PRODUCT_BUNDLE = YES;
 				ENABLE_PREVIEWS = YES;
@@ -504,7 +689,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0;
+				MARKETING_VERSION = 1;
 				ON_DEMAND_RESOURCES_INITIAL_INSTALL_TAGS = "";
 				"OTHER_LDFLAGS[arch=*]" = "-ObjC";
 				PRODUCT_BUNDLE_IDENTIFIER = Barak.ben.hur.WordGuess;
@@ -524,8 +709,9 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = "Word Guess/Word Guess.entitlements";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 0.11;
+				CURRENT_PROJECT_VERSION = 0;
 				DEVELOPMENT_ASSET_PATHS = "\"Word Guess/Preview Content\"";
 				EMBED_ASSET_PACKS_IN_PRODUCT_BUNDLE = NO;
 				ENABLE_PREVIEWS = YES;
@@ -544,7 +730,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0;
+				MARKETING_VERSION = 1;
 				ON_DEMAND_RESOURCES_INITIAL_INSTALL_TAGS = "";
 				PRODUCT_BUNDLE_IDENTIFIER = Barak.ben.hur.WordGuess;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -629,6 +815,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		4FC1114C2E636F33007D1E2B /* Build configuration list for PBXNativeTarget "WordZapWidgetExtensionExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				4FC1114D2E636F33007D1E2B /* Debug */,
+				4FC1114E2E636F33007D1E2B /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		4FD6D2332CB9A1F400755D03 /* Build configuration list for PBXProject "Word Guess" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (

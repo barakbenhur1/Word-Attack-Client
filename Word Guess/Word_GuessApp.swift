@@ -7,6 +7,7 @@
 
 import SwiftUI
 import FirebaseAuth
+import WidgetKit
 
 @Observable
 class LanguageSetting: ObservableObject { var locale = Locale.current }
@@ -14,6 +15,12 @@ class LanguageSetting: ObservableObject { var locale = Locale.current }
 @main
 struct WordGuessApp: App {
     @UIApplicationDelegateAdaptor private var delegate: AppDelegate
+    @Environment(\.scenePhase) private var scenePhase
+    
+    @StateObject private var vm = AppStateViewModel()
+    
+    @State private var tooltipPusher = PhraseProvider()
+    @State private var deepLinkUrl: URL? = nil
     
     private let persistenceController = PersistenceController.shared
     private let loginHaneler = LoginHandeler()
@@ -36,6 +43,7 @@ struct WordGuessApp: App {
                 loginHaneler.model = .init(givenName: givenName,
                                            email: email)
                 Task.detached(priority: .high) {
+                    await refreshWordZapPlaces(email: email)
                     let gender = await login.gender(email: email)
                     await MainActor.run { loginHaneler.model?.gender = gender }
                 }
@@ -43,10 +51,19 @@ struct WordGuessApp: App {
             .onAppear {
                 guard let email = loginHaneler.model?.email else { return }
                 Task.detached(priority: .high) { await login.changeLanguage(email: email) }
+                guard let deepLinkUrl else { return }
+                deepLink(url: deepLinkUrl)
+                self.deepLinkUrl = nil
             }
+            .onDisappear { tooltipPusher.stop() }
             .onChange(of: local.locale) {
                 guard let email = loginHaneler.model?.email else { return }
                 Task.detached(priority: .high) { await login.changeLanguage(email: email) }
+            }
+            .task { await vm.bootstrap() }
+            .onOpenURL { url in
+                guard loginHaneler.model != nil else { deepLinkUrl = url; return  }
+                deepLink(url: url)
             }
         }
         .environmentObject(router)
@@ -56,5 +73,21 @@ struct WordGuessApp: App {
         .environmentObject(local)
         .environment(\.locale, local.locale)
         .environment(\.managedObjectContext, persistenceController.container.viewContext)
+    }
+    
+    private func deepLink(url: URL) {
+        switch url.absoluteString {
+        case "home": break
+        case let absoluteString where absoluteString.contains("ai"): router.navigateTo(.game(diffculty: .ai))
+        case let absoluteString where absoluteString.contains("difficulty"):
+            let comp = absoluteString.components(separatedBy: "=")
+            switch comp.last {
+            case "easy":   router.navigateTo(.game(diffculty: .easy))
+            case "medium": router.navigateTo(.game(diffculty: .medium))
+            case "hard":   router.navigateTo(.game(diffculty: .hard))
+            default: break
+            }
+        default: break
+        }
     }
 }

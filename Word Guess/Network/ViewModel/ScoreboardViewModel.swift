@@ -15,7 +15,7 @@ class ScoreboardViewModel: ObservableObject {
     private let network: Network
     
     required init() {
-        network = Network(root: "words")
+        network = Network(root: "score")
     }
     
     func items(email: String) async {

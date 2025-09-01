@@ -60,14 +60,14 @@ struct GameView<VM: WordViewModel>: View {
         initMatrixState()
         guard !keyboard.show || vm.word.number == 0 || vm.word.number % InterstitialAdInterval != 0 else { return interstitialAdManager.loadInterstitialAd() }
         initalConfigirationForWord()
+        guard diffculty != .tutorial && diffculty != .ai else { return }
+        Task(priority: .utility) { await SharedStore.writeDifficultyStatsAsync(.init(answers: vm.word.number, score: vm.word.score), for: diffculty.liveValue) }
     }
     
     private func handleGuessworkChage() {
         let guesswork = vm.word.word.guesswork
         for i in 0..<guesswork.count {
-            for j in 0..<guesswork[i].count {
-                matrix[i][j] = guesswork[i][j]
-            }
+            for j in 0..<guesswork[i].count { matrix[i][j] = guesswork[i][j] }
             colors[i] = vm.calculateColors(with: matrix[i])
         }
         
@@ -479,25 +479,6 @@ struct GameView<VM: WordViewModel>: View {
 //    GameView(diffculty: .regular)
 //        .environment(\.managedObjectContext, PersistenceController.preview.container.viewContext)
 //}
-
-extension String {
-    subscript(offset: Int) -> String { String(self[index(startIndex, offsetBy: offset)]) }
-    subscript(range: Range<Int>) -> SubSequence {
-        let startIndex = index(self.startIndex, offsetBy: range.lowerBound)
-        return self[startIndex..<index(startIndex, offsetBy: range.count)]
-    }
-    subscript(range: ClosedRange<Int>) -> SubSequence {
-        let startIndex = index(self.startIndex, offsetBy: range.lowerBound)
-        return self[startIndex..<index(startIndex, offsetBy: range.count)]
-    }
-    subscript(range: PartialRangeFrom<Int>) -> SubSequence { self[index(startIndex, offsetBy: range.lowerBound)...] }
-    subscript(range: PartialRangeThrough<Int>) -> SubSequence { self[...index(startIndex, offsetBy: range.upperBound)] }
-    subscript(range: PartialRangeUpTo<Int>) -> SubSequence { self[..<index(startIndex, offsetBy: range.upperBound)] }
-    
-    var localized: String {
-        return NSLocalizedString(self, comment: "")
-    }
-}
 
 extension View {
     /// Presents an alert with a message when a given condition is true, using a localized string key for a title.

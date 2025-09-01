@@ -1,6 +1,8 @@
 import SwiftUI
 import UIKit
 
+public enum Language: String { case en, he }
+
 public struct Tooltip<Content: View>: View {
     public enum Trigger { case longPress(duration: Double = 0.35), tap, manual }
     

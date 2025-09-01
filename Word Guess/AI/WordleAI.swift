@@ -15,8 +15,6 @@ import SwiftUICore
 public typealias GuessHistory = (word: String, feedback: String)
 public typealias AIDifficultyItem = (image: String, name: String, color: Color)
 
-public enum Language: String { case en, he }
-
 public enum AIDifficulty {
     case easy, medium, hard, boss
     typealias RawValue = AIDifficultyItem

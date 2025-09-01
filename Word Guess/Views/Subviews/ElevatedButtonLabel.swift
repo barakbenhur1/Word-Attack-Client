@@ -27,7 +27,7 @@ public struct ElevatedButtonStyle: ButtonStyle {
             gradient: LinearGradient(
                 colors: [
                     .white,
-                    Color(hue: 0.61, saturation: 0.73, brightness: 0.96)
+                    Color(red: 15/255, green: 157/255, blue: 88/255)
                 ],
                 startPoint: .topLeading, endPoint: .bottomTrailing)
         )

@@ -12,8 +12,17 @@ struct DifficultyButton: Identifiable {
     let type: DifficultyType
 }
 
-enum DifficultyType: String, Codable {
+enum DifficultyType: String, Codable, CaseIterable {
     case ai = "⚔️ AI", easy = "😀 Easy", medium = "😳 Medium", hard = "🥵 Hard", tutorial
+    
+    var liveValue: Difficulty {
+        switch self {
+        case .easy: return .easy
+        case .medium: return .medium
+        case .hard: return .hard
+        default: fatalError()
+        }
+    }
     
     func getLength() -> Int {
         switch self {
@@ -25,6 +34,7 @@ enum DifficultyType: String, Codable {
             return 6
         }
     }
+    
 }
 
 struct DifficultyView: View {

@@ -59,7 +59,7 @@ enum Trace {
     }()
     
 #if DEBUG
-    static var enabled = true
+    static var enabled = false //true
 #else
     static var enabled = false
 #endif
