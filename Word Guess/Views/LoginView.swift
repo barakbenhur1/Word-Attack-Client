@@ -32,7 +32,7 @@ struct LoginView<VM: LoginViewModel>: View {
             .ignoresSafeArea()
             
             VStack {
-                AppTitle()
+                AppTitle(size: 50)
                     .padding(.bottom, 60)
                 googleSignInButton
                     .frame(height: 80)

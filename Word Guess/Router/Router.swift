@@ -44,14 +44,14 @@ class Router: ObservableObject {
     func navigateTo(_ appRoute: Route) {
         UIApplication.shared.hideKeyboard()
         navigationAnimation = appRoute != .game(diffculty: .tutorial)
-        path.append(appRoute)
+        Task(priority: .userInitiated) {  await MainActor.run { path.append(appRoute) } }
     }
     
     // Used to go back to the previous screen
     func navigateBack() {
         guard !path.isEmpty else { return }
         UIApplication.shared.hideKeyboard()
-        path.removeLast()
+        Task(priority: .userInitiated) {  await MainActor.run { path.removeLast() } }
     }
     
     func popToRoot() async {

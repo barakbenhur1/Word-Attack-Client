@@ -262,7 +262,7 @@ struct GameView<VM: WordViewModel>: View {
                 }
                 
                 if endFetchAnimation {
-                    AppTitle()
+                    AppTitle(size: 50)
                         .padding(.top, 90)
                         .padding(.bottom, 140)
                         .shadow(radius: 4)

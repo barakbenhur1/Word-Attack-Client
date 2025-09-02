@@ -150,7 +150,15 @@
       }
     },
     "A an example control that runs a timer." : {
-
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A an example control that runs a timer."
+          }
+        }
+      },
+      "shouldTranslate" : false
     },
     "Absolute" : {
       "extractionState" : "manual",
@@ -388,7 +396,7 @@
       }
     },
     "Bottom %@" : {
-
+      "shouldTranslate" : false
     },
     "Bow before me" : {
       "extractionState" : "manual",
@@ -681,10 +689,10 @@
       }
     },
     "Cycle Difficulty" : {
-
+      "shouldTranslate" : false
     },
     "Daily stats and AI at a glance." : {
-
+      "shouldTranslate" : false
     },
     "Damage -12" : {
       "shouldTranslate" : false
@@ -838,7 +846,7 @@
       }
     },
     "Direction" : {
-
+      "shouldTranslate" : false
     },
     "Dominated" : {
       "extractionState" : "manual",
@@ -1319,7 +1327,7 @@
       }
     },
     "Hello %@" : {
-
+      "shouldTranslate" : false
     },
     "Hopeless" : {
       "extractionState" : "manual",
@@ -1574,7 +1582,7 @@
       }
     },
     "L" : {
-
+      "shouldTranslate" : false
     },
     "Lacking etymology" : {
       "extractionState" : "manual",
@@ -1627,7 +1635,14 @@
       }
     },
     "Leading" : {
-
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "טוען"
+          }
+        }
+      }
     },
     "Lexeme lost" : {
       "extractionState" : "manual",
@@ -1968,7 +1983,14 @@
       }
     },
     "Next" : {
-
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הבא"
+          }
+        }
+      }
     },
     "Nice fail" : {
       "extractionState" : "manual",
@@ -2112,7 +2134,14 @@
       }
     },
     "Off" : {
-
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "כבה"
+          }
+        }
+      }
     },
     "OK" : {
       "extractionState" : "manual",
@@ -2126,7 +2155,14 @@
       }
     },
     "On" : {
-
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הדלק"
+          }
+        }
+      }
     },
     "Orthography fail" : {
       "extractionState" : "manual",
@@ -2423,7 +2459,14 @@
       }
     },
     "Previous" : {
-
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הקודם"
+          }
+        }
+      }
     },
     "Progress" : {
       "localizations" : {
@@ -2866,10 +2909,10 @@
       }
     },
     "Start a timer" : {
-
+      "shouldTranslate" : false
     },
     "Start Timer" : {
-
+      "shouldTranslate" : false
     },
     "Still wrong" : {
       "extractionState" : "manual",
@@ -2993,7 +3036,7 @@
       }
     },
     "T %@" : {
-
+      "shouldTranslate" : false
     },
     "the word is" : {
       "extractionState" : "manual",
@@ -3045,10 +3088,10 @@
       }
     },
     "Timer" : {
-
+      "shouldTranslate" : false
     },
     "Timer is running" : {
-
+      "shouldTranslate" : false
     },
     "Tiny lexicon" : {
       "extractionState" : "manual",
@@ -3116,7 +3159,7 @@
       }
     },
     "Trailing" : {
-
+      "shouldTranslate" : false
     },
     "Trash guess" : {
       "extractionState" : "manual",
@@ -3410,7 +3453,14 @@
       }
     },
     "WordZap" : {
-
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "WordZap"
+          }
+        }
+      }
     },
     "Wrong again" : {
       "extractionState" : "manual",

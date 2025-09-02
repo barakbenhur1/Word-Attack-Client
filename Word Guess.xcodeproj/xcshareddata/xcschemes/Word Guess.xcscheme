@@ -16,8 +16,8 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "4FD6D2372CB9A1F400755D03"
-               BuildableName = "Word Guess.app"
-               BlueprintName = "Word Guess"
+               BuildableName = "WordZap.app"
+               BlueprintName = "WordZap"
                ReferencedContainer = "container:Word Guess.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
@@ -70,8 +70,8 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "4FD6D2372CB9A1F400755D03"
-            BuildableName = "Word Guess.app"
-            BlueprintName = "Word Guess"
+            BuildableName = "WordZap.app"
+            BlueprintName = "WordZap"
             ReferencedContainer = "container:Word Guess.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
@@ -87,8 +87,8 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "4FD6D2372CB9A1F400755D03"
-            BuildableName = "Word Guess.app"
-            BlueprintName = "Word Guess"
+            BuildableName = "WordZap.app"
+            BlueprintName = "WordZap"
             ReferencedContainer = "container:Word Guess.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>

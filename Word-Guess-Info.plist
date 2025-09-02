@@ -3,16 +3,10 @@
 <plist version="1.0">
 <dict>
 	<key>BGTaskSchedulerPermittedIdentifiers</key>
-<array>
-  <string>com.barak.wordzap.refresh</string>
-  <string>com.barak.wordzap.process</string>
-</array>
-
-<key>UIBackgroundModes</key>
-<array>
-  <string>fetch</string>
-  <string>processing</string>
-</array>
+	<array>
+		<string>com.barak.wordzap.refresh</string>
+		<string>com.barak.wordzap.process</string>
+	</array>
 	<key>BottomBanner</key>
 	<string>ca-app-pub-6040820758186818/1611225525</string>
 	<key>CFBundleURLTypes</key>
@@ -304,6 +298,11 @@
 	<key>UIAppFonts</key>
 	<array>
 		<string>HalfBullet.ttf</string>
+	</array>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>fetch</string>
+		<string>processing</string>
 	</array>
 </dict>
 </plist>

@@ -9,6 +9,7 @@ import SwiftUI
 
 struct AppTitle: View {
     private let title = "Word Guess".localized
+    var size: CGFloat = 40
     
     let wordZapColors: [CharColor] = [
         .exactMatch,  // Emerald Green (Correct)
@@ -29,7 +30,7 @@ struct AppTitle: View {
                             Text(c.wrappedValue)
                                 .font(.largeTitle)
                         }
-                        .frame(width: 40)
+                        .frame(width: size)
                         .clipShape(RoundedRectangle(cornerRadius: 4))
                         .overlay(
                             RoundedRectangle(cornerRadius: 4)
@@ -50,7 +51,7 @@ struct AppTitle: View {
                             Text(c.wrappedValue)
                                 .font(.largeTitle)
                         }
-                        .frame(width: 40)
+                        .frame(width: size)
                         .clipShape(RoundedRectangle(cornerRadius: 4))
                         .overlay(
                             RoundedRectangle(cornerRadius: 4)

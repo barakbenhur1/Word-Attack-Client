@@ -12,7 +12,7 @@ import WidgetKit
 struct WordZapWidgetExtensionControl: ControlWidget {
     var body: some ControlWidgetConfiguration {
         StaticControlConfiguration(
-            kind: "Barak.ben.hur.WordGuess.WordZapWidgetExtension",
+            kind: "com.barak.wordzap.WordZapWidgetExtension",
             provider: Provider()
         ) { value in
             ControlWidgetToggle(

@@ -71,13 +71,13 @@
 		4FC111392E636F30007D1E2B /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		4FC1113B2E636F30007D1E2B /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 		4FC111EC2E637CBC007D1E2B /* WordZapWidgetExtensionExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = WordZapWidgetExtensionExtension.entitlements; sourceTree = "<group>"; };
-		4FD6D2382CB9A1F400755D03 /* Word Guess.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Word Guess.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		4FD6D2382CB9A1F400755D03 /* WordZap.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = WordZap.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		4FD6D24D2CB9A1F700755D03 /* Word GuessTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Word GuessTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		4FD6D2572CB9A1F700755D03 /* Word GuessUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Word GuessUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		4F1BDC9B2E4F0F9A00A4B3DD /* Exceptions for "Word Guess" folder in "Word Guess" target */ = {
+		4F1BDC9B2E4F0F9A00A4B3DD /* Exceptions for "Word Guess" folder in "WordZap" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			assetTagsByRelativePath = {
 				"AI/AI Model/WordleGPT_runtime_spec.json" = ("ai-pack-v1", );
@@ -87,7 +87,7 @@
 				"AI/AI Model/tokenizer.model" = ("ai-pack-v1", );
 				"AI/AI Model/tokenizer_config.json" = ("ai-pack-v1", );
 			};
-			target = 4FD6D2372CB9A1F400755D03 /* Word Guess */;
+			target = 4FD6D2372CB9A1F400755D03 /* WordZap */;
 		};
 		4FC1114F2E636F33007D1E2B /* Exceptions for "WordZapWidgetExtension" folder in "WordZapWidgetExtensionExtension" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
@@ -125,7 +125,7 @@
 		4FD6D23A2CB9A1F400755D03 /* Word Guess */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				4F1BDC9B2E4F0F9A00A4B3DD /* Exceptions for "Word Guess" folder in "Word Guess" target */,
+				4F1BDC9B2E4F0F9A00A4B3DD /* Exceptions for "Word Guess" folder in "WordZap" target */,
 				4FC111B72E6378BD007D1E2B /* Exceptions for "Word Guess" folder in "WordZapWidgetExtensionExtension" target */,
 			);
 			path = "Word Guess";
@@ -217,7 +217,7 @@
 		4FD6D2392CB9A1F400755D03 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				4FD6D2382CB9A1F400755D03 /* Word Guess.app */,
+				4FD6D2382CB9A1F400755D03 /* WordZap.app */,
 				4FD6D24D2CB9A1F700755D03 /* Word GuessTests.xctest */,
 				4FD6D2572CB9A1F700755D03 /* Word GuessUITests.xctest */,
 				4FC111372E636F30007D1E2B /* WordZapWidgetExtensionExtension.appex */,
@@ -250,9 +250,9 @@
 			productReference = 4FC111372E636F30007D1E2B /* WordZapWidgetExtensionExtension.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
-		4FD6D2372CB9A1F400755D03 /* Word Guess */ = {
+		4FD6D2372CB9A1F400755D03 /* WordZap */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 4FD6D2612CB9A1F700755D03 /* Build configuration list for PBXNativeTarget "Word Guess" */;
+			buildConfigurationList = 4FD6D2612CB9A1F700755D03 /* Build configuration list for PBXNativeTarget "WordZap" */;
 			buildPhases = (
 				4FD6D2342CB9A1F400755D03 /* Sources */,
 				4FD6D2352CB9A1F400755D03 /* Frameworks */,
@@ -267,7 +267,7 @@
 			fileSystemSynchronizedGroups = (
 				4FD6D23A2CB9A1F400755D03 /* Word Guess */,
 			);
-			name = "Word Guess";
+			name = WordZap;
 			packageProductDependencies = (
 				4FD6D2872CB9A2C000755D03 /* FirebaseAnalyticsOnDeviceConversion */,
 				4FD6D2892CB9A2C000755D03 /* FirebaseAuth */,
@@ -283,7 +283,7 @@
 				4FCDAC362E53E416001A758F /* SwiftUITooltip */,
 			);
 			productName = "Word Guess";
-			productReference = 4FD6D2382CB9A1F400755D03 /* Word Guess.app */;
+			productReference = 4FD6D2382CB9A1F400755D03 /* WordZap.app */;
 			productType = "com.apple.product-type.application";
 		};
 		4FD6D24C2CB9A1F700755D03 /* Word GuessTests */ = {
@@ -387,7 +387,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				4FD6D2372CB9A1F400755D03 /* Word Guess */,
+				4FD6D2372CB9A1F400755D03 /* WordZap */,
 				4FD6D24C2CB9A1F700755D03 /* Word GuessTests */,
 				4FD6D2562CB9A1F700755D03 /* Word GuessUITests */,
 				4FC111362E636F30007D1E2B /* WordZapWidgetExtensionExtension */,
@@ -467,12 +467,12 @@
 		};
 		4FD6D24F2CB9A1F700755D03 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = 4FD6D2372CB9A1F400755D03 /* Word Guess */;
+			target = 4FD6D2372CB9A1F400755D03 /* WordZap */;
 			targetProxy = 4FD6D24E2CB9A1F700755D03 /* PBXContainerItemProxy */;
 		};
 		4FD6D2592CB9A1F700755D03 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = 4FD6D2372CB9A1F400755D03 /* Word Guess */;
+			target = 4FD6D2372CB9A1F400755D03 /* WordZap */;
 			targetProxy = 4FD6D2582CB9A1F700755D03 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
@@ -485,7 +485,7 @@
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
 				CODE_SIGN_ENTITLEMENTS = WordZapWidgetExtensionExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = WordZapWidgetExtension/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = WordZapWidgetExtension;
@@ -497,7 +497,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 1;
-				PRODUCT_BUNDLE_IDENTIFIER = Barak.ben.hur.WordGuess.WordZapWidgetExtension;
+				PRODUCT_BUNDLE_IDENTIFIER = com.barak.wordzap.WordZapWidgetExtension;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -513,7 +513,7 @@
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
 				CODE_SIGN_ENTITLEMENTS = WordZapWidgetExtensionExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = WordZapWidgetExtension/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = WordZapWidgetExtension;
@@ -525,7 +525,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 1;
-				PRODUCT_BUNDLE_IDENTIFIER = Barak.ben.hur.WordGuess.WordZapWidgetExtension;
+				PRODUCT_BUNDLE_IDENTIFIER = com.barak.wordzap.WordZapWidgetExtension;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -670,7 +670,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = "Word Guess/Word Guess.entitlements";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_ASSET_PATHS = "\"Word Guess/Preview Content\"";
 				EMBED_ASSET_PACKS_IN_PRODUCT_BUNDLE = YES;
 				ENABLE_PREVIEWS = YES;
@@ -682,8 +682,7 @@
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -692,8 +691,9 @@
 				MARKETING_VERSION = 1;
 				ON_DEMAND_RESOURCES_INITIAL_INSTALL_TAGS = "";
 				"OTHER_LDFLAGS[arch=*]" = "-ObjC";
-				PRODUCT_BUNDLE_IDENTIFIER = Barak.ben.hur.WordGuess;
+				PRODUCT_BUNDLE_IDENTIFIER = com.barak.wordzap;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRIP_INSTALLED_PRODUCT = NO;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
@@ -711,7 +711,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = "Word Guess/Word Guess.entitlements";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_ASSET_PATHS = "\"Word Guess/Preview Content\"";
 				EMBED_ASSET_PACKS_IN_PRODUCT_BUNDLE = NO;
 				ENABLE_PREVIEWS = YES;
@@ -723,8 +723,7 @@
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -732,8 +731,9 @@
 				);
 				MARKETING_VERSION = 1;
 				ON_DEMAND_RESOURCES_INITIAL_INSTALL_TAGS = "";
-				PRODUCT_BUNDLE_IDENTIFIER = Barak.ben.hur.WordGuess;
+				PRODUCT_BUNDLE_IDENTIFIER = com.barak.wordzap;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRIP_INSTALLED_PRODUCT = NO;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
@@ -753,7 +753,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "Barak.ben.hur.Word-GuessTests";
+				PRODUCT_BUNDLE_IDENTIFIER = com.barak.wordzapTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
@@ -771,7 +771,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "Barak.ben.hur.Word-GuessTests";
+				PRODUCT_BUNDLE_IDENTIFIER = com.barak.wordzapTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
@@ -787,7 +787,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "Barak.ben.hur.Word-GuessUITests";
+				PRODUCT_BUNDLE_IDENTIFIER = com.barak.wordzapUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
@@ -803,7 +803,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "Barak.ben.hur.Word-GuessUITests";
+				PRODUCT_BUNDLE_IDENTIFIER = com.barak.wordzapUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
@@ -833,7 +833,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		4FD6D2612CB9A1F700755D03 /* Build configuration list for PBXNativeTarget "Word Guess" */ = {
+		4FD6D2612CB9A1F700755D03 /* Build configuration list for PBXNativeTarget "WordZap" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				4FD6D2622CB9A1F700755D03 /* Debug */,

@@ -154,7 +154,7 @@ struct WordZapWidgetView: View {
         )
     }
     
-    // MARK: Small — centered date chip
+    // MARK: Small
     private var smallLayout: some View {
         let shortDate = entry.date.formatted(.dateTime.day().month(.abbreviated))
         return VStack(spacing: 8) {
@@ -174,7 +174,7 @@ struct WordZapWidgetView: View {
         .padding(.horizontal, 6)
     }
     
-    // MARK: Medium — compact chips
+    // MARK: Medium
     private var mediumLayout: some View {
         let shortDate = entry.date.formatted(.dateTime.day().month(.abbreviated))
         let d         = entry.difficulty
@@ -189,16 +189,19 @@ struct WordZapWidgetView: View {
                 .foregroundColor(.primary)
                 .frame(maxWidth: .infinity, alignment: .center)
             
-            Grid(horizontalSpacing: 8, verticalSpacing: 6) {
-                GridRow {
-                    chip(shortDate, icon: "calendar")
-                    chip(diff,      icon: "flag.checkered", color: d.color)
-                    chip(answers,   icon: "text.cursor")
-                }
-                GridRow {
-                    chip(score,     icon: "sum")
-                    chip(place,     icon: "trophy")
-                    Color.clear
+            tapTarget("wordzap://play?difficulty=\(d.rawValue)") {
+                Grid(horizontalSpacing: 8, verticalSpacing: 6) {
+                    GridRow {
+                        chip(diff,      icon: "flag.checkered", color: d.color)
+                        chip(shortDate, icon: "calendar")
+                        Color.clear
+                    }
+                    GridRow {
+                        chip(place,     icon: "trophy")
+                        chip(score,     icon: "sum")
+                        chip(answers,   icon: "text.cursor")
+                      
+                    }
                 }
             }
         }
@@ -215,12 +218,12 @@ struct WordZapWidgetView: View {
                 .font(.title3).bold()
                 .foregroundColor(.primary)
                 .frame(maxWidth: .infinity, alignment: .center)
-
+            
             HStack(alignment: .top, spacing: 12) {
-                Link(destination: URL(string: "wordzap://play?difficulty=\(d.rawValue)")!) {
+                tapTarget("wordzap://play?difficulty=\(d.rawValue)") {
                     VStack(alignment: .leading, spacing: 10) {
-                        chip("Today: \(shortDate)",                                          icon: "calendar")
                         chip("Difficulty: \(d.rawValue.capitalized)",                        icon: "flag.checkered", color: d.color)
+                        chip("Today: \(shortDate)",                                          icon: "calendar")
                         chip("Place: \(entry.place.map { "#\($0)" } ?? "—")",                icon: "trophy")
                         chip("Score: \(entry.score != nil ? "\(entry.score!)" : "—")",       icon: "sum")
                         chip("Answers: \(entry.answers != nil ? "\(entry.answers!)" : "-")", icon: "text.cursor")
@@ -229,8 +232,8 @@ struct WordZapWidgetView: View {
                     .softGlass()
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
-
-                Link(destination: URL(string:  "wordzap://ai")!) {
+                
+                tapTarget("wordzap://ai") {
                     AICardWithTooltip(
                         name: entry.aiName ?? "AI Opponent",
                         imageName: entry.aiImageName,
@@ -338,3 +341,22 @@ private struct SoftGlass: ViewModifier {
     }
 }
 private extension View { func softGlass() -> some View { modifier(SoftGlass()) } }
+
+@ViewBuilder
+private func tapTarget<Content: View>(
+    _ urlString: String,
+    @ViewBuilder _ content: () -> Content
+) -> some View {
+    if #available(iOS 17.0, *) {
+        Link(destination: URL(string: urlString)!) {
+            content()
+                .contentShape(Rectangle())     // full-card hit area
+        }
+        .buttonStyle(.plain)                    // keep your own styles
+        .labelStyle(.automatic)
+    } else {
+        content()
+            .contentShape(Rectangle())
+            .widgetURL(URL(string: urlString))  // fallback for iOS < 17 (single target only)
+    }
+}

@@ -50,8 +50,8 @@ struct WordGuessApp: App {
                 }
             }
             .onDisappear { tooltipPusher.stop() }
-            .onChange(of: loginHaneler.model) {
-                guard loginHaneler.model != nil else { return }
+            .onChange(of: loginHaneler.model?.gender) {
+                guard loginHaneler.model?.gender != nil else { return }
                 deepLink(url: deepLinkUrl)
                 deepLinkUrl = nil
             }
@@ -61,7 +61,7 @@ struct WordGuessApp: App {
             }
             .task { await vm.bootstrap() }
             .onOpenURL { url in
-                guard loginHaneler.model != nil else { deepLinkUrl = url; return  }
+                guard loginHaneler.model?.gender != nil else { deepLinkUrl = url; return  }
                 deepLink(url: url)
             }
         }
