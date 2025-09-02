@@ -7,10 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		4F1BDC6B2E4BC7FF00A4B3DD /* WordleGPT_prefill.mlmodelc in Resources */ = {isa = PBXBuildFile; fileRef = 4F1BDC6A2E4BC7FF00A4B3DD /* WordleGPT_prefill.mlmodelc */; settings = {ASSET_TAGS = ("ai-pack-v1", ); }; };
-		4F1BDC6C2E4BC7FF00A4B3DD /* WordleGPT_decode.mlmodelc in Resources */ = {isa = PBXBuildFile; fileRef = 4F1BDC692E4BC7FF00A4B3DD /* WordleGPT_decode.mlmodelc */; settings = {ASSET_TAGS = ("ai-pack-v1", ); }; };
 		4F370C872CC6A5BF00632E10 /* GoogleUserMessagingPlatform in Frameworks */ = {isa = PBXBuildFile; productRef = 4F370C862CC6A5BF00632E10 /* GoogleUserMessagingPlatform */; };
 		4F370C8D2CC6A72F00632E10 /* GoogleMobileAds in Frameworks */ = {isa = PBXBuildFile; productRef = 4F370C8C2CC6A72F00632E10 /* GoogleMobileAds */; };
+		4FA2D2D12E66F3A900C687D0 /* ZIPFoundation in Frameworks */ = {isa = PBXBuildFile; productRef = 4FA2D2D02E66F3A900C687D0 /* ZIPFoundation */; };
 		4FC1113A2E636F30007D1E2B /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4FC111392E636F30007D1E2B /* WidgetKit.framework */; };
 		4FC1113C2E636F30007D1E2B /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4FC1113B2E636F30007D1E2B /* SwiftUI.framework */; };
 		4FC1114B2E636F33007D1E2B /* WordZapWidgetExtensionExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 4FC111372E636F30007D1E2B /* WordZapWidgetExtensionExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
@@ -65,8 +64,6 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		4F1BDC692E4BC7FF00A4B3DD /* WordleGPT_decode.mlmodelc */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = WordleGPT_decode.mlmodelc; path = ../Downloads/working_model/CompiledForODR/WordleGPT_decode.mlmodelc; sourceTree = SOURCE_ROOT; };
-		4F1BDC6A2E4BC7FF00A4B3DD /* WordleGPT_prefill.mlmodelc */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = WordleGPT_prefill.mlmodelc; path = ../Downloads/working_model/CompiledForODR/WordleGPT_prefill.mlmodelc; sourceTree = SOURCE_ROOT; };
 		4FC111372E636F30007D1E2B /* WordZapWidgetExtensionExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = WordZapWidgetExtensionExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		4FC111392E636F30007D1E2B /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		4FC1113B2E636F30007D1E2B /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
@@ -77,18 +74,6 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		4F1BDC9B2E4F0F9A00A4B3DD /* Exceptions for "Word Guess" folder in "WordZap" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			assetTagsByRelativePath = {
-				"AI/AI Model/WordleGPT_runtime_spec.json" = ("ai-pack-v1", );
-				"AI/AI Model/config.json" = ("ai-pack-v1", );
-				"AI/AI Model/special_tokens_map.json" = ("ai-pack-v1", );
-				"AI/AI Model/tokenizer.json" = ("ai-pack-v1", );
-				"AI/AI Model/tokenizer.model" = ("ai-pack-v1", );
-				"AI/AI Model/tokenizer_config.json" = ("ai-pack-v1", );
-			};
-			target = 4FD6D2372CB9A1F400755D03 /* WordZap */;
-		};
 		4FC1114F2E636F33007D1E2B /* Exceptions for "WordZapWidgetExtension" folder in "WordZapWidgetExtensionExtension" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
@@ -125,7 +110,6 @@
 		4FD6D23A2CB9A1F400755D03 /* Word Guess */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				4F1BDC9B2E4F0F9A00A4B3DD /* Exceptions for "Word Guess" folder in "WordZap" target */,
 				4FC111B72E6378BD007D1E2B /* Exceptions for "Word Guess" folder in "WordZapWidgetExtensionExtension" target */,
 			);
 			path = "Word Guess";
@@ -168,6 +152,7 @@
 				4FFF87412E3F289500D612F0 /* Transformers in Frameworks */,
 				4FD6D2962CB9A2F200755D03 /* FacebookLogin in Frameworks */,
 				4F370C872CC6A5BF00632E10 /* GoogleUserMessagingPlatform in Frameworks */,
+				4FA2D2D12E66F3A900C687D0 /* ZIPFoundation in Frameworks */,
 				4FD6D28A2CB9A2C000755D03 /* FirebaseAuth in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -202,8 +187,6 @@
 			isa = PBXGroup;
 			children = (
 				4FC111EC2E637CBC007D1E2B /* WordZapWidgetExtensionExtension.entitlements */,
-				4F1BDC692E4BC7FF00A4B3DD /* WordleGPT_decode.mlmodelc */,
-				4F1BDC6A2E4BC7FF00A4B3DD /* WordleGPT_prefill.mlmodelc */,
 				4FD6D23A2CB9A1F400755D03 /* Word Guess */,
 				4FD6D2502CB9A1F700755D03 /* Word GuessTests */,
 				4FD6D25A2CB9A1F700755D03 /* Word GuessUITests */,
@@ -281,6 +264,7 @@
 				4F370C8C2CC6A72F00632E10 /* GoogleMobileAds */,
 				4FFF87402E3F289500D612F0 /* Transformers */,
 				4FCDAC362E53E416001A758F /* SwiftUITooltip */,
+				4FA2D2D02E66F3A900C687D0 /* ZIPFoundation */,
 			);
 			productName = "Word Guess";
 			productReference = 4FD6D2382CB9A1F400755D03 /* WordZap.app */;
@@ -381,6 +365,7 @@
 				4F370C8B2CC6A72F00632E10 /* XCRemoteSwiftPackageReference "swift-package-manager-google-mobile-ads" */,
 				4FFF873F2E3F289500D612F0 /* XCRemoteSwiftPackageReference "swift-tokenizers" */,
 				4FCDAC352E53E416001A758F /* XCRemoteSwiftPackageReference "SwiftUI-Tooltip" */,
+				4FA2D2CF2E66F3A900C687D0 /* XCRemoteSwiftPackageReference "ZIPFoundation" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 4FD6D2392CB9A1F400755D03 /* Products */;
@@ -407,8 +392,6 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				4F1BDC6B2E4BC7FF00A4B3DD /* WordleGPT_prefill.mlmodelc in Resources */,
-				4F1BDC6C2E4BC7FF00A4B3DD /* WordleGPT_decode.mlmodelc in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -879,6 +862,14 @@
 				minimumVersion = 11.10.0;
 			};
 		};
+		4FA2D2CF2E66F3A900C687D0 /* XCRemoteSwiftPackageReference "ZIPFoundation" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/weichsel/ZIPFoundation.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.9.19;
+			};
+		};
 		4FCDAC352E53E416001A758F /* XCRemoteSwiftPackageReference "SwiftUI-Tooltip" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/quassum/SwiftUI-Tooltip.git";
@@ -939,6 +930,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 4F370C8B2CC6A72F00632E10 /* XCRemoteSwiftPackageReference "swift-package-manager-google-mobile-ads" */;
 			productName = GoogleMobileAds;
+		};
+		4FA2D2D02E66F3A900C687D0 /* ZIPFoundation */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4FA2D2CF2E66F3A900C687D0 /* XCRemoteSwiftPackageReference "ZIPFoundation" */;
+			productName = ZIPFoundation;
 		};
 		4FCDAC362E53E416001A758F /* SwiftUITooltip */ = {
 			isa = XCSwiftPackageProductDependency;

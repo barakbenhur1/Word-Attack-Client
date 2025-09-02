@@ -2,45 +2,85 @@
 //  AIPackManager.swift
 //  Word Guess
 //  Created by Barak Ben Hur on 15/08/2025.
+//  Uses GitHub Release tag instead of ODR.
 //
 
 import Foundation
 
 enum AIPack {
-    static let currentVersion = 1                            // bump when shipping new AI
-    static let currentTag = "ai-pack-v\(currentVersion)"     // match File Inspector tag
+    // Bump when you change the model files you want to keep on device
+    static let currentVersion = 1
+
+    // GitHub release info
+    static let ghOwner = "barakbenhur1"
+    static let ghRepo  = "Word-Attack-Client"
+    static let ghTag   = "ML_Models"        // your release tag
+
+    // Optional: provide a token at runtime for higher rate limits
+    static var ghToken: String? { nil }
+
+    /// The exact asset file names you want from the release
+    static let expectedAssets: [String] = [
+        "WordleGPT_prefill.mlmodelc.zip",
+        "WordleGPT_decode.mlmodelc.zip",
+        "tokenizer.model",
+        "tokenizer.json",
+        "tokenizer_config.json",
+        "special_tokens_map.json",
+        "config.json",
+        "WordleGPT_runtime_spec.json"
+    ]
+
     static let defaultsKey = "AIPackVersion"
 }
 
+@MainActor
 @Observable
 final class AIPackManager {
-    private let odr = ODRDownloader()
+    private let dl = GitReleaseDownloader()
 
-    var isReady: Bool { odr.isReady }
-    var progress: Double { odr.progress }
-    var errorText: String? { odr.errorText }
-    var completedBytes: Int64 { odr.completedBytes }
-    var totalBytes: Int64 { odr.totalBytes }
+    var isReady: Bool { dl.isReady }
+    var progress: Double { dl.progress }
+    var errorText: String? { dl.errorText }
+    var completedBytes: Int64 { dl.completedBytes }
+    var totalBytes: Int64 { dl.totalBytes }
+    var progressExtra: String? { dl.progressExtra }
+    var installRoot: URL? { dl.installedRoot }
 
-    func ensurePackReady(priority: Double = 1.0, preserve: Double = 0.95) {
-        odr.fetch(tag: AIPack.currentTag, priority: priority, preserve: preserve)
+    /// Start/ensure the pack exists under Application Support/AIPack/v{version}/
+    func ensurePackReady() {
+        dl.fetch(
+            owner: AIPack.ghOwner,
+            repo: AIPack.ghRepo,
+            tag: AIPack.ghTag,
+            version: AIPack.currentVersion,
+            expectedAssetNames: AIPack.expectedAssets,
+            personalAccessToken: AIPack.ghToken
+        )
     }
 
-    func releaseLease() { odr.endAccessing() }
+    func cancel() {
+        dl.cancel()
+        Task { await dl.shutdown() }
+    }
 
-    /// Call on app launch (or before first use) to migrate versions and clean old local copies.
+    /// Call on app launch to expire old versions so your storage stays clean.
     func migrateIfNeeded() {
-        let stored = UserDefaults.standard.integer(forKey: AIPack.defaultsKey)
+        let ud = UserDefaults.standard
+        let stored = ud.integer(forKey: AIPack.defaultsKey)
         guard stored != AIPack.currentVersion else { return }
+        ud.set(AIPack.currentVersion, forKey: AIPack.defaultsKey)
 
-        if stored > 0 {
-            let oldTag = "ai-pack-v\(stored)"
-            Bundle.main.setPreservationPriority(0.0, forTags: [oldTag])
+        // Purge older version folders
+        let fm = FileManager.default
+        if let base = try? fm.url(for: .applicationSupportDirectory, in: .userDomainMask,
+                                  appropriateFor: nil, create: true)
+            .appendingPathComponent("AIPack", isDirectory: true),
+           let items = try? fm.contentsOfDirectory(at: base, includingPropertiesForKeys: [.isDirectoryKey],
+                                                   options: [.skipsHiddenFiles]) {
+            for u in items where u.lastPathComponent != "v\(AIPack.currentVersion)" {
+                try? fm.removeItem(at: u)
+            }
         }
-        Bundle.main.setPreservationPriority(0.95, forTags: [AIPack.currentTag])
-        UserDefaults.standard.set(AIPack.currentVersion, forKey: AIPack.defaultsKey)
-
-        // Optional: clear older local versions
-        try? ModelStorage.cleanOldVersions(keepVersion: AIPack.currentVersion)
     }
 }

@@ -1094,6 +1094,7 @@
     },
     "Finalizing…" : {
       "comment" : "ODR",
+      "extractionState" : "stale",
       "localizations" : {
         "he" : {
           "stringUnit" : {
@@ -2534,7 +2535,7 @@
       }
     },
     "Ready" : {
-      "comment" : "ODR",
+      "comment" : "DL",
       "localizations" : {
         "he" : {
           "stringUnit" : {
