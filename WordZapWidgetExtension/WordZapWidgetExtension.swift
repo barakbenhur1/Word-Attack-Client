@@ -130,7 +130,16 @@ struct WordZapWidgetView: View {
     
     // MARK: Unified chip
     @ViewBuilder
-    private func chip(_ text: String, icon: String? = nil, expand: Bool = true, color: Color = .primary) -> some View {
+    private func chip(
+        _ text: String,
+        icon: String? = nil,
+        expand: Bool = true,
+        color: Color = .primary
+    ) -> some View {
+        // slightly smaller than before
+        let isExtraLarge = family == .systemExtraLarge
+        let chipFont: Font = isExtraLarge ? .footnote.weight(.semibold) : .caption2.weight(.semibold)
+        
         HStack(spacing: 8) {
             if let icon {
                 Image(systemName: icon)
@@ -138,21 +147,19 @@ struct WordZapWidgetView: View {
                     .foregroundColor(.primary.opacity(0.9))
             }
             Text(text)
-                .font(.caption.weight(.semibold))
+                .font(chipFont)
+                .monospacedDigit()
                 .foregroundColor(color)
                 .lineLimit(1)
-                .minimumScaleFactor(0.7)
-                .layoutPriority(1)
+                .truncationMode(.tail)
+                .minimumScaleFactor(1.0)   // keep all rows same size
+                .allowsTightening(false)
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
+        .padding(.horizontal, 10)
+        .padding(.vertical, isExtraLarge ? 7 : 6)
         .frame(maxWidth: expand ? .infinity : nil, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: 12).fill(Color.primary.opacity(0.14))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 12).stroke(Color.primary.opacity(0.16), lineWidth: 1)
-        )
+        .background(RoundedRectangle(cornerRadius: 12).fill(Color.primary.opacity(0.14)))
+        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.primary.opacity(0.16), lineWidth: 1))
     }
     
     // MARK: Small
@@ -220,9 +227,9 @@ struct WordZapWidgetView: View {
                 .foregroundColor(.primary)
                 .frame(maxWidth: .infinity, alignment: .center)
             
-            HStack(alignment: .top, spacing: 12) {
+            HStack(alignment: .top, spacing: 4) {
                 tapTarget("wordzap://play?difficulty=\(d.rawValue)") {
-                    VStack(alignment: .leading, spacing: 10) {
+                    VStack(alignment: .leading, spacing: 12) {
                         chip("\("Diff".localized): \(d.rawValue.localized.capitalized)",                    icon: "flag.checkered", color: d.color)
                         chip("\("Today".localized): \(shortDate)",                                          icon: "calendar")
                         chip("\("Place".localized): \(entry.place.map { "#\($0)" } ?? "—")",                icon: "trophy")
@@ -238,9 +245,10 @@ struct WordZapWidgetView: View {
                     AICardWithTooltip(
                         name: entry.aiName ?? "AI Opponent",
                         imageName: entry.aiImageName,
-                        tooltip: entry.aiTooltip
+                        tooltip: entry.aiTooltip,
+                        isExtraLarge: false
                     )
-                    .frame(width: 120)
+                    .frame(width: 118)
                     .softGlass()
                 }
             }
@@ -259,14 +267,13 @@ struct WordZapWidgetView: View {
                 .foregroundColor(.primary)
                 .frame(maxWidth: .infinity, alignment: .center)
             
-            HStack(alignment: .top, spacing: 16) {
-                // LEFT: Stats card (play link)
+            HStack(alignment: .top, spacing: 22) {
                 tapTarget("wordzap://play?difficulty=\(d.rawValue)") {
                     VStack(alignment: .leading, spacing: 12) {
-                        chip("\("Diff".localized): \(d.rawValue.localized.capitalized)",     icon: "flag.checkered", color: d.color)
-                        chip("\("Today".localized): \(shortDate)",                           icon: "calendar")
-                        chip("\("Place".localized): \(entry.place.map { "#\($0)" } ?? "—")", icon: "trophy")
-                        chip("\("Score".localized): \(entry.score.map(String.init) ?? "—")", icon: "sum")
+                        chip("\("Diff".localized): \(d.rawValue.localized.capitalized)",         icon: "flag.checkered", color: d.color)
+                        chip("\("Today".localized): \(shortDate)",                               icon: "calendar")
+                        chip("\("Place".localized): \(entry.place.map { "#\($0)" } ?? "—")",     icon: "trophy")
+                        chip("\("Score".localized): \(entry.score.map(String.init) ?? "—")",     icon: "sum")
                         chip("\("Answers".localized): \(entry.answers.map(String.init) ?? "-")", icon: "text.cursor")
                     }
                     .padding(16)
@@ -279,7 +286,7 @@ struct WordZapWidgetView: View {
                         name: entry.aiName ?? "AI Opponent",
                         imageName: entry.aiImageName,
                         tooltip: entry.aiTooltip,
-                        height: 106
+                        isExtraLarge: true
                     )
                     .frame(width: 300)
                     .softGlass()
@@ -295,13 +302,13 @@ private struct AICardWithTooltip: View {
     let name: String
     let imageName: String?
     let tooltip: String?
-    var height: CGFloat = 86
+    let isExtraLarge: Bool
     
     var body: some View {
         VStack(spacing: 2) {
             Spacer()
             VStack(spacing: 2) {
-                if let t = tooltip, !t.isEmpty { TooltipBubble(text: t).transition(.opacity) }
+                if let t = tooltip, !t.isEmpty { TooltipBubble(text: t, isExtraLarge: isExtraLarge).transition(.opacity) }
                 Group {
                     if let img = imageName, UIImage(named: img) != nil {
                         Image(img).resizable().scaledToFit()
@@ -316,7 +323,7 @@ private struct AICardWithTooltip: View {
                             )
                     }
                 }
-                .frame(height: height)
+                .frame(height: isExtraLarge ? 126 : 86)
                 .shadow(radius: 3, y: 2)
             }
             
@@ -335,10 +342,14 @@ private struct AICardWithTooltip: View {
 
 private struct TooltipBubble: View {
     let text: String
+    let isExtraLarge: Bool
+    
     var body: some View {
+        let font: Font = isExtraLarge ? .footnote.weight(.semibold) : .caption2.weight(.semibold)
+        let maxWidth: CGFloat = isExtraLarge ? 200 : 140
         VStack(spacing: 0) {
             Text(text.localized)
-                .font(.caption2.weight(.semibold))
+                .font(font)
                 .lineLimit(2)
                 .minimumScaleFactor(0.5)
                 .multilineTextAlignment(.center)
@@ -347,7 +358,7 @@ private struct TooltipBubble: View {
                 .padding(.vertical, 6)
                 .background(Capsule().fill(Color.primary.opacity(0.14)))
                 .overlay(Capsule().stroke(Color.primary.opacity(0.16), lineWidth: 1))
-                .frame(maxWidth: 140)
+                .frame(maxWidth: maxWidth)
             Triangle()
                 .fill(Color.primary.opacity(0.14))
                 .frame(width: 10, height: 10)
