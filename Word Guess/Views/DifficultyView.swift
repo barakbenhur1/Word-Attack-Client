@@ -92,6 +92,7 @@ struct DifficultyView: View {
                 .onDisappear { onDisappear() }
                 .onAppear { onAppear() }
                 .task { task() }
+                .ignoresSafeArea(.keyboard)
         }
     }
     
