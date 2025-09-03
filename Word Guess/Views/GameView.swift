@@ -76,6 +76,11 @@ struct GameView<VM: WordViewModel>: View {
         current = guesswork.count
     }
     
+    private func handleStartup(email: String) async {
+        await vm.word(diffculty: diffculty,
+                      email: email)
+    }
+    
     private func handleTimeAttack() {
         guard !keyboard.show || vm.word.number == 0 || vm.word.number % InterstitialAdInterval != 0 else { return }
         initalConfigirationForWord()
@@ -170,12 +175,15 @@ struct GameView<VM: WordViewModel>: View {
                         else {
                             ZStack(alignment: .trailing) {
                                 HStack {
-                                    Text("\(diffculty.rawValue.localized)")
-                                        .multilineTextAlignment(.center)
-                                        .font(.title3.weight(.heavy))
-                                        .shadow(radius: 4)
-                                        .padding(.bottom, 8)
-                                        .padding(.leading, 40)
+                                    VStack {
+                                        Spacer()
+                                        Text("\(diffculty.rawValue.localized)")
+                                            .multilineTextAlignment(.center)
+                                            .font(.title3.weight(.heavy))
+                                            .shadow(radius: 4)
+                                            .padding(.bottom, 8)
+                                            .padding(.leading, 10)
+                                    }
                                     
                                     Spacer()
                                     
@@ -190,8 +198,7 @@ struct GameView<VM: WordViewModel>: View {
                                             Text("\(vm.word.score)")
                                                 .multilineTextAlignment(.center)
                                                 .font(.largeTitle.weight(.heavy))
-                                                .foregroundStyle(.angularGradient(colors: [.red,
-                                                                                           .yellow,
+                                                .foregroundStyle(.angularGradient(colors: [.yellow,
                                                                                            .green],
                                                                                   center: .center,
                                                                                   startAngle: .zero,
@@ -220,12 +227,15 @@ struct GameView<VM: WordViewModel>: View {
                                                vertical: true)
                                     Spacer()
                                     
-                                    Text("words: \(vm.word.number)")
-                                        .multilineTextAlignment(.center)
-                                        .font(.title3.weight(.heavy))
-                                        .shadow(radius: 4)
-                                        .padding(.bottom, 8)
-                                        .padding(.trailing, 40)
+                                    VStack {
+                                        Spacer()
+                                        Text("words: \(vm.word.number)")
+                                            .multilineTextAlignment(.center)
+                                            .font(.title3.weight(.heavy))
+                                            .shadow(radius: 4)
+                                            .padding(.bottom, 8)
+                                            .padding(.trailing, 10)
+                                    }
                                 }
                             }
                             .padding(.vertical)
@@ -263,14 +273,14 @@ struct GameView<VM: WordViewModel>: View {
                 
                 if endFetchAnimation {
                     AppTitle(size: 50)
-                        .padding(.top, 90)
-                        .padding(.bottom, 140)
+                        .padding(.top, UIDevice.isPad ? 130 : 90)
+                        .padding(.bottom, UIDevice.isPad ? 180 : 140)
                         .shadow(radius: 4)
                 } else {
                     ZStack{}
-                        .frame(height: 81)
-                        .padding(.top, 90)
-                        .padding(.bottom, 140)
+                        .frame(height: UIDevice.isPad ? 111 : 81)
+                        .padding(.top, UIDevice.isPad ? 130 : 90)
+                        .padding(.bottom, UIDevice.isPad ? 180 : 140)
                         .shadow(radius: 4)
                 }
             }
@@ -281,18 +291,19 @@ struct GameView<VM: WordViewModel>: View {
     }
     
     @ViewBuilder private func game(proxy: GeometryProxy) -> some View {
-        ZStack(alignment: .topLeading) {
-            ZStack(alignment: .topLeading) { gameBody(proxy: proxy) }
-                .ignoresSafeArea(.keyboard)
-                .onChange(of: vm.isError, handleError)
-                .onChange(of: vm.word.word, handleWordChange)
-                .onChange(of: vm.word.word.guesswork, handleGuessworkChage)
-                .onChange(of: vm.word.isTimeAttack, handleTimeAttack)
-                .task { await vm.word(diffculty: diffculty,
-                                      email: loginHandeler.model!.email) }
-                .ignoresSafeArea(.keyboard)
+        if let email {
+            ZStack(alignment: .topLeading) {
+                ZStack(alignment: .topLeading) { gameBody(proxy: proxy) }
+                    .ignoresSafeArea(.keyboard)
+                    .onChange(of: vm.isError, handleError)
+                    .onChange(of: vm.word.word, handleWordChange)
+                    .onChange(of: vm.word.word.guesswork, handleGuessworkChage)
+                    .onChange(of: vm.word.isTimeAttack, handleTimeAttack)
+                    .task { await handleStartup(email: email) }
+                    .ignoresSafeArea(.keyboard)
+            }
+            .padding(.top, 64)
         }
-        .padding(.top, 64)
     }
     
     private func initalConfigirationForWord() {

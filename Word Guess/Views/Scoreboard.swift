@@ -3,24 +3,72 @@
 //  Word Guess
 //
 //  Created by Barak Ben Hur on 15/10/2024.
-//  Pro UI rev 2025-08-29 (responsive cols, chip difficulty, no-wrap name)
+//  Pro UI rev 2025-09-03 (iPad-friendly measured columns, typography scaling, centered wide layout)
 //
 
 import SwiftUI
 
 // MARK: - Layout constants
+// MARK: - Layout constants
 private enum LBLayout {
-    static let placeW: CGFloat = 44
-    static let scoreW: CGFloat = 66
-    static let guessedW: CGFloat = 62
-    static let totalW: CGFloat = 66
     static let hSpacing: CGFloat = 10
+    
+    struct Columns {
+        let place: CGFloat
+        let name: CGFloat
+        let score: CGFloat
+        let guessed: CGFloat
+        let total: CGFloat
+    }
+    
+    /// Compute column widths that sum to the available width.
+    /// On iPad we use proportions so NAME never eats the table.
+    static func columns(for width: CGFloat, isPadLike: Bool) -> Columns {
+        // header/row use .padding(.horizontal, 12) + 4 gaps between 5 columns
+        let horizontalInsets: CGFloat = 24 + (hSpacing * 4)
+        let available = max(0, width - horizontalInsets)
+        
+        if isPadLike {
+            // Tweak these to taste — they’re percentages of `available`
+            let placeP:  CGFloat = 0.10
+            let scoreP:  CGFloat = 0.15
+            let guessP:  CGFloat = 0.15
+            let totalP:  CGFloat = 0.15
+            let nameP:   CGFloat = 1.0 - (placeP + scoreP + guessP + totalP) // = 0.45
+            
+            var place  = available * placeP
+            var score  = available * scoreP
+            var guess  = available * guessP
+            var total  = available * totalP
+            var name   = available * nameP
+            
+            // Sensible minimums/maximums so things don’t collapse or balloon
+            place = max(place, 60)
+            score = max(score, 90)
+            guess = max(guess, 90)
+            total = max(total, 90)
+            name  = max(min(name, 420), 260) // cap name (<=420) and keep readable (>=260)
+            
+            // If rounding/clamping pushed us over, nudge name down
+            let sum = place + score + guess + total + name
+            if sum > available {
+                name -= (sum - available)
+            }
+            
+            return .init(place: place, name: name, score: score, guessed: guess, total: total)
+        } else {
+            // Phone – keep compact widths like before; name flexes
+            return .init(place: 44, name: .zero, score: 66, guessed: 62, total: 66)
+        }
+    }
 }
 
+// MARK: - Scoreboard
 struct Scoreboard<VM: ScoreboardViewModel>: View {
     @EnvironmentObject private var loginHandeler: LoginHandeler
     @EnvironmentObject private var router: Router
     @EnvironmentObject private var local: LanguageSetting
+    @Environment(\.horizontalSizeClass) private var hSize
     
     @State private var vm = VM()
     @State private var current: Int = 0
@@ -30,6 +78,8 @@ struct Scoreboard<VM: ScoreboardViewModel>: View {
     private var isRTL: Bool { language == "he" }
     
     var body: some View {
+        let isPadLike = (hSize == .regular) || UIDevice.current.userInterfaceIdiom == .pad
+        
         ZStack {
             LinearGradient(
                 colors: [Color(.systemBackground), Color(.secondarySystemBackground)],
@@ -37,7 +87,7 @@ struct Scoreboard<VM: ScoreboardViewModel>: View {
             )
             .ignoresSafeArea()
             
-            VStack(spacing: 12) {
+            VStack(spacing: isPadLike ? 16 : 12) {
                 
                 // Title bar
                 ZStack(alignment: .leading) {
@@ -45,21 +95,24 @@ struct Scoreboard<VM: ScoreboardViewModel>: View {
                     HStack {
                         Spacer()
                         Text("SCOREBOARD")
-                            .font(.system(size: 27, weight: .bold, design: .rounded))
+                            .font(.system(size: isPadLike ? 32 : 27, weight: .bold, design: .rounded))
                             .multilineTextAlignment(.center)
                         Spacer()
                     }
                 }
-                .padding(.horizontal, 10)
-                .padding(.top, 4)
+                .padding(.horizontal, isPadLike ? 18 : 10)
+                .padding(.top, isPadLike ? 8 : 4)
                 
                 ScrollView(.vertical) {
-                    VStack(spacing: 16) {
+                    VStack(spacing: isPadLike ? 20 : 16) {
                         if current < vm.data.count, vm.data.indices.contains(current) {
                             let day = vm.data[current]
                             
                             // Sort difficulties by word length
-                            let sortedDiffs = day.difficulties.sorted { DifficultyType(rawValue: $0.value)!.getLength() < DifficultyType(rawValue: $1.value)!.getLength() }
+                            let sortedDiffs = day.difficulties.sorted {
+                                DifficultyType(stripedRawValue: $0.value)!.getLength()
+                                < DifficultyType(stripedRawValue: $1.value)!.getLength()
+                            }
                             let diffTitles = sortedDiffs.map { $0.value }
                             
                             // Build rows per difficulty
@@ -102,6 +155,7 @@ struct Scoreboard<VM: ScoreboardViewModel>: View {
                                 }
                             )
                             .environment(\.layoutDirection, isRTL ? .rightToLeft : .leftToRight)
+                            .padding(.horizontal, isPadLike ? 4 : 0)
                             
                             // Difficulty picker (always segmented, even if only one option)
                             if !diffTitles.isEmpty {
@@ -109,24 +163,35 @@ struct Scoreboard<VM: ScoreboardViewModel>: View {
                                     titles: diffTitles.map { prettyDifficulty($0) },
                                     selectedIndex: $selectedDifficultyIndex
                                 )
+                                .frame(maxWidth: isPadLike ? 520 : .infinity)
                                 .transition(.opacity)
                             }
                             
-                            // Leaderboard card
-                            LeaderboardCard(
-                                rows: rowsPerDifficulty[safe: selectedDifficultyIndex] ?? [],
-                                isRTL: isRTL
-                            )
+                            // Leaderboard card – measure width to compute numeric columns
+                            GeometryReader { proxy in
+                                let cols = LBLayout.columns(for: proxy.size.width, isPadLike: isPadLike)
+                                LeaderboardCard(
+                                    rows: rowsPerDifficulty[safe: selectedDifficultyIndex] ?? [],
+                                    isRTL: isRTL,
+                                    cols: cols,
+                                    isPadLike: isPadLike
+                                )
+                                .frame(maxWidth: .infinity, alignment: .center)
+                            }
+                            .frame(maxWidth: .infinity, minHeight: 0)
                         } else {
                             EmptyStateCard()
                         }
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.bottom, 6)
+                    .padding(.horizontal, isPadLike ? 22 : 16)
+                    .padding(.bottom, isPadLike ? 10 : 6)
+                    .frame(maxWidth: 900) // center content on wide iPads
+                    .frame(maxWidth: .infinity)
                 }
                 
                 // Ad
                 AdView(adUnitID: "ScoreBanner")
+                    .frame(maxWidth: 728) // leaderboard-like width for iPad
             }
         }
         .environment(\.layoutDirection, isRTL ? .rightToLeft : .leftToRight)
@@ -159,7 +224,8 @@ private struct DatePager: View {
             .disabled(!canGoPrevious)
             
             Text(title)
-                .font(.system(size: 26, weight: .bold, design: .rounded))
+                .font(.system(size: UIDevice.current.userInterfaceIdiom == .pad ? 28 : 26,
+                              weight: .bold, design: .rounded))
                 .monospacedDigit()
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
@@ -173,7 +239,7 @@ private struct DatePager: View {
             .disabled(!canGoNext)
         }
         .padding(.horizontal, 14)
-        .padding(.vertical, 10)
+        .padding(.vertical, UIDevice.current.userInterfaceIdiom == .pad ? 12 : 10)
         .background(.ultraThinMaterial, in: Capsule())
         .shadow(color: Color.black.opacity(0.06), radius: 10, y: 4)
     }
@@ -197,8 +263,9 @@ private struct DifficultyPicker: View {
 private struct DifficultyChip: View {
     let title: String
     var body: some View {
-        Text(title)
-            .font(.subheadline.weight(.medium))
+        Text(title.localized)
+            .font(.subheadline)
+            .fontWeight(.medium)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 10)
             .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
@@ -212,32 +279,37 @@ private struct DifficultyChip: View {
 private struct LeaderboardCard: View {
     let rows: [LeaderboardRowModel]
     let isRTL: Bool
+    let cols: LBLayout.Columns
+    let isPadLike: Bool
     
     var body: some View {
         VStack(spacing: 0) {
             // Header row
             HStack(spacing: LBLayout.hSpacing) {
-                header("Place").frame(width: LBLayout.placeW)
-                header("Name").frame(maxWidth: .infinity)
-                header("Score").frame(width: LBLayout.scoreW)
-                header("Guessed").frame(width: LBLayout.guessedW)
-                header("Total").frame(width: LBLayout.totalW)
+                header("Place").frame(width: cols.place)
+                if isPadLike { header("Name").frame(width: cols.name, alignment: .leading) }
+                else { header("Name").frame(maxWidth: .infinity, alignment: .leading) }
+                header("Score").frame(width: cols.score)
+                header("Guessed").frame(width: cols.guessed)
+                header("Total").frame(width: cols.total)
             }
+
             .padding(.horizontal, 12)
-            .padding(.vertical, 9)
+            .padding(.vertical, isPadLike ? 11 : 9)
             .background(Color.primary.opacity(0.06))
             
             if rows.isEmpty {
                 VStack(spacing: 10) {
                     Text("No results yet")
-                        .font(.callout.weight(.medium))
+                        .font(.callout)
+                        .fontWeight(.medium)
                         .foregroundStyle(.secondary)
                         .padding(.vertical, 18)
                 }
                 .frame(maxWidth: .infinity)
             } else {
                 ForEach(rows) { row in
-                    LeaderboardRow(row: row, isRTL: isRTL)
+                    LeaderboardRow(row: row, isRTL: isRTL, cols: cols, isPadLike: isPadLike)
                     Divider().opacity(0.15)
                 }
             }
@@ -252,7 +324,8 @@ private struct LeaderboardCard: View {
     
     private func header(_ text: LocalizedStringKey) -> some View {
         Text(text)
-            .font(.footnote.weight(.semibold))
+            .font(isPadLike ? .subheadline : .footnote)
+            .fontWeight(.semibold)           // <- separate modifier (fixes your error)
             .multilineTextAlignment(.center)
             .textCase(.uppercase)
             .foregroundStyle(.secondary)
@@ -263,16 +336,19 @@ private struct LeaderboardCard: View {
 private struct LeaderboardRow: View {
     let row: LeaderboardRowModel
     let isRTL: Bool
+    let cols: LBLayout.Columns
+    let isPadLike: Bool
     
     var body: some View {
         HStack(spacing: LBLayout.hSpacing) {
             RankBadge(rank: row.rank)
-                .frame(width: LBLayout.placeW, alignment: .center)
+                .frame(width: cols.place, alignment: .center)
             
             // Name + email (name single-line, email wraps)
             VStack(alignment: isRTL ? .trailing : .leading, spacing: 2) {
                 Text(row.name)
-                    .font(.body.weight(.semibold))
+                    .font(isPadLike ? .title3 : .body)
+                    .fontWeight(.semibold)
                     .lineLimit(1)
                     .truncationMode(.tail)
                     .minimumScaleFactor(0.85)
@@ -280,29 +356,35 @@ private struct LeaderboardRow: View {
                 
                 if !row.email.isEmpty {
                     Text(row.email)
-                        .font(.caption2)
+                        .font(isPadLike ? .footnote : .caption2)
                         .foregroundStyle(.secondary)
-                        .lineLimit(2)                           // <- allow wrapping
+                        .lineLimit(2)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
-            .frame(maxWidth: .infinity, alignment: isRTL ? .trailing : .leading)
-            .layoutPriority(2) // give the name/email column priority over numbers
+            .frame(width: (isPadLike ? cols.name : nil), alignment: isRTL ? .trailing : .leading)
+            .layoutPriority(2)
             
             Text("\(row.score)")
-                .font(.body.monospacedDigit().weight(.medium))
-                .frame(width: LBLayout.scoreW)
+                .font(isPadLike ? .title3 : .body)
+                .fontWeight(.medium)
+                .monospacedDigit()
+                .frame(width: cols.score)
             
             Text("\(row.guessed)")
-                .font(.body.monospacedDigit().weight(.medium))
-                .frame(width: LBLayout.guessedW)
+                .font(isPadLike ? .title3 : .body)
+                .fontWeight(.medium)
+                .monospacedDigit()
+                .frame(width: cols.guessed)
             
             Text("\(row.total)")
-                .font(.body.monospacedDigit().weight(.medium))
-                .frame(width: LBLayout.totalW)
+                .font(isPadLike ? .title3 : .body)
+                .fontWeight(.medium)
+                .monospacedDigit()
+                .frame(width: cols.total)
         }
         .padding(.horizontal, 12)
-        .padding(.vertical, 12)
+        .padding(.vertical, isPadLike ? 14 : 12)
         .contentShape(Rectangle())
     }
 }
@@ -326,7 +408,9 @@ private struct RankBadge: View {
             HStack(spacing: 2) {
                 if rank == 1 { Image(systemName: "crown.fill") }
                 Text("\(rank)")
-                    .font(.callout.monospacedDigit().weight(.semibold))
+                    .font(.callout)
+                    .fontWeight(.semibold)   // <- separate
+                    .monospacedDigit()       // <- on Text
             }
             .foregroundStyle(foregroundStyle(rank))
         }
@@ -335,11 +419,11 @@ private struct RankBadge: View {
     
     private func foregroundStyle(_ r: Int) -> Color {
         switch r {
-        case 1, 2 ,3: return .white
+        case 1, 2, 3: return .white
         default: return .secondary
         }
     }
-        
+    
     private func badgeColors(_ r: Int) -> [Color] {
         switch r {
         case 1: return [Color.yellow.opacity(0.9), Color.orange.opacity(0.9)]
@@ -392,8 +476,8 @@ private extension Collection {
 
 private func prettyDifficulty(_ raw: String) -> String {
     let lower = raw.lowercased()
-    if lower.contains("easy") { return "🙂 Easy" }
-    if lower.contains("medium") { return "😳 Medium" }
-    if lower.contains("hard") { return "🥵 Hard" }
+    if lower.contains("easy") { return "😀 Easy".localized }
+    if lower.contains("medium") { return "😳 Medium".localized }
+    if lower.contains("hard") { return "🥵 Hard".localized }
     return raw.capitalized
 }

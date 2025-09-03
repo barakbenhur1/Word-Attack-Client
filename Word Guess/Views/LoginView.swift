@@ -40,6 +40,7 @@ struct LoginView<VM: LoginViewModel>: View {
             .padding(.horizontal, 40)
             .loading(show: loading)
         }
+        .ignoresSafeArea(.keyboard)
     }
     
     @ViewBuilder private var googleSignInButton: some View {

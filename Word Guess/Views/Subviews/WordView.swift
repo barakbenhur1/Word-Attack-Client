@@ -130,7 +130,6 @@ struct WordView<VM: ViewModel>: View {
         .frame(maxHeight: .infinity)
         .textInputAutocapitalization(i == 0 ? .sentences : .never)
         .autocorrectionDisabled()
-        .keyboardType(.asciiCapable)
         .focused($fieldFocus, equals: FieldFocus(rawValue: i)!)
         .onSubmit { fieldFocus = FieldFocus(rawValue: i)! }
         .onTapGesture { fieldFocus = FieldFocus(rawValue: i)! }

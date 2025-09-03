@@ -99,7 +99,7 @@ struct WordZapWidget: Widget {
         }
         .configurationDisplayName("WordZap")
         .description("Daily stats and AI at a glance.")
-        .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
+        .supportedFamilies([.systemSmall, .systemMedium, .systemLarge, .systemExtraLarge])
     }
 }
 
@@ -119,10 +119,11 @@ struct WordZapWidgetView: View {
                 endPoint: .bottom
             )
             switch family {
-            case .systemSmall:  smallLayout
-            case .systemMedium: mediumLayout
-            case .systemLarge:  largeLayout
-            default:            mediumLayout
+            case .systemSmall:      smallLayout
+            case .systemMedium:     mediumLayout
+            case .systemLarge:      largeLayout
+            case .systemExtraLarge: extraLargeLayout
+            default:                mediumLayout
             }
         }
     }
@@ -156,10 +157,10 @@ struct WordZapWidgetView: View {
     
     // MARK: Small
     private var smallLayout: some View {
-        let shortDate = entry.date.formatted(.dateTime.day().month(.abbreviated))
+        let shortDate = entry.date.formatted(.dateTime.day().month(.abbreviated).locale(Locale.current))
         return VStack(spacing: 8) {
             Spacer(minLength: 2)
-            AppTitle()
+            AppTitle(isWidget: true)
                 .font(.headline)
                 .foregroundColor(.primary)
                 .frame(maxWidth: .infinity, alignment: .center)
@@ -176,15 +177,15 @@ struct WordZapWidgetView: View {
     
     // MARK: Medium
     private var mediumLayout: some View {
-        let shortDate = entry.date.formatted(.dateTime.day().month(.abbreviated))
+        let shortDate = entry.date.formatted(.dateTime.day().month(.abbreviated).locale(Locale.current))
         let d         = entry.difficulty
         let answers   = entry.answers.map(String.init) ?? "—"
         let score     = entry.score.map { $0.formatted(.number.grouping(.automatic)) } ?? "—"
         let place     = entry.place.map { "#\($0)" } ?? "—"
-        let diff      = d.rawValue.capitalized
+        let diff      = d.rawValue.localized.capitalized
         
         return VStack(spacing: 4) {
-            AppTitle()
+            AppTitle(isWidget: true)
                 .font(.headline)
                 .foregroundColor(.primary)
                 .frame(maxWidth: .infinity, alignment: .center)
@@ -192,15 +193,15 @@ struct WordZapWidgetView: View {
             tapTarget("wordzap://play?difficulty=\(d.rawValue)") {
                 Grid(horizontalSpacing: 8, verticalSpacing: 6) {
                     GridRow {
-                        chip(diff,      icon: "flag.checkered", color: d.color)
-                        chip(shortDate, icon: "calendar")
+                        chip(diff, icon: "flag.checkered", color: d.color)
+                        chip(shortDate,      icon: "calendar")
                         Color.clear
                     }
                     GridRow {
                         chip(place,     icon: "trophy")
                         chip(score,     icon: "sum")
                         chip(answers,   icon: "text.cursor")
-                      
+                        
                     }
                 }
             }
@@ -210,11 +211,11 @@ struct WordZapWidgetView: View {
     
     // MARK: Large
     private var largeLayout: some View {
-        let shortDate = entry.date.formatted(.dateTime.day().month(.abbreviated))
+        let shortDate = entry.date.formatted(.dateTime.day().month(.abbreviated).locale(Locale.current))
         let d         = entry.difficulty
-
+        
         return VStack(spacing: 12) {
-            AppTitle()
+            AppTitle(isWidget: true)
                 .font(.title3).bold()
                 .foregroundColor(.primary)
                 .frame(maxWidth: .infinity, alignment: .center)
@@ -222,11 +223,11 @@ struct WordZapWidgetView: View {
             HStack(alignment: .top, spacing: 12) {
                 tapTarget("wordzap://play?difficulty=\(d.rawValue)") {
                     VStack(alignment: .leading, spacing: 10) {
-                        chip("Difficulty: \(d.rawValue.capitalized)",                        icon: "flag.checkered", color: d.color)
-                        chip("Today: \(shortDate)",                                          icon: "calendar")
-                        chip("Place: \(entry.place.map { "#\($0)" } ?? "—")",                icon: "trophy")
-                        chip("Score: \(entry.score != nil ? "\(entry.score!)" : "—")",       icon: "sum")
-                        chip("Answers: \(entry.answers != nil ? "\(entry.answers!)" : "-")", icon: "text.cursor")
+                        chip("\("Diff".localized): \(d.rawValue.localized.capitalized)",                    icon: "flag.checkered", color: d.color)
+                        chip("\("Today".localized): \(shortDate)",                                          icon: "calendar")
+                        chip("\("Place".localized): \(entry.place.map { "#\($0)" } ?? "—")",                icon: "trophy")
+                        chip("\("Score".localized): \(entry.score != nil ? "\(entry.score!)" : "—")",       icon: "sum")
+                        chip("\("Answers".localized): \(entry.answers != nil ? "\(entry.answers!)" : "-")", icon: "text.cursor")
                     }
                     .padding(14)
                     .softGlass()
@@ -246,6 +247,47 @@ struct WordZapWidgetView: View {
         }
         .padding(16)
     }
+    
+    // MARK: Extra Large
+    private var extraLargeLayout: some View {
+        let shortDate = entry.date.formatted(.dateTime.day().month(.wide).locale(Locale.current))
+        let d         = entry.difficulty
+        
+        return VStack(spacing: 16) {
+            AppTitle(isWidget: true)
+                .font(.title2).bold()
+                .foregroundColor(.primary)
+                .frame(maxWidth: .infinity, alignment: .center)
+            
+            HStack(alignment: .top, spacing: 16) {
+                // LEFT: Stats card (play link)
+                tapTarget("wordzap://play?difficulty=\(d.rawValue)") {
+                    VStack(alignment: .leading, spacing: 12) {
+                        chip("\("Diff".localized): \(d.rawValue.localized.capitalized)",     icon: "flag.checkered", color: d.color)
+                        chip("\("Today".localized): \(shortDate)",                           icon: "calendar")
+                        chip("\("Place".localized): \(entry.place.map { "#\($0)" } ?? "—")", icon: "trophy")
+                        chip("\("Score".localized): \(entry.score.map(String.init) ?? "—")", icon: "sum")
+                        chip("\("Answers".localized): \(entry.answers.map(String.init) ?? "-")", icon: "text.cursor")
+                    }
+                    .padding(16)
+                    .softGlass()
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                
+                tapTarget("wordzap://ai") {
+                    AICardWithTooltip(
+                        name: entry.aiName ?? "AI Opponent",
+                        imageName: entry.aiImageName,
+                        tooltip: entry.aiTooltip,
+                        height: 106
+                    )
+                    .frame(width: 300)
+                    .softGlass()
+                }
+            }
+        }
+        .padding(20)
+    }
 }
 
 // MARK: - AI Card
@@ -253,6 +295,7 @@ private struct AICardWithTooltip: View {
     let name: String
     let imageName: String?
     let tooltip: String?
+    var height: CGFloat = 86
     
     var body: some View {
         VStack(spacing: 2) {
@@ -273,12 +316,11 @@ private struct AICardWithTooltip: View {
                             )
                     }
                 }
-                .frame(height: 86)
+                .frame(height: height)
                 .shadow(radius: 3, y: 2)
             }
-
             
-            Text(name)
+            Text(name.localized)
                 .font(.callout.weight(.semibold))
                 .foregroundColor(.primary)
                 .lineLimit(1)
@@ -295,7 +337,7 @@ private struct TooltipBubble: View {
     let text: String
     var body: some View {
         VStack(spacing: 0) {
-            Text(text)
+            Text(text.localized)
                 .font(.caption2.weight(.semibold))
                 .lineLimit(2)
                 .minimumScaleFactor(0.5)
@@ -313,6 +355,7 @@ private struct TooltipBubble: View {
         }
         .shadow(radius: 1.5, y: 1)
     }
+    
     private struct Triangle: Shape {
         func path(in rect: CGRect) -> Path {
             var p = Path()

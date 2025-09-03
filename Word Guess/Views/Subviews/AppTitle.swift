@@ -10,6 +10,7 @@ import SwiftUI
 struct AppTitle: View {
     private let title = "Word Guess".localized
     var size: CGFloat = 40
+    var isWidget: Bool = false
     
     let wordZapColors: [CharColor] = [
         .exactMatch,  // Emerald Green (Correct)
@@ -64,6 +65,7 @@ struct AppTitle: View {
             .environment(\.layoutDirection, .leftToRight)
         }
         .fixedSize()
+        .scaleEffect(.init(width: !isWidget && UIDevice.isPad ? 2.2 : 1, height: !isWidget && UIDevice.isPad ? 2.2 : 1))
     }
 }
 
@@ -228,5 +230,11 @@ struct CharColor: Comparable {
         case let i where i.id == CharColor.exactMatch.id : return "🟩"
         default: return "⬜"
         }
+    }
+}
+
+extension UIDevice {
+    static var isPad: Bool {
+        UIDevice.current.userInterfaceIdiom == .pad
     }
 }

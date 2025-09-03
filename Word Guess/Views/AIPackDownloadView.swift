@@ -13,8 +13,7 @@ private struct CapsuleProgressBar: View {
             let w = max(0, min(1, progress)) * geo.size.width
             ZStack(alignment: .leading) {
                 Capsule().fill(.secondary.opacity(0.25))
-                Capsule()
-                    .fill(LinearGradient(colors: [.yellow, .green],
+                Capsule().fill(LinearGradient(colors: [.yellow, .green],
                                          startPoint: .leading,
                                          endPoint: .trailing))
                     .frame(width: w)
@@ -50,7 +49,7 @@ struct AIPackDownloadView: View {
                     .multilineTextAlignment(.center)
                 
                 VStack(alignment: .leading, spacing: 10) {
-                    CapsuleProgressBar(progress: progressValue, height: 20)
+                    CapsuleProgressBar(progress: progressValue > 0.01 ? progressValue : 0, height: 20)
                         .frame(maxWidth: 520)
                         .padding(.horizontal)
                     HStack {
@@ -103,7 +102,7 @@ struct AIPackDownloadView: View {
     private var progressLabel: String {
         isLoadingModel
         ? "Finalizing…"
-        : "\(Int((max(0, min(1, mgr.progress))) * 100))% complete"
+        : "\(Int((max(0, min(1, mgr.progress))) * 100))% \("complete".localized)"
     }
     
     private var visibleError: String? {

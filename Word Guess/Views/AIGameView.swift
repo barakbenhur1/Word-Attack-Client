@@ -46,6 +46,12 @@ struct AIGameView<VM: WordViewModelForAI>: View {
     @State private var playerHpAnimation: HpAnimationParams = (0, CGFloat(0), CGFloat(0), CGFloat(30))
     
     @State private var disabled: Bool = false
+    @State private var showGameEndPopup: Bool
+    @State private var showExitPopup: Bool
+    @State private var showCelebrate: Bool
+    @State private var showMourn: Bool
+    @State private var showError: Bool
+    @State private var wordNumber = 0
     
     // player params
     @State private var current: Int = 0
@@ -60,12 +66,6 @@ struct AIGameView<VM: WordViewModelForAI>: View {
     @State private var ai: WordleAIViewModel?
     @State private var showPhrase: Bool = false
     @State private var showAiIntro: Bool
-    @State private var showGameEndPopup: Bool
-    @State private var showExitPopup: Bool
-    @State private var showCelebrate: Bool
-    @State private var showMourn: Bool
-    @State private var showError: Bool
-    @State private var wordNumber = 0
     @State private var aiDifficulty: AIDifficulty {
         didSet {
             ai?.hidePhrase()
@@ -170,8 +170,8 @@ struct AIGameView<VM: WordViewModelForAI>: View {
         Task(priority: .userInitiated) { await vm.word(email: email) }
     }
     
-    private func handleStartup() async {
-        await vm.word(email: loginHandeler.model!.email)
+    private func handleStartup(email: String) async {
+        await vm.word(email: email)
         didStart = vm.word != .empty
     }
     
@@ -414,8 +414,10 @@ struct AIGameView<VM: WordViewModelForAI>: View {
         guard i == current else { return }
         colors[i] = vm.calculateColors(with: matrix[i])
         
-        if chackWord(index: i, matrix: matrix) { makeHitOnAI(hitPoints: rows * hitPoints - current * hitPoints) }
-        else if current == rows - 1 {
+        if chackWord(index: i, matrix: matrix) {
+            audio.playSound(sound: "success", type: "wav")
+            makeHitOnAI(hitPoints: rows * hitPoints - current * hitPoints)
+        } else if current == rows - 1 {
             Task.detached(priority: .userInitiated) {
                 try? await Task.sleep(nanoseconds: 1_000_000_000)
                 await MainActor.run { withAnimation(.easeInOut(duration: 0.6).delay(0.5)) { turn = .ai } }
@@ -427,9 +429,13 @@ struct AIGameView<VM: WordViewModelForAI>: View {
         guard i == current else { return }
         aiColors[i] = vm.calculateColors(with: aiMatrix[i])
         
-        if chackWord(index: i, matrix: aiMatrix) { makeHitOnPlayer(hitPoints: rows * hitPoints - current * hitPoints) }
+        if chackWord(index: i, matrix: aiMatrix) {
+            audio.playSound(sound: "fail", type: "wav")
+            makeHitOnPlayer(hitPoints: rows * hitPoints - current * hitPoints)
+        }
         else if current < rows - 1 { current = i + 1 }
         else if current == rows - 1 {
+            audio.playSound(sound: "fail", type: "wav")
             makeHitOnPlayer(hitPoints: noGuessHitPoints)
             makeHitOnAI(hitPoints: noGuessHitPoints)
             Task(priority: .userInitiated) {
@@ -639,7 +645,7 @@ struct AIGameView<VM: WordViewModelForAI>: View {
                         case .player:
                             let hasPrevAIGuess = i > 0 && current == i && aiMatrix[current - 1].contains { !$0.isEmpty }
                             let placeHolderData = hasPrevAIGuess ? allBestGuesses : nil
-                            let gainFocus = Binding(get: { current == i }, set: { _ in })
+                            let gainFocus = Binding(get: { !showAiIntro && current == i }, set: { _ in })
                             WordView(
                                 cleanCells: $cleanCells,
                                 current: $current,
@@ -679,14 +685,14 @@ struct AIGameView<VM: WordViewModelForAI>: View {
                 
                 if endFetchAnimation {
                     AppTitle(size: 50)
-                        .padding(.top, 90)
-                        .padding(.bottom, 150)
+                        .padding(.top, UIDevice.isPad ? 130 : 90)
+                        .padding(.bottom, UIDevice.isPad ? 190 : 150)
                         .shadow(radius: 4)
                 } else {
                     ZStack{}
-                        .frame(height: 81)
-                        .padding(.top, 90)
-                        .padding(.bottom, 150)
+                        .frame(height: UIDevice.isPad ? 111 : 81)
+                        .padding(.top, UIDevice.isPad ? 130 : 90)
+                        .padding(.bottom, UIDevice.isPad ? 190 : 150)
                         .shadow(radius: 4)
                 }
             }
@@ -698,15 +704,17 @@ struct AIGameView<VM: WordViewModelForAI>: View {
     }
     
     @ViewBuilder private func game(proxy: GeometryProxy) -> some View {
-        ZStack(alignment: .topLeading) {
-            ZStack(alignment: .topLeading) { gameBody(proxy: proxy) }
-                .ignoresSafeArea(.keyboard)
-                .task { await handleStartup() }
-                .onChange(of: vm.numberOfErrors, handleError)
-                .onChange(of: vm.word, handleWordChange)
-                .ignoresSafeArea(.keyboard)
+        if let email {
+            ZStack(alignment: .topLeading) {
+                ZStack(alignment: .topLeading) { gameBody(proxy: proxy) }
+                    .ignoresSafeArea(.keyboard)
+                    .task { await handleStartup(email: email) }
+                    .onChange(of: vm.numberOfErrors, handleError)
+                    .onChange(of: vm.word, handleWordChange)
+                    .ignoresSafeArea(.keyboard)
+            }
+            .padding(.top, 64)
         }
-        .padding(.top, 64)
     }
     
     @ViewBuilder private func overlayViews(proxy: GeometryProxy) -> some View {

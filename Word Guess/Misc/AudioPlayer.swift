@@ -10,8 +10,9 @@ import AVFoundation
 @Observable
 class AudioPlayer: ObservableObject {
     private var audioPlayer: AVAudioPlayer?
-    var isOn = UserDefaults.standard.value(forKey: "sound") as? Bool ?? true { didSet { UserDefaults.standard.set(isOn, forKey: "sound") } }
     private var stopPlay = false
+    
+    var isOn = UserDefaults.standard.value(forKey: "sound") as? Bool ?? true { didSet { UserDefaults.standard.set(isOn, forKey: "sound") } }
     
     func playSound(sound: String, type: String, loop: Bool = false) {
         guard isOn && !stopPlay else { return }
@@ -21,9 +22,7 @@ class AudioPlayer: ObservableObject {
                 audioPlayer?.numberOfLoops = loop ? .max : 0
                 audioPlayer?.volume = type == "mp3" ? 0.3 : 1
                 audioPlayer?.play()
-            } catch {
-                print("ERROR")
-            }
+            } catch { print("ERROR") }
         }
     }
     
@@ -32,7 +31,5 @@ class AudioPlayer: ObservableObject {
         audioPlayer = nil
     }
     
-    func stopAudio(_ value: Bool) {
-        stopPlay = value
-    }
+    func stopAudio(_ value: Bool) { stopPlay = value }
 }

@@ -50,6 +50,10 @@ struct WordGuessApp: App {
                 }
             }
             .onDisappear { tooltipPusher.stop() }
+            .onChange(of: loginHaneler.model) {
+                guard loginHaneler.model == nil else { return }
+                Task(priority: .userInitiated) { await router.popToRoot() }
+            }
             .onChange(of: loginHaneler.model?.gender) {
                 guard loginHaneler.model?.gender != nil else { return }
                 deepLink(url: deepLinkUrl)

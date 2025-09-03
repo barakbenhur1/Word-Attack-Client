@@ -22,6 +22,8 @@ class Router: ObservableObject {
     
     private var navigationAnimation: Bool = false { didSet { UINavigationBar.setAnimationsEnabled(navigationAnimation) } }
     
+    private var lockNavigation: Bool = false
+    
     // Builds the views
     @ViewBuilder func view(for route: Route) -> some View {
         switch route {
@@ -42,16 +44,22 @@ class Router: ObservableObject {
     
     // Used by views to navigate to another view
     func navigateTo(_ appRoute: Route) {
+        guard !lockNavigation else { return }
         UIApplication.shared.hideKeyboard()
         navigationAnimation = appRoute != .game(diffculty: .tutorial)
-        Task(priority: .userInitiated) {  await MainActor.run { path.append(appRoute) } }
+        path.append(appRoute)
+        lockNavigation = true
+        Task(priority: .high) {
+            try? await Task.sleep(nanoseconds: 1_000_000_000)
+            lockNavigation = false
+        }
     }
     
     // Used to go back to the previous screen
     func navigateBack() {
         guard !path.isEmpty else { return }
         UIApplication.shared.hideKeyboard()
-        Task(priority: .userInitiated) {  await MainActor.run { path.removeLast() } }
+        path.removeLast()
     }
     
     func popToRoot() async {

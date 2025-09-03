@@ -15,6 +15,15 @@ struct DifficultyButton: Identifiable {
 enum DifficultyType: String, Codable, CaseIterable {
     case ai = "⚔️ AI", easy = "😀 Easy", medium = "😳 Medium", hard = "🥵 Hard", tutorial
     
+    init?(stripedRawValue: String) {
+        switch stripedRawValue.lowercased() {
+        case "easy": self = .easy
+        case "medium": self = .medium
+        case "hard": self = .hard
+        default: return nil
+        }
+    }
+    
     var liveValue: Difficulty {
         switch self {
         case .easy: return .easy
@@ -198,7 +207,7 @@ struct DifficultyView: View {
         }()
         
         Button {
-            Task.detached(priority: .userInitiated) {
+            Task(priority: .userInitiated) {
                 await MainActor.run { router.navigateTo(.game(diffculty: type)) }
             }
         } label: { ElevatedButtonLabel(LocalizedStringKey(type.rawValue)) }

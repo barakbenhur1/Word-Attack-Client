@@ -134,7 +134,7 @@ struct SettingsView: View {
                         .font(.headline)
                         .foregroundStyle(.black)
                     
-                    Text(difficulty)
+                    Text(difficulty.localized)
                         .font(.subheadline)
                         .foregroundStyle(.black)
                     

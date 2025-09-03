@@ -102,7 +102,7 @@ public struct ServerLoadingView: View {
                 
                 VStack(spacing: 8) {
                     // Title: fixed height
-                    Text(title)
+                    Text(title.localized)
                         .font(.system(.headline, design: .rounded).weight(.semibold))
                         .foregroundStyle(LoadPalette.title)
                         .multilineTextAlignment(.center)

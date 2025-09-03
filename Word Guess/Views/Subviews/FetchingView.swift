@@ -15,7 +15,7 @@ struct FetchingView: View {
     @ViewBuilder private func fetchingView() -> some View {
         VStack {
             Spacer()
-            if word.isEmpty { ServerLoadingView(title: "Fetching Word".localized) }
+            if word.isEmpty { ServerLoadingView(title: "Fetching Word") }
             Spacer()
         }
     }
