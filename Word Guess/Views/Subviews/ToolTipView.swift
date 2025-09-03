@@ -136,14 +136,27 @@ public struct Tooltip<Content: View>: View {
     }
     
     private func bubbleWithArrow(_ isEN: Bool) -> some View {
-        bubble
-            .overlay(alignment: isEN ? .leading : .trailing) {
-                Arrow(direction: isEN ? .left : .right)
+        HStack {
+            if isEN {
+                Arrow(direction: .left)
                     .fill(.regularMaterial)
-                    .offset(x: isEN ? -(arrowSize.width - contentGap) : arrowSize.width - 5)
+                    .frame(width: arrowSize.width, height: arrowSize.height)
+                    .shadow(radius: shadowRadius * 0.6, y: 0.5)
+                
+                bubble
+                    .offset(x:  -arrowSize.width)
+            } else {
+                bubble
+                    .offset(x: contentGap + 1.5)
+                    .zIndex(2)
+                
+                Arrow(direction: .right)
+                    .fill(.regularMaterial)
+                    .offset(x: -contentGap)
                     .frame(width: arrowSize.width, height: arrowSize.height)
                     .shadow(radius: shadowRadius * 0.6, y: 0.5)
             }
+        }
     }
     
     private var bubble: some View {
