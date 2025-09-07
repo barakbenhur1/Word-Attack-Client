@@ -17,7 +17,7 @@ struct LoginView<VM: LoginViewModel>: View {
     private var googleStyle: ElevatedButtonStyle { ElevatedButtonStyle(palette: .googleLogin) }
     private var appleStyle: ElevatedButtonStyle { ElevatedButtonStyle(palette: .appleLogin) }
     
-    @ViewBuilder private var appleLabel: some View  { ElevatedButtonLabel(LocalizedStringKey("Continue with Apple"), systemImage: "apple.logo") }
+    @ViewBuilder private var appleLabel: some View { ElevatedButtonLabel(LocalizedStringKey("Continue with Apple"), systemImage: "apple.logo") }
     @ViewBuilder private var googleLabel: some View { ElevatedButtonLabel(LocalizedStringKey("Continue with Google"), image: "google") }
     
     var body: some View {
@@ -27,7 +27,7 @@ struct LoginView<VM: LoginViewModel>: View {
             .blur(radius: 4).opacity(0.1).ignoresSafeArea()
             
             VStack(spacing: 40) {
-                AppTitle(size: 50)
+                AppTitle(size: 44)
                 
                 VStack(spacing: 16) {
                     Button(action: appleAction, label: { appleLabel })

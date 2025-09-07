@@ -151,7 +151,7 @@ struct AIGameView<VM: WordViewModelForAI>: View {
         { s in
             guard s.count < length else { return nil }
             let pattern = vm.calculateColors(with: s.map { String($0) })
-                .map { $0.getColor() }   // <- call the method, not a key path
+                .map { $0.getColor() }
                 .joined()
             return (s, pattern)
         }
@@ -412,6 +412,10 @@ struct AIGameView<VM: WordViewModelForAI>: View {
         guard let lang = language,
               let language = Language(rawValue: lang) else { return }
         ai = .init(language: language)
+        UserDefaults.standard.set(aiDifficulty.rawValue.name, forKey: "aiDifficulty")
+        UserDefaults.standard.set(playerHP, forKey: "playerHP")
+        let aiDifficulty = aiDifficulty
+        Task(priority: .utility) { await SharedStore.writeAIStatsAsync(.init(name: aiDifficulty.rawValue.name, imageName: aiDifficulty.rawValue.image)) }
     }
     
     private func handlePhrase() { showPhrase = ai?.showPhraseValue ?? false }

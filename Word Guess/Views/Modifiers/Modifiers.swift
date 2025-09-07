@@ -61,17 +61,47 @@ struct RealisticCellModifier: ViewModifier {
     }
 }
 
+import SwiftUI
+
 struct LoadingViewModifier: ViewModifier {
     let show: Bool
     
     func body(content: Content) -> some View {
         ZStack {
             content
+                .disabled(show)                 // block taps behind the loader
+                .blur(radius: show ? 1 : 0)
+            
             if show {
-                ProgressView()
-                    .progressViewStyle(.circular)
+                // Dim the whole screen a bit
+                Color.black.opacity(0.15)
+                    .ignoresSafeArea()
+                    .transition(.opacity)
+                
+                // Big spinner + optional label
+                VStack(spacing: 14) {
+                    ProgressView()
+                        .progressViewStyle(.circular)
+                        .scaleEffect(2.0)       // 👈 make it LARGE
+                        .tint(.primary)         // or .white if you prefer
+                    
+                    // Text("Loading…")
+                    //     .font(.headline)
+                    //     .foregroundColor(.primary)
+                }
+                .padding(24)
+                .background(.ultraThinMaterial, in:
+                                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                )
+                .shadow(radius: 12)
+                .transition(.scale.combined(with: .opacity))
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("Loading")
+                .accessibilityAddTraits(.isModal)
             }
         }
+        .animation(.easeInOut(duration: 0.2), value: show)
+        .zIndex(show ? 1 : 0)
     }
 }
 
@@ -108,15 +138,15 @@ private struct RealStoneModifier: ViewModifier {
     let crackWidth: CGFloat
     let bevel: CGFloat
     let seed: UInt64
-
+    
     @State private var cachedCracks: [Path] = []
     @State private var cachedSize: CGSize = .zero
-
+    
     func body(content: Content) -> some View {
         GeometryReader { geo in
             let size = geo.size
             let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-
+            
             ZStack {
                 // Base fill with subtle vertical gradient
                 shape
@@ -131,13 +161,13 @@ private struct RealStoneModifier: ViewModifier {
                             endPoint: .bottom
                         )
                     )
-
+                
                 // Grain + veins (deterministic)
                 StoneTexture(seed: seed, cornerRadius: cornerRadius)
                     .clipShape(shape)
                     .blendMode(.multiply)
                     .opacity(0.45)
-
+                
                 // Cracks (deterministic & cached)
                 ZStack {
                     ForEach(cachedCracks.indices, id: \.self) { i in
@@ -150,7 +180,7 @@ private struct RealStoneModifier: ViewModifier {
                     }
                 }
                 .clipShape(shape)
-
+                
                 // Bevel + inner shadow for chiseled edge
                 shape
                     .stroke(Color.black.opacity(0.25), lineWidth: 1.0)
@@ -191,7 +221,7 @@ private struct RealStoneModifier: ViewModifier {
             .onChange(of: size) { _, newValue in ensureCracks(size: newValue) }
         }
     }
-
+    
     private func ensureCracks(size: CGSize) {
         guard size.width > 1, size.height > 1 else { return }
         if cachedSize != size || cachedCracks.isEmpty {
@@ -209,7 +239,7 @@ private struct RealStoneModifier: ViewModifier {
 private struct StoneTexture: View {
     let seed: UInt64
     let cornerRadius: CGFloat
-
+    
     var body: some View {
         Canvas { ctx, size in
             // Grain via grid sampling (stable hash noise)
@@ -224,7 +254,7 @@ private struct StoneTexture: View {
                     ctx.fill(Path(ellipseIn: rect), with: .color(.black.opacity(alpha)))
                 }
             }
-
+            
             // Veins: long sinuous strokes driven by low-freq noise
             var rng = SplitMix64(seed: seed ^ 0xD1B54A32D192ED03)
             let veinCount = 4
@@ -238,7 +268,7 @@ private struct StoneTexture: View {
         .drawingGroup(opaque: false)
         .allowsHitTesting(false)
     }
-
+    
     // Fractional Brownian Motion (simple value noise)
     private func fbm(x: CGFloat, y: CGFloat, seed: UInt64) -> CGFloat {
         var total: CGFloat = 0
@@ -251,24 +281,24 @@ private struct StoneTexture: View {
         }
         return max(0, min(1, total))
     }
-
+    
     private func valueNoise(_ x: CGFloat, _ y: CGFloat, _ seed: UInt64) -> CGFloat {
         let xi = Int(floor(x)), yi = Int(floor(y))
         let xf = x - CGFloat(xi), yf = y - CGFloat(yi)
-
+        
         let v00 = hash01(xi, yi, seed)
         let v10 = hash01(xi+1, yi, seed)
         let v01 = hash01(xi, yi+1, seed)
         let v11 = hash01(xi+1, yi+1, seed)
-
+        
         let u = smoothstep(xf)
         let v = smoothstep(yf)
-
+        
         let i1 = lerp(v00, v10, u)
         let i2 = lerp(v01, v11, u)
         return lerp(i1, i2, v)
     }
-
+    
     private func makeVein(size: CGSize, seed: UInt64) -> Path {
         var path = Path()
         // start on a random edge
@@ -287,7 +317,7 @@ private struct StoneTexture: View {
         default: p = CGPoint(x: 0, y: rnd(0, size.height, &s))
         }
         path.move(to: p)
-
+        
         let segments = 22
         for i in 0..<segments {
             // direction influenced by very low-freq noise for a sinuous feel
@@ -303,7 +333,7 @@ private struct StoneTexture: View {
         }
         return path
     }
-
+    
     // helpers
     private func lerp(_ a: CGFloat, _ b: CGFloat, _ t: CGFloat) -> CGFloat { a + (b - a) * t }
     private func smoothstep(_ x: CGFloat) -> CGFloat { x * x * (3 - 2 * x) }
@@ -341,7 +371,7 @@ private enum CrackFactory {
         }
         return cracks
     }
-
+    
     private static func makeOneCrack(in rect: CGRect, seed: UInt64) -> Path {
         var s = seed
         func rnd(_ a: CGFloat, _ b: CGFloat) -> CGFloat {
@@ -349,7 +379,7 @@ private enum CrackFactory {
             let u = CGFloat(s % 1_000_000) / 1_000_000.0
             return a + (b - a) * u
         }
-
+        
         // start at a random edge
         let edge = Int(truncatingIfNeeded: seed & 3)
         var p: CGPoint
@@ -359,17 +389,17 @@ private enum CrackFactory {
         case 2: p = CGPoint(x: rnd(rect.minX, rect.maxX), y: rect.maxY)
         default: p = CGPoint(x: rect.minX, y: rnd(rect.minY, rect.maxY))
         }
-
+        
         var path = Path()
         path.move(to: p)
-
+        
         // polyline with occasional sharp turns + micro-branches
         let segments = 14
         for i in 0..<segments {
             let lowNoiseX = valueNoise(p.x * 0.01, p.y * 0.01, seed ^ 0xA5A5A5A5)
             let lowNoiseY = valueNoise(p.y * 0.01, p.x * 0.01, seed ^ 0x5A5A5A5A)
             let angle = (lowNoiseX - lowNoiseY) * .pi * 2.2 + (i % 3 == 0 ? .pi * 0.2 : 0)
-
+            
             let step = rnd(10, 26)
             let q = CGPoint(
                 x: clamp(p.x + cos(angle) * step + rnd(-4, 4), rect.minX, rect.maxX),
@@ -377,7 +407,7 @@ private enum CrackFactory {
             )
             path.addLine(to: q)
             p = q
-
+            
             // tiny fracture branch
             if (seed >> i) & 1 == 1 && i > 2 {
                 var branch = Path()
@@ -392,15 +422,15 @@ private enum CrackFactory {
                 path.addPath(branch)
             }
         }
-
+        
         return path
     }
-
+    
     // reuse same helpers as texture
     private static func valueNoise(_ x: CGFloat, _ y: CGFloat, _ seed: UInt64) -> CGFloat {
         let xi = Int(floor(x)), yi = Int(floor(y))
         let xf = x - CGFloat(xi), yf = y - CGFloat(yi)
-
+        
         func h(_ x: Int, _ y: Int) -> CGFloat {
             var h = seed
             h ^= UInt64(bitPattern: Int64(x &* 0x27d4eb2d))
@@ -411,7 +441,7 @@ private enum CrackFactory {
             let v = Double(h & 0xFFFFFFFF) / Double(UInt32.max)
             return CGFloat(v)
         }
-
+        
         let v00 = h(xi, yi), v10 = h(xi+1, yi), v01 = h(xi, yi+1), v11 = h(xi+1, yi+1)
         let u = smoothstep(xf), v = smoothstep(yf)
         let i1 = v00 + (v10 - v00) * u
@@ -419,7 +449,7 @@ private enum CrackFactory {
         return i1 + (i2 - i1) * v
     }
     private static func smoothstep(_ x: CGFloat) -> CGFloat { x * x * (3 - 2 * x) }
-
+    
     private struct SplitMix64 {
         var state: UInt64
         init(seed: UInt64) { state = seed == 0 ? 0x9E3779B97F4A7C15 : seed }

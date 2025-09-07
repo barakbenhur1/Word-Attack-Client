@@ -163,17 +163,28 @@ public struct ElevatedButtonLabel: View {
     }
     
     public var body: some View {
-        HStack(spacing: 12) {
+        ZStack(alignment: .leading) {
             if let systemImage {
                 Image(systemName: systemImage)
+                    .renderingMode(.original)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: 25, height: 25)
                     .font(.system(size: 18, weight: .semibold, design: .rounded))
+                    .padding(.leading, 10)
             } else if let image {
                 Image(image)
+                    .renderingMode(.original)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: 30, height: 30)
                     .font(.system(size: 18, weight: .semibold, design: .rounded))
+                    .padding(.leading, 10)
             }
             Text(title)
                 .multilineTextAlignment(.center)
-                .font(.system(size: 16, weight: .semibold, design: .rounded))
+                .font(.system(size: 18, weight: .semibold, design: .rounded))
+                .frame(maxWidth: .infinity)
                 .padding(40)
         }
         .frame(maxWidth: .infinity, alignment: alignment)

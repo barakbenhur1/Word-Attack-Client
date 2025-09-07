@@ -65,7 +65,7 @@ struct AppTitle: View {
             .environment(\.layoutDirection, .leftToRight)
         }
         .fixedSize()
-        .scaleEffect(.init(width: !isWidget && UIDevice.isPad ? 2.2 : 1, height: !isWidget && UIDevice.isPad ? 2.2 : 1))
+        .scaleEffect(.init(width: !isWidget && UIDevice.isPad ? 1.6 : 1, height: !isWidget && UIDevice.isPad ? 1.6 : 1))
     }
 }
 

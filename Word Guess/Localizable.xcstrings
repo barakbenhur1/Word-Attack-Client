@@ -243,6 +243,17 @@
         }
       }
     },
+    "AI Opponent" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "בינה מלאכותית"
+          }
+        }
+      }
+    },
     "Allocating KV cache…" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2183,6 +2194,16 @@
         }
       }
     },
+    "No stats yet" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אין נתונים עדיין"
+          }
+        }
+      }
+    },
     "No sweat" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2201,6 +2222,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "שטות של מילה חד־פעמית"
+          }
+        }
+      }
+    },
+    "not downloaded yet" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "לא הורד עדיין"
           }
         }
       }
@@ -2483,6 +2515,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "שחק במשחק בכדיי לראות את הדירוג שלך בלוח"
+          }
+        }
+      }
+    },
+    "Play a round\nto see Place,\nScore & Answers" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "שחק סיבוב\nבשביל לראות\nאת הדירוג שלך"
           }
         }
       }
@@ -3007,6 +3049,17 @@
     },
     "Start Timer" : {
       "shouldTranslate" : false
+    },
+    "start your ai journey" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אתגר את הבינה המלאכותית"
+          }
+        }
+      }
     },
     "Still wrong" : {
       "extractionState" : "manual",

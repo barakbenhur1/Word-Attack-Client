@@ -9,14 +9,18 @@ import Foundation
 import WidgetKit
 import SwiftUICore
 
+// MARK: - Usage
+// Call this once at app startup (before reading SharedStore):
+// SharedStore.wipeGroupOnFreshInstall()
+
 public enum Difficulty: String, Codable, CaseIterable {
     case easy, medium, hard
     
     var color: Color {
         switch self {
-        case .easy: Color(hue: 0.33, saturation: 0.75, brightness: 0.32)
+        case .easy:   Color(hue: 0.33, saturation: 0.75, brightness: 0.32)
         case .medium: Color(hue: 0.15, saturation: 0.90, brightness: 0.60)
-        case .hard: Color(hue: 0.97, saturation: 0.8,  brightness: 0.38)
+        case .hard:   Color(hue: 0.97, saturation: 0.8,  brightness: 0.38)
         }
     }
     
@@ -42,12 +46,48 @@ public struct AIStats: Codable, Equatable {
 enum SharedStore {
     static let appGroupID  = "group.com.barak.wordzap"   // ← your real App Group
     
-    // Keys
+    // MARK: - Keys
     private static let placesDataKey        = "leaderboard.places.data"
     private static let currentDifficultyKey = "wordzap.widget.currentDifficulty"
     private static let aiTooltipKey         = "ai.tooltip"
     private static let diffStatsKeyPrefix   = "stats.difficulty." // + difficulty.rawValue
     private static let aiStatsKey           = "ai.stats"
+    
+    // Fresh-install marker (lives in standard defaults, which are deleted on uninstall)
+    private static let installMarkerKey     = "app.install.marker.v1"
+    
+    // MARK: - Fresh-install wipe for App Group defaults
+    
+    /// Call this ONCE at app startup, before reading any values.
+    /// If the app was reinstalled (standard defaults are empty), we wipe the App Group defaults.
+    static func wipeGroupOnFreshInstall() {
+        let std = UserDefaults.standard
+        let isFirstRun = (std.object(forKey: installMarkerKey) == nil)
+        
+        guard isFirstRun else { return }
+        ud()?.removeObject(forKey: aiStatsKey)
+        
+        // Set marker so we don't wipe again on normal launches/updates
+        std.set(true, forKey: installMarkerKey)
+        std.synchronize()
+        
+        // Ensure widgets reflect the clean state
+        Task { @MainActor in
+            WidgetCenter.shared.reloadTimelines(ofKind: "WordZapWidget")
+        }
+    }
+    
+    /// Optional: manual nuke (e.g., a "Reset" button in Settings)
+    static func nukeAppGroup() {
+        if let suite = UserDefaults(suiteName: appGroupID) {
+            suite.removePersistentDomain(forName: appGroupID)
+            for key in suite.dictionaryRepresentation().keys { suite.removeObject(forKey: key) }
+            suite.synchronize()
+        }
+        Task { @MainActor in
+            WidgetCenter.shared.reloadTimelines(ofKind: "WordZapWidget")
+        }
+    }
     
     // MARK: - Generic helpers
     
@@ -146,7 +186,7 @@ enum SharedStore {
         guard let raw = ud()?.data(forKey: aiStatsKey) else { return nil }
         return try? JSONDecoder().decode(AIStats.self, from: raw)
     }
-
+    
     static func readAIStatsAsync() async -> AIStats? {
         let raw: Data? = await MainActor.run { ud()?.data(forKey: aiStatsKey) }
         guard let raw else { return nil }
@@ -154,13 +194,13 @@ enum SharedStore {
             try JSONDecoder().decode(AIStats.self, from: raw)
         }.value
     }
-
+    
     static func writeAIStats(_ stats: AIStats) {
         if let encoded = try? JSONEncoder().encode(stats) {
             ud()?.set(encoded, forKey: aiStatsKey)
         }
     }
-
+    
     static func writeAIStatsAsync(_ stats: AIStats) async {
         let encoded = await encode(stats)
         await MainActor.run { ud()?.set(encoded, forKey: aiStatsKey) }

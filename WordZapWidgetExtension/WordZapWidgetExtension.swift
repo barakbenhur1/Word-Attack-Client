@@ -71,8 +71,8 @@ struct WordZapProvider: TimelineProvider {
             answers: stats?.answers,
             score:   stats?.score,
             place:   place,
-            aiName:  ai?.name ?? "Chad GPT",
-            aiImageName: ai?.imageName ?? "easyAI",
+            aiName:  ai?.name,
+            aiImageName: ai?.imageName,
             aiTooltip: tooltip ?? "Destroyer of words"
         )
     }
@@ -108,6 +108,10 @@ struct WordZapWidgetView: View {
     @Environment(\.widgetFamily) private var family
     let entry: WordZapEntry
     
+    private var hasStats: Bool {
+        entry.answers != nil && entry.score != nil && entry.place != nil
+    }
+    
     var body: some View {
         ZStack {
             LinearGradient(
@@ -126,6 +130,43 @@ struct WordZapWidgetView: View {
             default:                mediumLayout
             }
         }
+    }
+
+    // Generic placeholder block (no chip)
+    @ViewBuilder
+    private func statsPlaceholderBlock() -> some View {
+        // slightly larger text for large/XL
+        let isLarge = (family == .systemLarge || family == .systemExtraLarge)
+        let baseFont: Font = isLarge ? .footnote : .caption
+
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: "hourglass")
+                .font(.body.weight(.semibold))
+                .foregroundStyle(.secondary)
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text("No stats yet").fontWeight(.semibold)
+                if isLarge {
+                    Text("Play a round\nto see Place,\nScore & Answers")
+                        .font(family == .systemLarge ? .subheadline : .headline)
+                        .minimumScaleFactor(0.7)
+                }
+            }
+            .multilineTextAlignment(.leading)
+        }
+        .font(baseFont)
+        .foregroundStyle(.secondary)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(10)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color.primary.opacity(0.06))     // faint fill
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(style: StrokeStyle(lineWidth: 1, dash: [4, 3])) // dashed = placeholdery
+                .foregroundStyle(.secondary.opacity(0.35))
+        )
     }
     
     // MARK: Unified chip
@@ -146,7 +187,7 @@ struct WordZapWidgetView: View {
                     .font(.caption2.weight(.semibold))
                     .foregroundColor(.primary.opacity(0.9))
             }
-            Text(text)
+            Text(text.localized)
                 .font(chipFont)
                 .monospacedDigit()
                 .foregroundColor(color)
@@ -200,15 +241,21 @@ struct WordZapWidgetView: View {
             tapTarget("wordzap://play?difficulty=\(d.rawValue)") {
                 Grid(horizontalSpacing: 8, verticalSpacing: 6) {
                     GridRow {
-                        chip(diff, icon: "flag.checkered", color: d.color)
-                        chip(shortDate,      icon: "calendar")
+                        chip(diff,              icon: "flag.checkered", color: d.color)
+                        chip(shortDate,         icon: "calendar")
                         Color.clear
                     }
-                    GridRow {
-                        chip(place,     icon: "trophy")
-                        chip(score,     icon: "sum")
-                        chip(answers,   icon: "text.cursor")
-                        
+                    if hasStats {
+                        GridRow {
+                            chip(place,          icon: "trophy")
+                            chip(score,          icon: "sum")
+                            chip(answers,        icon: "text.cursor")
+                        }
+                    } else {
+                        GridRow {
+                            chip("No stats yet", icon: "hourglass")
+                                .gridCellColumns(2)
+                        }
                     }
                 }
             }
@@ -230,14 +277,18 @@ struct WordZapWidgetView: View {
             GeometryReader { proxy in
                 Grid(horizontalSpacing: 4, verticalSpacing: 0) {
                     GridRow {
-                        // LEFT column
                         tapTarget("wordzap://play?difficulty=\(d.rawValue)") {
                             VStack(alignment: .leading, spacing: 12) {
-                                chip("\("Diff".localized): \(d.rawValue.localized.capitalized)",                    icon: "flag.checkered", color: d.color)
-                                chip("\("Today".localized): \(shortDate)",                                          icon: "calendar")
-                                chip("\("Place".localized): \(entry.place.map { "#\($0)" } ?? "—")",                icon: "trophy")
-                                chip("\("Score".localized): \(entry.score != nil ? "\(entry.score!)" : "—")",       icon: "sum")
-                                chip("\("Answers".localized): \(entry.answers != nil ? "\(entry.answers!)" : "-")", icon: "text.cursor")
+                                chip("\("Diff".localized): \(d.rawValue.localized.capitalized)", icon: "flag.checkered", color: d.color)
+                                chip("\("Today".localized): \(shortDate)", icon: "calendar")
+                                
+                                if hasStats {
+                                    chip("\("Place".localized): \(entry.place.map { "#\($0)" } ?? "—")", icon: "trophy")
+                                    chip("\("Score".localized): \(entry.score != nil ? "\(entry.score!)" : "—")", icon: "sum")
+                                    chip("\("Answers".localized): \(entry.answers != nil ? "\(entry.answers!)" : "—")", icon: "text.cursor")
+                                } else {
+                                    statsPlaceholderBlock()
+                                }
                             }
                             .padding(14)
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -246,12 +297,11 @@ struct WordZapWidgetView: View {
                         }
                         .gridCellAnchor(.center)
                         
-                        // RIGHT column
                         tapTarget("wordzap://ai") {
                             AICardWithTooltip(
                                 name: entry.aiName ?? "AI Opponent",
                                 imageName: entry.aiImageName,
-                                tooltip: entry.aiTooltip,
+                                tooltip: entry.aiName == nil ? "start your ai journey" : entry.aiTooltip,
                                 isExtraLarge: false
                             )
                             .frame(maxWidth: 114)
@@ -279,43 +329,20 @@ struct WordZapWidgetView: View {
                 .frame(maxWidth: .infinity, alignment: .center)
             
             HStack(alignment: .top, spacing: 22) {
-                VStack(spacing: 8) {
-                    Spacer()
-                    
-                    tapTarget("wordzap://settings") {
-                        Image(systemName: "gear")
-                            .resizable()
-                            .aspectRatio(contentMode: .fit)
-                            .frame(height: 40)
-                    }
-                    
-                    Spacer()
-                    
-                    tapTarget("wordzap://scoreboard") {
-                        Image(systemName: "person.3.fill")
-                            .resizable()
-                            .aspectRatio(contentMode: .fit)
-                            .frame(height: 40)
-                            .foregroundStyle(.linearGradient(colors: [.red.opacity(0.6),
-                                                                      .green.opacity(0.6),
-                                                                      .yellow.opacity(0.6)],
-                                                             startPoint: .leading,
-                                                             endPoint: .trailing))
-                            .blendMode(.difference)
-                    }
-                    
-                    Spacer()
-                }
-                .padding(20)
-                .softGlass()
+                // left tools card unchanged...
                 
                 tapTarget("wordzap://play?difficulty=\(d.rawValue)") {
                     VStack(alignment: .leading, spacing: 12) {
-                        chip("\("Diff".localized): \(d.rawValue.localized.capitalized)",         icon: "flag.checkered", color: d.color)
-                        chip("\("Today".localized): \(shortDate)",                               icon: "calendar")
-                        chip("\("Place".localized): \(entry.place.map { "#\($0)" } ?? "—")",     icon: "trophy")
-                        chip("\("Score".localized): \(entry.score.map(String.init) ?? "—")",     icon: "sum")
-                        chip("\("Answers".localized): \(entry.answers.map(String.init) ?? "-")", icon: "text.cursor")
+                        chip("\("Diff".localized): \(d.rawValue.localized.capitalized)", icon: "flag.checkered", color: d.color)
+                        chip("\("Today".localized): \(shortDate)", icon: "calendar")
+                        
+                        if hasStats {
+                            chip("\("Place".localized): \(entry.place.map { "#\($0)" } ?? "—")", icon: "trophy")
+                            chip("\("Score".localized): \(entry.score.map(String.init) ?? "—")", icon: "sum")
+                            chip("\("Answers".localized): \(entry.answers.map(String.init) ?? "—")", icon: "text.cursor")
+                        } else {
+                            statsPlaceholderBlock()
+                        }
                     }
                     .padding(16)
                     .softGlass()
@@ -326,7 +353,7 @@ struct WordZapWidgetView: View {
                     AICardWithTooltip(
                         name: entry.aiName ?? "AI Opponent",
                         imageName: entry.aiImageName,
-                        tooltip: entry.aiTooltip,
+                        tooltip: entry.aiName == nil ? "start your ai journey" : entry.aiTooltip,
                         isExtraLarge: true
                     )
                     .frame(width: 300)
@@ -349,9 +376,10 @@ private struct AICardWithTooltip: View {
         let imageH: CGFloat = isExtraLarge ? 126 : 96
         let bubbleMaxW: CGFloat = isExtraLarge ? 180 : 140
         let bubbleLift: CGFloat =  isExtraLarge ? 4  : 6  // how much the bubble sits above the image
-        let imageTopPadding: CGFloat = isExtraLarge ? 50 : 40
+        let imageTopPadding: CGFloat = isExtraLarge ? 50 : 25
         let textTopPadding: CGFloat = isExtraLarge ? 2 : 8
         let textBottomPadding: CGFloat = isExtraLarge ? 2 : 4
+        let brainSize: CGFloat = isExtraLarge ? 94 : 78
         
         VStack(spacing: 2) {
             // Fixed-height image area
@@ -361,15 +389,11 @@ private struct AICardWithTooltip: View {
                         .resizable()
                         .scaledToFit()
                 } else {
-                    RoundedRectangle(cornerRadius: 12)
-                        .fill(Color.primary.opacity(0.15))
-                        .overlay(
-                            Image(systemName: "brain.head.profile")
-                                .resizable()
-                                .scaledToFit()
-                                .frame(width: 36, height: 36)
-                                .foregroundColor(.primary.opacity(0.6))
-                        )
+                    Image(systemName: "brain.head.profile")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: brainSize, height: brainSize)
+                        .foregroundColor(.primary.opacity(0.6))
                 }
             }
             .frame(height: imageH)  // <- constant image height (keeps overall size stable)

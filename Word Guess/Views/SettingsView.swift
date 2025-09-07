@@ -27,15 +27,15 @@ struct SettingsView: View {
     
     @State private var showResetAI: Bool = false
     
-    @State private var difficulty = UserDefaults.standard.string(forKey: "aiDifficulty") ?? AIDifficulty.easy.rawValue.name
+    @State private var difficulty = UserDefaults.standard.string(forKey: "aiDifficulty")
     
     private var language: String? { return local.locale.identifier.components(separatedBy: "_").first }
     
     private func action(item: SettingsOptionButton) {
         switch item.type {
         case .language: showLanguage()
-        case .sound: audio.isOn.toggle()
-        case .ai: showResetAI = true
+        case .sound:    audio.isOn.toggle()
+        case .ai:       showResetAI = difficulty != nil
         }
     }
     
@@ -45,7 +45,6 @@ struct SettingsView: View {
     }
     
     private func resetAI() {
-        difficulty = AIDifficulty.easy.rawValue.name
         UserDefaults.standard.set(nil, forKey: "aiDifficulty")
         UserDefaults.standard.set(nil, forKey: "playerHP")
     }
@@ -135,7 +134,7 @@ struct SettingsView: View {
                         .font(.headline)
                         .foregroundStyle(.black)
                     
-                    Text(difficulty.localized)
+                    Text(difficulty?.localized ?? "not downloaded yet".localized)
                         .font(.subheadline)
                         .foregroundStyle(.black)
                     
@@ -143,7 +142,7 @@ struct SettingsView: View {
                     
                     Text("Reset Difficulty")
                         .font(.headline)
-                        .foregroundStyle(.cyan)
+                        .foregroundStyle(difficulty == nil ? .gray : .cyan)
                 }
             }
         }

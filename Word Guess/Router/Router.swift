@@ -8,7 +8,7 @@
 import SwiftUI
 
 @Observable
-class Router: ObservableObject {
+class Router: Singleton {
     // Contains the possible destinations in our Router
     enum Route: Codable, Hashable {
         case login
@@ -59,6 +59,7 @@ class Router: ObservableObject {
     func navigateBack() {
         guard !path.isEmpty else { return }
         UIApplication.shared.hideKeyboard()
+        DeepLinker.shared.reset()
         path.removeLast()
     }
     
