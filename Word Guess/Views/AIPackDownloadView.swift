@@ -2,8 +2,14 @@
 //  AIPackDownloadView.swift
 //  Word Guess
 //
+//  Drop-in file: View + robust replace utils + minimal manager stubs.
+//  Replace AIPackManager.ensurePackReady() with your real downloader.
+//
+//  Created by barak ben hur on 2025-09-06.
+//
 
 import SwiftUI
+import Foundation
 
 private struct CapsuleProgressBar: View {
     var progress: Double
@@ -14,10 +20,10 @@ private struct CapsuleProgressBar: View {
             ZStack(alignment: .leading) {
                 Capsule().fill(.secondary.opacity(0.25))
                 Capsule().fill(LinearGradient(colors: [.yellow, .green],
-                                         startPoint: .leading,
-                                         endPoint: .trailing))
-                    .frame(width: w)
-                    .shadow(color: .yellow.opacity(0.2), radius: 6, x: 0, y: 2)
+                                              startPoint: .leading,
+                                              endPoint: .trailing))
+                .frame(width: w)
+                .shadow(color: .yellow.opacity(0.2), radius: 6, x: 0, y: 2)
             }
         }
         .frame(height: height)
@@ -26,14 +32,14 @@ private struct CapsuleProgressBar: View {
 }
 
 struct AIPackDownloadView: View {
+    @EnvironmentObject private var screenManager: ScreenManager
     @Binding var downloaded: Bool
     let onCancel: () -> Void
     
     @State private var mgr = AIPackManager()
     
-    // Local state just for the short finalize check after download
     @State private var isLoadingModel = false
-    @State private var finalizeError: String?   // <- local error, not mgr.errorText
+    @State private var finalizeError: String?
     
     var body: some View {
         VStack {
@@ -71,7 +77,9 @@ struct AIPackDownloadView: View {
                         .padding(.horizontal)
                 }
                 
-                Button(role: .cancel) { onCancel() } label: {
+                Button {
+                    onCancel()          // fires only on explicit tap
+                } label: {
                     Label("Cancel", systemImage: "xmark")
                         .labelStyle(.titleAndIcon)
                         .font(.system(size: 15, weight: .medium, design: .rounded))
@@ -80,6 +88,7 @@ struct AIPackDownloadView: View {
                 }
                 .buttonStyle(.bordered)
                 .tint(Palette.buttonTint)
+                .padding(.top, 15)
                 .accessibilityLabel("Cancel")
             }
             .padding(.top, 280)
@@ -87,15 +96,25 @@ struct AIPackDownloadView: View {
             Spacer()
         }
         .task {
-            if ModelStorage.localHasUsableModels() { downloaded = true }
-            else { mgr.ensurePackReady() } // starts GitHub download
+            BackgroundDownloadCenter.shared.setMode(.foreground)
+            if ModelStorage.localHasUsableModels() {
+                downloaded = true
+            } else {
+                mgr.ensurePackReady()
+            }
         }
-        .onAppear { mgr.migrateIfNeeded() }
-        .onDisappear { mgr.cancel() }         // stop any in-flight downloads
-        .onChange(of: mgr.isReady) { _, ready in if ready { validateThenPersistAll() } }
+        .onAppear {
+            screenManager.keepScreenOn = true
+            mgr.migrateIfNeeded()
+        }
+        .onDisappear {
+            screenManager.keepScreenOn = false
+            mgr.cancel()
+        }
+        .onChange(of: mgr.isReady) { _, ready in
+            if ready { validateThenPersistAll(forceReplaceFrom: nil) }
+        }
     }
-    
-    // MARK: - UI helpers
     
     private var progressValue: Double { isLoadingModel ? 1.0 : mgr.progress }
     
@@ -105,32 +124,41 @@ struct AIPackDownloadView: View {
         : "\(Int((max(0, min(1, mgr.progress))) * 100))% \("complete".localized)"
     }
     
-    private var visibleError: String? {
-        finalizeError ?? mgr.errorText
-    }
+    private var visibleError: String? { finalizeError ?? mgr.errorText }
     
-    // MARK: - Finalize after Git download
-    
-    private func validateThenPersistAll() {
+    /// Final check after downloader says ready; we only validate and set the install root.
+    private func validateThenPersistAll(forceReplaceFrom stagingRoot: URL?) {
         guard !isLoadingModel else { return }
         isLoadingModel = true
         finalizeError = nil
+        defer { isLoadingModel = false }
         
         let fm = FileManager.default
-        if let root = mgr.installRoot {
-            ModelStorage.setInstallRoot(root)
-            let hasDecode  = fm.fileExists(atPath: root.appendingPathComponent("WordleGPT_decode.mlmodelc").path)
-            let hasPrefill = fm.fileExists(atPath: root.appendingPathComponent("WordleGPT_prefill.mlmodelc").path)
-            
-            if hasDecode || hasPrefill {
-                // If you need to register the root with your model loader, do it here.
-                withAnimation { downloaded = true }
-                isLoadingModel = false
-                return
-            } else { finalizeError = "Downloaded assets are missing compiled model folders (.mlmodelc)." }
-        } else { finalizeError = "Install folder not available yet." }
+        guard let root = mgr.installRoot else {
+            finalizeError = "Install folder not available yet."
+            return
+        }
+        ModelStorage.setInstallRoot(root)
         
-        isLoadingModel = false
+        // (If you purposely pass a staging folder, we can replace here too.)
+        if let staging = stagingRoot, fm.fileExists(atPath: staging.path) {
+            do {
+                try fm.ensureDirectory(at: root)
+                try fm.replaceDirectoryTree(from: staging, to: root)
+            } catch {
+                finalizeError = "Failed to finalize assets: \(error.localizedDescription)"
+                return
+            }
+        }
+        
+        let hasDecode  = fm.fileExists(atPath: root.appendingPathComponent("WordleGPT_decode.mlmodelc").path)
+        let hasPrefill = fm.fileExists(atPath: root.appendingPathComponent("WordleGPT_prefill.mlmodelc").path)
+        
+        if hasDecode || hasPrefill {
+            withAnimation { downloaded = true }
+        } else {
+            finalizeError = "Downloaded assets are missing compiled model folders (.mlmodelc)."
+        }
     }
     
     private func sizeString(done: Int64, total: Int64) -> String {
@@ -140,9 +168,19 @@ struct AIPackDownloadView: View {
     
     private func humanBytes(_ v: Int64) -> String {
         let kb = Double(v) / 1024.0
-        if kb < 1024 { return String(format: "%.0f KB", kb) }
+        if kb < 1024 { return String(format: "%.0f \("KB".localized)", kb) }
         let mb = kb / 1024.0
-        if mb < 1024 { return String(format: "%.1f MB", mb) }
-        return String(format: "%.2f GB", mb / 1024.0)
+        if mb < 1024 { return String(format: "%.1f \("MB".localized)", mb) }
+        return String(format: "%.2f \("GB".localized)", mb / 1024.0)
     }
 }
+
+//#if DEBUG
+//struct AIPackDownloadView_Previews: PreviewProvider {
+//    struct Host: View {
+//        @State private var downloaded = false
+//        var body: some View { AIPackDownloadView(downloaded: $downloaded) { } }
+//    }
+//    static var previews: some View { Host().preferredColorScheme(.dark) }
+//}
+//#endif

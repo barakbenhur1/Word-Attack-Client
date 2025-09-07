@@ -447,13 +447,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "By exiting you will lose all progress (progress is saved only on difficulty level change)"
+            "value" : "By exiting you will lose all progress (progress is saved only on ai personality change)"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "אם תצא תאבד את כל ההתקדמות שלך (ההתקדמות נשמרת רק במעבר בין רמות קושי)"
+            "value" : "אם תצא תאבד את כל ההתקדמות שלך (ההתקדמות נשמרת רק בשינוי אישיות של בינה מלאכותית)"
           }
         }
       }
@@ -662,6 +662,27 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "נכבשת"
+          }
+        }
+      }
+    },
+    "Continue with Apple" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "המשך עם אפל"
+          }
+        }
+      }
+    },
+    "Continue with Google" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "המשך עם גוגל"
           }
         }
       }
@@ -1208,6 +1229,17 @@
         }
       }
     },
+    "GB" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ג״ב"
+          }
+        }
+      }
+    },
     "Give up yet?" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1620,6 +1652,17 @@
         }
       }
     },
+    "KB" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ק״ב"
+          }
+        }
+      }
+    },
     "Keep guessing" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1831,16 +1874,6 @@
         }
       }
     },
-    "Login with google" : {
-      "localizations" : {
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "התחברות עם גוגל"
-          }
-        }
-      }
-    },
     "Logophile? Doubtful" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1909,6 +1942,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "מוח על"
+          }
+        }
+      }
+    },
+    "MB" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מ״ב"
           }
         }
       }
@@ -2590,17 +2634,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "תקרא ספר"
-          }
-        }
-      }
-    },
-    "Ready" : {
-      "comment" : "DL",
-      "localizations" : {
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "מוכן"
           }
         }
       }

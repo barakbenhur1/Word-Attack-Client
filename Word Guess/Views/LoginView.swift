@@ -5,37 +5,43 @@
 //  Created by Barak Ben Hur on 11/10/2024.
 //
 
+import AuthenticationServices
 import SwiftUI
 
 struct LoginView<VM: LoginViewModel>: View {
     @EnvironmentObject private var loginHandeler: LoginHandeler
-    
     @State private var loading = false
     
     private let auth = Authentication()
     private let loginVm = VM()
+    private var googleStyle: ElevatedButtonStyle { ElevatedButtonStyle(palette: .googleLogin) }
+    private var appleStyle: ElevatedButtonStyle { ElevatedButtonStyle(palette: .appleLogin) }
     
-    private var style: ElevatedButtonStyle { ElevatedButtonStyle(palette: .login) }
-    
-    @ViewBuilder private var label: some View { ElevatedButtonLabel(LocalizedStringKey("Login with google"), image: "google") }
+    @ViewBuilder private var appleLabel: some View  { ElevatedButtonLabel(LocalizedStringKey("Continue with Apple"), systemImage: "apple.logo") }
+    @ViewBuilder private var googleLabel: some View { ElevatedButtonLabel(LocalizedStringKey("Continue with Google"), image: "google") }
     
     var body: some View {
         ZStack {
-            LinearGradient(colors: [.red,
-                                    .yellow,
-                                    .green,
-                                    .blue],
-                           startPoint: .topLeading,
-                           endPoint: .bottomTrailing)
-            .blur(radius: 4)
-            .opacity(0.1)
-            .ignoresSafeArea()
+            LinearGradient(colors: [.red, .yellow, .green, .blue],
+                           startPoint: .topLeading, endPoint: .bottomTrailing)
+            .blur(radius: 4).opacity(0.1).ignoresSafeArea()
             
-            VStack {
+            VStack(spacing: 40) {
                 AppTitle(size: 50)
-                    .padding(.bottom, 60)
-                googleSignInButton
-                    .frame(height: 80)
+                
+                VStack(spacing: 16) {
+                    Button(action: appleAction, label: { appleLabel })
+                        .buttonStyle(appleStyle)
+                        .shadow(radius: 4)
+                        .frame(maxWidth: .infinity)   // 👈 expand width
+//                        .frame(height: 60)
+                    
+                    Button(action: googleAction, label: { googleLabel })
+                        .buttonStyle(googleStyle)
+                        .shadow(radius: 4)
+                        .frame(maxWidth: .infinity)   // 👈 expand width
+//                        .frame(height: 60)
+                }
             }
             .padding(.horizontal, 40)
             .loading(show: loading)
@@ -43,14 +49,7 @@ struct LoginView<VM: LoginViewModel>: View {
         .ignoresSafeArea(.keyboard)
     }
     
-    @ViewBuilder private var googleSignInButton: some View {
-        Button(action: action,
-               label: { label })
-            .buttonStyle(style)
-            .shadow(radius: 4)
-    }
-    
-    private func action() {
+    private func googleAction() {
         UIApplication.shared.hideKeyboard()
         loading = true
         Task(priority: .userInitiated) {
@@ -58,18 +57,31 @@ struct LoginView<VM: LoginViewModel>: View {
                 complition: { model in
                     Task {
                         let name = "\(model.givenName) \(model.lastName)"
-                        let email = model.email
-                        let gender = model.gender
-                        guard await loginVm.login(email: email,
-                                                  name: name,
-                                                  gender: gender) else { return loading = false }
+                        let ok = await loginVm.login(email: model.email, name: name, gender: model.gender)
                         loading = false
-                        loginHandeler.model = model
+                        if ok { loginHandeler.model = model }
                     }
-                }, error: { error in
-                    loading = false
-                    print(error)
-                })
+                },
+                error: { err in loading = false; print(err) }
+            )
+        }
+    }
+    
+    private func appleAction() {
+        UIApplication.shared.hideKeyboard()
+        loading = true
+        Task(priority: .userInitiated) {
+            auth.appleAuth(
+                complition: { model in
+                    Task {
+                        let name = "\(model.givenName) \(model.lastName)".trimmingCharacters(in: .whitespaces)
+                        let ok = await loginVm.login(email: model.email, name: name, gender: model.gender)
+                        loading = false
+                        if ok { loginHandeler.model = model }
+                    }
+                },
+                error: { err in loading = false; print(err) }
+            )
         }
     }
 }

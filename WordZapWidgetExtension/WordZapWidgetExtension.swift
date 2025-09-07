@@ -227,33 +227,44 @@ struct WordZapWidgetView: View {
                 .foregroundColor(.primary)
                 .frame(maxWidth: .infinity, alignment: .center)
             
-            HStack(alignment: .top, spacing: 4) {
-                tapTarget("wordzap://play?difficulty=\(d.rawValue)") {
-                    VStack(alignment: .leading, spacing: 12) {
-                        chip("\("Diff".localized): \(d.rawValue.localized.capitalized)",                    icon: "flag.checkered", color: d.color)
-                        chip("\("Today".localized): \(shortDate)",                                          icon: "calendar")
-                        chip("\("Place".localized): \(entry.place.map { "#\($0)" } ?? "—")",                icon: "trophy")
-                        chip("\("Score".localized): \(entry.score != nil ? "\(entry.score!)" : "—")",       icon: "sum")
-                        chip("\("Answers".localized): \(entry.answers != nil ? "\(entry.answers!)" : "-")", icon: "text.cursor")
+            GeometryReader { proxy in
+                Grid(horizontalSpacing: 4, verticalSpacing: 0) {
+                    GridRow {
+                        // LEFT column
+                        tapTarget("wordzap://play?difficulty=\(d.rawValue)") {
+                            VStack(alignment: .leading, spacing: 12) {
+                                chip("\("Diff".localized): \(d.rawValue.localized.capitalized)",                    icon: "flag.checkered", color: d.color)
+                                chip("\("Today".localized): \(shortDate)",                                          icon: "calendar")
+                                chip("\("Place".localized): \(entry.place.map { "#\($0)" } ?? "—")",                icon: "trophy")
+                                chip("\("Score".localized): \(entry.score != nil ? "\(entry.score!)" : "—")",       icon: "sum")
+                                chip("\("Answers".localized): \(entry.answers != nil ? "\(entry.answers!)" : "-")", icon: "text.cursor")
+                            }
+                            .padding(14)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .frame(height: proxy.size.height)
+                            .softGlass()
+                        }
+                        .gridCellAnchor(.center)
+                        
+                        // RIGHT column
+                        tapTarget("wordzap://ai") {
+                            AICardWithTooltip(
+                                name: entry.aiName ?? "AI Opponent",
+                                imageName: entry.aiImageName,
+                                tooltip: entry.aiTooltip,
+                                isExtraLarge: false
+                            )
+                            .frame(maxWidth: 114)
+                            .frame(height: proxy.size.height)
+                            .softGlass()
+                        }
+                        .gridCellAnchor(.center)
                     }
-                    .padding(14)
-                    .softGlass()
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                }
-                
-                tapTarget("wordzap://ai") {
-                    AICardWithTooltip(
-                        name: entry.aiName ?? "AI Opponent",
-                        imageName: entry.aiImageName,
-                        tooltip: entry.aiTooltip,
-                        isExtraLarge: false
-                    )
-                    .frame(width: 118)
-                    .softGlass()
                 }
             }
+            .frame(maxWidth: .infinity)
         }
-        .padding(16)
+        .padding(8)
     }
     
     // MARK: Extra Large
@@ -268,6 +279,36 @@ struct WordZapWidgetView: View {
                 .frame(maxWidth: .infinity, alignment: .center)
             
             HStack(alignment: .top, spacing: 22) {
+                VStack(spacing: 8) {
+                    Spacer()
+                    
+                    tapTarget("wordzap://settings") {
+                        Image(systemName: "gear")
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .frame(height: 40)
+                    }
+                    
+                    Spacer()
+                    
+                    tapTarget("wordzap://scoreboard") {
+                        Image(systemName: "person.3.fill")
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .frame(height: 40)
+                            .foregroundStyle(.linearGradient(colors: [.red.opacity(0.6),
+                                                                      .green.opacity(0.6),
+                                                                      .yellow.opacity(0.6)],
+                                                             startPoint: .leading,
+                                                             endPoint: .trailing))
+                            .blendMode(.difference)
+                    }
+                    
+                    Spacer()
+                }
+                .padding(20)
+                .softGlass()
+                
                 tapTarget("wordzap://play?difficulty=\(d.rawValue)") {
                     VStack(alignment: .leading, spacing: 12) {
                         chip("\("Diff".localized): \(d.rawValue.localized.capitalized)",         icon: "flag.checkered", color: d.color)
@@ -305,37 +346,56 @@ private struct AICardWithTooltip: View {
     let isExtraLarge: Bool
     
     var body: some View {
+        let imageH: CGFloat = isExtraLarge ? 126 : 96
+        let bubbleMaxW: CGFloat = isExtraLarge ? 180 : 140
+        let bubbleLift: CGFloat =  isExtraLarge ? 4  : 6  // how much the bubble sits above the image
+        let imageTopPadding: CGFloat = isExtraLarge ? 50 : 40
+        let textTopPadding: CGFloat = isExtraLarge ? 2 : 8
+        let textBottomPadding: CGFloat = isExtraLarge ? 2 : 4
+        
         VStack(spacing: 2) {
-            Spacer()
-            VStack(spacing: 2) {
-                if let t = tooltip, !t.isEmpty { TooltipBubble(text: t, isExtraLarge: isExtraLarge).transition(.opacity) }
-                Group {
-                    if let img = imageName, UIImage(named: img) != nil {
-                        Image(img).resizable().scaledToFit()
-                    } else {
-                        RoundedRectangle(cornerRadius: 12)
-                            .fill(Color.primary.opacity(0.15))
-                            .overlay(
-                                Image(systemName: "brain.head.profile")
-                                    .resizable().scaledToFit()
-                                    .frame(width: 36, height: 36)
-                                    .foregroundColor(.primary.opacity(0.6))
-                            )
-                    }
+            // Fixed-height image area
+            Group {
+                if let img = imageName, UIImage(named: img) != nil {
+                    Image(img)
+                        .resizable()
+                        .scaledToFit()
+                } else {
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(Color.primary.opacity(0.15))
+                        .overlay(
+                            Image(systemName: "brain.head.profile")
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 36, height: 36)
+                                .foregroundColor(.primary.opacity(0.6))
+                        )
                 }
-                .frame(height: isExtraLarge ? 126 : 86)
-                .shadow(radius: 3, y: 2)
             }
+            .frame(height: imageH)  // <- constant image height (keeps overall size stable)
+            .padding(.top, imageTopPadding)
+            .overlay(alignment: .bottom) {
+                if let t = tooltip, !t.isEmpty {
+                    TooltipBubble(text: t, isExtraLarge: isExtraLarge)
+                        .frame(maxWidth: bubbleMaxW)
+                        .fixedSize(horizontal: false, vertical: true)  // wrap internally
+                        .offset(y: -(imageH - bubbleLift))             // sit above the image
+                        .allowsHitTesting(false)
+                        .transition(.opacity)
+                        .zIndex(1)
+                }
+            }
+            .shadow(radius: 3, y: 2)
             
             Text(name.localized)
                 .font(.callout.weight(.semibold))
                 .foregroundColor(.primary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
-                .padding(.top, 8)
-                .padding(.bottom, 12)
-            Spacer()
+                .padding(.top, textTopPadding)
+                .padding(.bottom, textBottomPadding)
         }
+        .padding(.top, 8)
         .padding(14)
     }
 }

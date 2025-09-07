@@ -25,6 +25,8 @@ public struct AIPackLoadingView: View {
     // Accessibility & environment
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     
+    @State private var appeared = false
+    
     // Time anchor for cycling text
     @State private var appearDate: Date = .distantPast
     @State private var colors: [Color] = [
@@ -91,8 +93,10 @@ public struct AIPackLoadingView: View {
             //                .accessibilityLabel("Model is Loading up")
             
             if showsCancel {
-                Button(role: .cancel) { onCancel?() }
-                label: {
+                Button {
+                    guard appeared else { return }
+                    onCancel?()          // fires only on explicit tap
+                } label: {
                     Label("Cancel", systemImage: "xmark")
                         .labelStyle(.titleAndIcon)
                         .font(.system(size: 15, weight: .medium, design: .rounded))
@@ -117,8 +121,12 @@ public struct AIPackLoadingView: View {
         )
         .padding(24)
         .onAppear {
+            appeared = true
             appearDate = Date()
             UIImpactFeedbackGenerator(style: .soft).impactOccurred()
+        }
+        .onDisappear {
+            appeared = false
         }
     }
 }
@@ -287,22 +295,30 @@ enum Palette {
 // MARK: - Handy overlay
 
 public extension View {
-    /// Presents a centered AIPackLoadingView as an overlay.
-    func modelWarmupOverlay(isPresented: Bool,
-                            title: String = "Loading AI Model…",
-                            messages: [String] = AIPackLoadingView.defaultWarmupMessages,
-                            showsCancel: Bool = false,
-                            onCancel: (() -> Void)? = nil) -> some View {
+    func modelWarmupOverlay(
+        isPresented: Bool,
+        title: String = "Loading AI Model…",
+        messages: [String] = AIPackLoadingView.defaultWarmupMessages,
+        showsCancel: Bool = false,
+        onCancel: (() -> Void)? = nil
+    ) -> some View {
         ZStack {
             self
             if isPresented {
-                Color.black.opacity(0.18).ignoresSafeArea()
+                Color.black.opacity(0.18)
+                    .ignoresSafeArea()
+                    .allowsHitTesting(true)
                     .transition(.opacity)
-                AIPackLoadingView(title: title, messages: messages, showsCancel: showsCancel, onCancel: onCancel)
+                AIPackLoadingView(title: title,
+                                  messages: messages,
+                                  showsCancel: showsCancel,
+                                  onCancel: onCancel)
                     .transition(.scale.combined(with: .opacity))
             }
         }
         .animation(.easeInOut(duration: 0.25), value: isPresented)
+        // Important: when not presented, don’t intercept input
+        .allowsHitTesting(true)
     }
 }
 

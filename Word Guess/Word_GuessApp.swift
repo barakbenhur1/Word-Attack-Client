@@ -8,6 +8,7 @@
 import SwiftUI
 import FirebaseAuth
 import WidgetKit
+import GoogleSignIn
 
 @Observable
 class LanguageSetting: ObservableObject { var locale = Locale.current }
@@ -24,6 +25,7 @@ struct WordGuessApp: App {
     
     private let persistenceController = PersistenceController.shared
     private let loginHaneler = LoginHandeler()
+    private let screenManager = ScreenManager.shared
     private let audio = AudioPlayer()
     private let local = LanguageSetting()
     private let router = Router()
@@ -38,9 +40,30 @@ struct WordGuessApp: App {
             }
             .onAppear {
                 guard let currentUser = Auth.auth().currentUser else { return }
-                guard let givenName = currentUser.displayName else { return }
-                guard let email = currentUser.email else { return }
+                
+                let uid = currentUser.uid
+                let cached = UserDefaults.standard.string(forKey: "apple.displayName.\(uid)")
+                let display = currentUser.displayName ?? cached
+                let email = currentUser.email ?? ""
+                
+                // Pick best available name: displayName -> cached -> email local-part -> "Player"
+                let fallbackName: String = {
+                    if let d = display, !d.trimmingCharacters(in: .whitespaces).isEmpty {
+                        return d
+                    } else if !email.isEmpty, let nick = email.split(separator: "@").first {
+                        return String(nick)
+                    } else {
+                        return "Player"
+                    }
+                }()
+                
+                // Split to given/last for your model
+                let parts = fallbackName.split(separator: " ", maxSplits: 1, omittingEmptySubsequences: true)
+                let givenName = parts.first.map(String.init) ?? fallbackName
+                let lastName  = parts.count > 1 ? String(parts[1]) : ""
+                
                 loginHaneler.model = .init(givenName: givenName,
+                                           lastName: lastName,
                                            email: email)
                 Task.detached(priority: .high) {
                     await refreshWordZapPlaces(email: email)
@@ -65,11 +88,13 @@ struct WordGuessApp: App {
             }
             .task { await vm.bootstrap() }
             .onOpenURL { url in
+                if GIDSignIn.sharedInstance.handle(url) { return }
                 guard loginHaneler.model?.gender != nil else { deepLinkUrl = url; return  }
                 deepLink(url: url)
             }
         }
         .environmentObject(router)
+        .environmentObject(screenManager)
         .environmentObject(audio)
         .environmentObject(persistenceController)
         .environmentObject(loginHaneler)
@@ -85,8 +110,10 @@ struct WordGuessApp: App {
             try? await Task.sleep(nanoseconds: 1_000_000_000)
             await MainActor.run {
                 switch url.absoluteString {
-                case "home": break
-                case let absoluteString where absoluteString.contains("ai"): router.navigateTo(.game(diffculty: .ai))
+                case let absoluteString where absoluteString.contains("home"): break
+                case let absoluteString where absoluteString.contains("settings"): router.navigateTo(.settings)
+                case let absoluteString where absoluteString.contains("scoreboard"): router.navigateTo(.score)
+                case let absoluteString where absoluteString.contains("ai"):   router.navigateTo(.game(diffculty: .ai))
                 case let absoluteString where absoluteString.contains("difficulty"):
                     let comp = absoluteString.components(separatedBy: "=")
                     switch comp.last {

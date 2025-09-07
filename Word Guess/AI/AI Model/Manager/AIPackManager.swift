@@ -8,18 +8,11 @@
 import Foundation
 
 enum AIPack {
-    // Bump when you change the model files you want to keep on device
     static let currentVersion = 1
-
-    // GitHub release info
     static let ghOwner = "barakbenhur1"
     static let ghRepo  = "Word-Attack-Client"
-    static let ghTag   = "ML_Models"        // your release tag
-
-    // Optional: provide a token at runtime for higher rate limits
+    static let ghTag   = "ML_Models"
     static var ghToken: String? { nil }
-
-    /// The exact asset file names you want from the release
     static let expectedAssets: [String] = [
         "WordleGPT_prefill.mlmodelc.zip",
         "WordleGPT_decode.mlmodelc.zip",
@@ -30,7 +23,6 @@ enum AIPack {
         "config.json",
         "WordleGPT_runtime_spec.json"
     ]
-
     static let defaultsKey = "AIPackVersion"
 }
 
@@ -47,7 +39,6 @@ final class AIPackManager {
     var progressExtra: String? { dl.progressExtra }
     var installRoot: URL? { dl.installedRoot }
 
-    /// Start/ensure the pack exists under Application Support/AIPack/v{version}/
     func ensurePackReady() {
         dl.fetch(
             owner: AIPack.ghOwner,
@@ -64,14 +55,12 @@ final class AIPackManager {
         Task { await dl.shutdown() }
     }
 
-    /// Call on app launch to expire old versions so your storage stays clean.
     func migrateIfNeeded() {
         let ud = UserDefaults.standard
         let stored = ud.integer(forKey: AIPack.defaultsKey)
         guard stored != AIPack.currentVersion else { return }
         ud.set(AIPack.currentVersion, forKey: AIPack.defaultsKey)
 
-        // Purge older version folders
         let fm = FileManager.default
         if let base = try? fm.url(for: .applicationSupportDirectory, in: .userDomainMask,
                                   appropriateFor: nil, create: true)

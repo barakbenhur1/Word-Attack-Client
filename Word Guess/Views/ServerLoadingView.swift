@@ -24,6 +24,7 @@ public struct ServerLoadingView: View {
     @State private var appearDate: Date = .distantPast
     @State private var frozenIndex: Int? = nil
     @State private var opacity:  CGFloat = 0
+    @State private var appeared = false
     
     public init(title: String = "Working on it…",
                 messages: [String] = ServerLoadingView.defaultServerMessages,
@@ -130,10 +131,14 @@ public struct ServerLoadingView: View {
                 .padding(.horizontal, 16)
 //            }
             // Don’t animate container layout when the message index changes
-//            .transaction { $0.animation = nil }
+            //            .transaction { $0.animation = nil }
             
             if showsCancel {
-                Button(role: .cancel) { onCancel?() } label: {
+                Button {
+                    guard appeared else { return }
+                    onCancel?()
+                }
+                label: {
                     Label("Cancel", systemImage: "xmark")
                         .labelStyle(.titleAndIcon)
                         .font(.system(size: 15, weight: .medium, design: .rounded))
@@ -159,6 +164,7 @@ public struct ServerLoadingView: View {
         )
         .padding(24)
         .onAppear {
+            appeared = true
             appearDate = Date()
             UIImpactFeedbackGenerator(style: .soft).impactOccurred()
             
@@ -167,6 +173,7 @@ public struct ServerLoadingView: View {
                 withAnimation { opacity = 1 }
             }
         }
+        .onDisappear { appeared = false }
         .ignoresSafeArea(.keyboard)
         // Freeze the current message index the instant we start dismissing
         .onChange(of: isActive) { _, active in

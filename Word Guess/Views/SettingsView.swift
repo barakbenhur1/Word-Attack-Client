@@ -47,6 +47,7 @@ struct SettingsView: View {
     private func resetAI() {
         difficulty = AIDifficulty.easy.rawValue.name
         UserDefaults.standard.set(nil, forKey: "aiDifficulty")
+        UserDefaults.standard.set(nil, forKey: "playerHP")
     }
     
     var body: some View {

@@ -15,6 +15,7 @@ typealias HpAnimationParams =  (value: Int, opacity: CGFloat, scale: CGFloat, of
 struct AIGameView<VM: WordViewModelForAI>: View {
     @EnvironmentObject private var coreData: PersistenceController
     @EnvironmentObject private var loginHandeler: LoginHandeler
+    @EnvironmentObject private var screenManager: ScreenManager
     @EnvironmentObject private var audio: AudioPlayer
     @EnvironmentObject private var router: Router
     @EnvironmentObject private var local: LanguageSetting
@@ -70,6 +71,7 @@ struct AIGameView<VM: WordViewModelForAI>: View {
         didSet {
             ai?.hidePhrase()
             UserDefaults.standard.set(aiDifficulty.rawValue.name, forKey: "aiDifficulty")
+            UserDefaults.standard.set(playerHP, forKey: "playerHP")
             Task(priority: .utility) { await SharedStore.writeAIStatsAsync(.init(name: aiDifficulty.rawValue.name, imageName:  aiDifficulty.rawValue.image)) }
         }
     }
@@ -91,6 +93,7 @@ struct AIGameView<VM: WordViewModelForAI>: View {
         didSet {
             switch turn {
             case .player:
+                screenManager.keepScreenOn = false
                 let idx = current - 1
                 guard idx >= 0,
                       aiMatrix.indices.contains(idx),
@@ -100,6 +103,7 @@ struct AIGameView<VM: WordViewModelForAI>: View {
                 ai?.saveToHistory(guess: (guess, pattern))
 
             case .ai:
+                screenManager.keepScreenOn = true
                 let idx = current
                 guard matrix.indices.contains(idx),
                       colors.indices.contains(idx),
@@ -180,7 +184,21 @@ struct AIGameView<VM: WordViewModelForAI>: View {
         else { closeView() }
     }
     
+    private func gameFinish() {
+        switch gameState {
+        case .lose: clearSaved()
+        default: break
+        }
+        closeView()
+    }
+    
+    private func clearSaved() {
+        UserDefaults.standard.set(nil, forKey: "playerHP")
+        UserDefaults.standard.set(nil, forKey: "aiDifficulty")
+    }
+    
     private func closeView() {
+        screenManager.keepScreenOn = false
         ai?.deassign()
         audio.stop()
         router.navigateBack()
@@ -319,7 +337,8 @@ struct AIGameView<VM: WordViewModelForAI>: View {
         
         self.aiHP = fullHP
         
-        self.playerHP = fullHP
+        let playerHP = UserDefaults.standard.integer(forKey: "playerHP")
+        self.playerHP = playerHP > 0 ? playerHP : fullHP
         
         self.turn = .player
         
@@ -464,14 +483,16 @@ struct AIGameView<VM: WordViewModelForAI>: View {
     }
     
     var body: some View {
-        ZStack {
-            if let ai, ai.isReadyToGuess { contant() }
-            else if vm.aiDownloaded { AIPackLoadingView(onCancel: router.navigateBack) }
-            else { AIPackDownloadView(downloaded: $vm.aiDownloaded,
-                                      onCancel: router.navigateBack) }
-        }
-        .onChange(of: vm.aiDownloaded, initializeAI)
-        .onChange(of: ai?.showPhraseValue, handlePhrase)
+        bodyContant()
+            .onChange(of: vm.aiDownloaded, initializeAI)
+            .onChange(of: ai?.showPhraseValue, handlePhrase)
+    }
+    
+    @ViewBuilder private func bodyContant() -> some View {
+        if let ai, ai.isReadyToGuess { contant() }
+        else if vm.aiDownloaded { AIPackLoadingView(onCancel: { router.navigateBack() }) }
+        else { AIPackDownloadView(downloaded: $vm.aiDownloaded,
+                                  onCancel: { router.navigateBack() }) }
     }
     
     @ViewBuilder private func contant() -> some View {
@@ -497,7 +518,7 @@ struct AIGameView<VM: WordViewModelForAI>: View {
                      type: gameState == .win ? .success : .fail,
                      isPresented: $showGameEndPopup,
                      actionText: "OK",
-                     action: closeView,
+                     action: gameFinish,
                      message: { Text("You \(gameState == .win ? "win".localized : "lose".localized)") })
         .customAlert("Exit",
                      type: .info,

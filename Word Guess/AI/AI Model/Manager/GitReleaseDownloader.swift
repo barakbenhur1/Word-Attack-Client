@@ -1,441 +1,423 @@
 import Foundation
-import ZIPFoundation   // make sure the SPM package is added
-
-actor SessionBox {
-    let session: URLSession
-    init(delegate: (any URLSessionDelegate)?) {
-        let cfg = URLSessionConfiguration.default
-        cfg.allowsExpensiveNetworkAccess = true
-        cfg.allowsConstrainedNetworkAccess = true
-        cfg.timeoutIntervalForRequest = 60
-        cfg.waitsForConnectivity = true
-        self.session = URLSession(configuration: cfg, delegate: delegate, delegateQueue: nil)
-    }
-    func invalidate() { session.invalidateAndCancel() }
-}
-
-private struct GHRelease: Decodable {
-    struct Asset: Decodable {
-        let name: String
-        let size: Int64
-        let browser_download_url: URL
-    }
-    let tag_name: String
-    let assets: [Asset]
-}
+import Observation
+#if canImport(UIKit)
+import UIKit
+#endif
+#if canImport(ZIPFoundation)
+import ZIPFoundation
+#endif
 
 @MainActor
 @Observable
-final class GitReleaseDownloader: NSObject, URLSessionDownloadDelegate {
-    
-    // MARK: Public (observed on MainActor)
+final class GitReleaseDownloader {
+    // Observables
     var progress: Double = 0
     var completedBytes: Int64 = 0
     var totalBytes: Int64 = -1
     var progressExtra: String?
-    var isReady = false
     var errorText: String?
+    var isReady: Bool = false
     var installedRoot: URL?
-    
-    // MARK: Internals (MainActor)
-    private var box: SessionBox!                // IUO so we can assign after super.init
-    private var activeTasks: [URLSessionDownloadTask] = []
-    private var wanted: [Asset] = []
-    private var nextIndex = 0
-    private var running = false
-    private var repo: Repo?
-    private var tag: String?
-    
-    struct Repo {
-        let owner: String
-        let name:  String
-        let token: String?
-    }
-    
-    struct Asset: Hashable {
-        let name: String
-        let size: Int64
-        let url:  URL
-        let dest: URL
-    }
-    
-    override init() {
-        super.init()
-        let cfg = URLSessionConfiguration.default
-        cfg.allowsExpensiveNetworkAccess = true
-        cfg.allowsConstrainedNetworkAccess = true
-        cfg.timeoutIntervalForRequest = 60
-        cfg.waitsForConnectivity = true
-        // Now we can reference `self` safely
-        box = .init(delegate: self)
-    }
-    
-    @MainActor
-    func shutdown() async {
-        await box?.invalidate()   // OK: await into the actor
-    }
-    
+
+    // Internals
+    private var versionRoot: URL?
+    private var stagingRoot: URL?
+
+    // Current asset
+    private var assetsOrder: [String] = []
+    private var assetsMeta: [String: (apiURL: URL, browserURL: URL?, size: Int64)] = [:]
+    private var idx: Int = 0
+    private var retries: Int = 0
+
+    // Token supplier
+    private var tokenProvider: () -> String? = { AIPack.ghToken }
+
     // MARK: API
-    
+
     func fetch(owner: String,
                repo: String,
                tag: String,
                version: Int,
                expectedAssetNames: [String],
-               personalAccessToken: String? = nil)
-    {
-        guard !running else { return }
-        
-        // reset state
-        progress = 0
-        completedBytes = 0
-        totalBytes = -1
-        progressExtra = nil
-        isReady = false
-        errorText = nil
-        self.repo = Repo(owner: owner, name: repo, token: personalAccessToken)
-        self.tag = tag
-        
-        // resolve install root
-        let fm = FileManager.default
-        let base = try! fm.url(for: .applicationSupportDirectory, in: .userDomainMask,
-                               appropriateFor: nil, create: true)
-            .appendingPathComponent("AIPack", isDirectory: true)
-            .appendingPathComponent("v\(version)", isDirectory: true)
-        
+               personalAccessToken: String?) {
+
+        if let personalAccessToken { tokenProvider = { personalAccessToken } }
+
+        progress = 0; completedBytes = 0; totalBytes = -1
+        errorText = nil; isReady = false
+        progressExtra = "Preparing…"
+        assetsOrder = expectedAssetNames
+        assetsMeta.removeAll(); idx = 0; retries = 0
+        installedRoot = nil; versionRoot = nil; stagingRoot = nil
+
         do {
-            try fm.createDirectory(at: base, withIntermediateDirectories: true)
+            let fm = FileManager.default
+            let base = try fm.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
+                .appendingPathComponent("AIPack", isDirectory: true)
+            let vr = base.appendingPathComponent("v\(version)", isDirectory: true)
+            try fm.ensureDirectory(at: vr)
+            versionRoot = vr
+            installedRoot = vr
+            if hasUsableModels(at: vr) { isReady = true; return }
         } catch {
-            self.fail("Couldn’t create install folder: \(error.localizedDescription)")
+            errorText = error.localizedDescription
             return
         }
-        self.installedRoot = base
-        
-        Task.detached { [expectedAssetNames, base] in
+
+        Task {
             do {
-                guard let rel = try await Self.fetchRelease(owner: owner, repo: repo, tag: tag, token: personalAccessToken)
-                else {
-                    await self.fail("Release ‘\(tag)’ not found for \(owner)/\(repo). " +
-                                    "Check the exact tag name (e.g. “ML_Models”), repo visibility, and token.")
+                try await loadRelease(owner: owner, repo: repo, tag: tag)
+                try await startNext()
+            } catch {
+                self.errorText = error.localizedDescription
+            }
+        }
+    }
+
+    func cancel() { BackgroundDownloadCenter.shared.cancelAll() }
+    func shutdown() async { }
+
+    // MARK: Release resolution
+
+    private struct Release: Decodable {
+        struct Asset: Decodable {
+            let name: String
+            let size: Int64
+            let browser_download_url: String?
+            let url: String?   // API asset URL
+        }
+        let assets: [Asset]
+    }
+
+    private func loadRelease(owner: String, repo: String, tag: String) async throws {
+        let url = URL(string: "https://api.github.com/repos/\(owner)/\(repo)/releases/tags/\(tag)")!
+        var req = URLRequest(url: url)
+        req.addValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
+        req.addValue(ua(), forHTTPHeaderField: "User-Agent")
+        if let t = tokenProvider() { req.addValue("Bearer \(t)", forHTTPHeaderField: "Authorization") }
+        let (data, resp) = try await URLSession.shared.data(for: req)
+        guard let http = resp as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
+            throw NSError(domain: "ai.pack", code: 100, userInfo: [NSLocalizedDescriptionKey: "GitHub release fetch failed"])
+        }
+        let rel = try JSONDecoder().decode(Release.self, from: data)
+
+        var total: Int64 = 0
+        let byName = Dictionary(uniqueKeysWithValues: rel.assets.map { ($0.name, $0) })
+        for name in assetsOrder {
+            guard let a = byName[name],
+                  let api = a.url.flatMap(URL.init(string:)) else { continue }
+            assetsMeta[name] = (apiURL: api,
+                                browserURL: a.browser_download_url.flatMap(URL.init(string:)),
+                                size: max(0, a.size))
+            total += max(0, a.size)
+        }
+        totalBytes = total > 0 ? total : -1
+    }
+
+    // MARK: Start/Retry (presign every time)
+
+    private func startNext() async throws {
+        #if canImport(UIKit)
+        let isActive = UIApplication.shared.applicationState == .active
+        BackgroundDownloadCenter.shared.setMode(isActive ? .foreground : .background)
+        #endif
+
+        guard idx < assetsOrder.count else { finalize(); return }
+        let name = assetsOrder[idx]
+        guard let meta = assetsMeta[name] else { idx += 1; try await startNext(); return }
+
+        progressExtra = "Downloading \(name)…"
+        retries = 0
+
+        do {
+            let presigned = try await resolvePresignedURL(apiURL: meta.apiURL)
+            let req = URLRequest(url: presigned)
+            wireCallbacksOnce()
+            BackgroundDownloadCenter.shared.startOne(name: name, request: req)
+        } catch {
+            let status = (error as NSError).code
+            errorText = "[\(name)] presign failed\(status > 0 ? " (\(status))" : "") — retrying…"
+            await scheduleRetry(name: name, meta: meta)
+        }
+    }
+
+    private func retry(for name: String, httpStatus: Int?) {
+        guard let meta = assetsMeta[name] else { return }
+        Task { @MainActor in
+            await scheduleRetry(name: name, meta: meta, httpStatus: httpStatus)
+        }
+    }
+
+    private func scheduleRetry(name: String,
+                               meta: (apiURL: URL, browserURL: URL?, size: Int64),
+                               httpStatus: Int? = nil) async {
+        retries += 1
+        if retries <= 3 {
+            let delay: TimeInterval = [2.0, 5.0, 10.0][min(retries-1, 2)]
+            errorText = "[\(name)] \(httpStatus.map { "HTTP \($0)" } ?? "network") — retry \(retries)/3 in \(Int(delay))s"
+            try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+            do {
+                let presigned = try await resolvePresignedURL(apiURL: meta.apiURL)
+                BackgroundDownloadCenter.shared.startOne(name: name, request: URLRequest(url: presigned))
+            } catch {
+                if retries >= 3, let b = meta.browserURL {
+                    errorText = "[\(name)] trying browser fallback…"
+                    BackgroundDownloadCenter.shared.startOne(name: name, request: URLRequest(url: b))
+                    retries = 99
+                } else {
+                    await scheduleRetry(name: name, meta: meta, httpStatus: (error as NSError).code)
+                }
+            }
+            return
+        }
+        errorText = "[\(name)] failed after retries."
+    }
+
+    // Resolve API asset → presigned download URL without following the redirect.
+    private func resolvePresignedURL(apiURL: URL) async throws -> URL {
+        @MainActor
+        final class RedirectCatcher: NSObject, URLSessionTaskDelegate {
+            var location: URL?
+            func urlSession(_ session: URLSession, task: URLSessionTask,
+                            willPerformHTTPRedirection response: HTTPURLResponse,
+                            newRequest request: URLRequest) async -> URLRequest? {
+                self.location = request.url
+                return nil
+            }
+        }
+
+        let catcher = RedirectCatcher()
+        let cfg = URLSessionConfiguration.ephemeral
+        cfg.waitsForConnectivity = true
+        let session = URLSession(configuration: cfg, delegate: catcher, delegateQueue: nil)
+
+        var req = URLRequest(url: apiURL)
+        req.addValue("application/octet-stream", forHTTPHeaderField: "Accept")
+        req.addValue(ua(), forHTTPHeaderField: "User-Agent")
+        if let t = tokenProvider() { req.addValue("Bearer \(t)", forHTTPHeaderField: "Authorization") }
+        req.cachePolicy = .reloadIgnoringLocalCacheData
+
+        let (_, resp) = try await session.data(for: req)
+
+        guard let http = resp as? HTTPURLResponse else {
+            throw NSError(domain: "ai.presign", code: -1, userInfo: [NSLocalizedDescriptionKey: "No HTTP response"])
+        }
+        if (300..<400).contains(http.statusCode),
+           let loc = catcher.location ?? (http.allHeaderFields["Location"] as? String).flatMap(URL.init(string:)) {
+            return loc
+        }
+        throw NSError(domain: "ai.presign", code: http.statusCode,
+                      userInfo: [NSLocalizedDescriptionKey: "Unexpected status \(http.statusCode)"])
+    }
+
+    private func ua() -> String {
+        "WordGuess/1.0 (+\(Bundle.main.bundleIdentifier ?? "app"))"
+    }
+
+    // MARK: Wiring (once)
+
+    private var wired = false
+    private func wireCallbacksOnce() {
+        guard !wired else { return }
+        wired = true
+
+        BackgroundDownloadCenter.shared.onProgress = { [weak self] name, written, _ in
+            guard let self else { return }
+            self.completedBytes = (self.assetsOrder[..<self.idx].reduce(0) { $0 + (self.assetsMeta[$1]?.size ?? 0) }) + written
+            if self.totalBytes > 0 {
+                self.progress = Double(self.completedBytes) / Double(self.totalBytes)
+            }
+        }
+
+        BackgroundDownloadCenter.shared.onFileReady = { [weak self] tmp, name in
+            Task { @MainActor in
+                guard let self else { return }
+                do {
+                    try self.stage(tempItem: tmp, assetName: name)
+                    self.idx += 1
+                    try await self.startNext()
+                } catch {
+                    self.errorText = error.localizedDescription
+                }
+            }
+        }
+
+        BackgroundDownloadCenter.shared.onTaskError = { [weak self] name, err in
+            Task { @MainActor in
+                guard let self else { return }
+                let status = (err as NSError).domain == "ai.download" ? (err as NSError).code : nil
+                self.retry(for: name, httpStatus: status)
+            }
+        }
+
+        BackgroundDownloadCenter.shared.onAllTasksFinished = { /* sequential; no-op */ }
+    }
+
+    // MARK: Stage & finalize
+
+    private func stage(tempItem: URL, assetName: String) throws {
+        let fm = FileManager.default
+        if stagingRoot == nil {
+            stagingRoot = fm.temporaryDirectory.appendingPathComponent("ai-stage-\(UUID().uuidString)")
+            try fm.ensureDirectory(at: stagingRoot!)
+        }
+
+        func fileSize(_ url: URL) -> Int64 {
+            (try? fm.attributesOfItem(atPath: url.path)[.size] as? NSNumber)?.int64Value ?? -1
+        }
+        func isZip(_ url: URL) -> Bool {
+            guard let fh = try? FileHandle(forReadingFrom: url) else { return false }
+            defer { try? fh.close() }
+            let sig = try? fh.read(upToCount: 4)
+            guard let s = sig, s.count == 4 else { return false }
+            let b = [UInt8](s)
+            return (b == [0x50,0x4B,0x03,0x04]) || (b == [0x50,0x4B,0x05,0x06]) || (b == [0x50,0x4B,0x07,0x08])
+        }
+
+        if assetName.hasSuffix(".zip") {
+            #if canImport(ZIPFoundation)
+            guard isZip(tempItem) else {
+                let sz = fileSize(tempItem)
+                throw NSError(domain: "ai.pack", code: 1201, userInfo: [
+                    NSLocalizedDescriptionKey:
+                        "Downloaded file for \(assetName) is not a ZIP (size \(sz >= 0 ? "\(sz) bytes" : "unknown"))."
+                ])
+            }
+            let archive = try Archive(url: tempItem, accessMode: .read)
+            try archive.extractAll(to: stagingRoot!)
+            #else
+            throw NSError(domain: "ai.pack", code: 3,
+                          userInfo: [NSLocalizedDescriptionKey: "ZIPFoundation not present. Add it via SPM."])
+            #endif
+        } else {
+            let dest = stagingRoot!.appendingPathComponent(assetName)
+            try fm.replaceItemAtOrMove(from: tempItem, to: dest)
+        }
+    }
+
+    private func finalize() {
+        guard let dst = versionRoot else {
+            errorText = "Install root missing"
+            return
+        }
+        let fm = FileManager.default
+        do {
+            try fm.ensureDirectory(at: dst)
+
+            if let stage = stagingRoot, fm.fileExists(atPath: stage.path) {
+                let contents = try fm.contentsOfDirectory(atPath: stage.path)
+                guard !contents.isEmpty else {
+                    errorText = "Downloaded staging folder is empty."
                     return
                 }
-                
-                // Compute list and total off the main thread
-                var list: [Asset] = []
-                var total: Int64 = 0
-                let fm = FileManager.default
-                
-                for name in expectedAssetNames {
-                    guard let remote = rel.assets.first(where: { $0.name == name }) else { continue }
-                    let dest = base.appendingPathComponent(name, isDirectory: false)
-                    
-                    var need = true
-                    if let attrs = try? fm.attributesOfItem(atPath: dest.path),
-                       let localSize = attrs[.size] as? NSNumber,
-                       localSize.int64Value == remote.size {
-                        need = false
-                    }
-                    if need {
-                        list.append(.init(name: name,
-                                          size: remote.size,
-                                          url: remote.browser_download_url,
-                                          dest: dest))
-                        total &+= max(0, remote.size)
-                    }
-                }
-                
-                // Hop to main with captured constants (Swift 6 rule)
-                let wantedList = list
-                let totalBytes = total
-                await MainActor.run {
-                    if wantedList.isEmpty {
-                        self.totalBytes = 0
-                        self.completedBytes = 0
-                        self.progress = 1
-                        self.progressExtra = self.progressExtra ?? NSLocalizedString("Ready", comment: "DL")
-                        self.isReady = true
-                        return
-                    }
-                    self.wanted = wantedList
-                    self.totalBytes = totalBytes
-                    self.updateExtra()
-                    self.running = true
-                    self.nextIndex = 0
-                    self.startNext()
-                }
-            } catch {
-                await self.fail(error.localizedDescription)
-            }
-        }
-    }
-    
-    func cancel() {
-        for t in activeTasks { t.cancel() }
-        activeTasks.removeAll()
-        running = false
-    }
-    
-    // MARK: Drive one-by-one
-    
-    @MainActor
-    private func startNext() {
-        guard nextIndex < wanted.count else {
-            running = false
-            isReady = true
-            progress = 1
-            updateExtra()
-            return
-        }
-        
-        let item = wanted[nextIndex]
-        
-        var req = URLRequest(url: item.url)
-        req.httpMethod = "GET"
-        if let token = repo?.token, !token.isEmpty {
-            req.addValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        }
-        req.addValue("application/octet-stream", forHTTPHeaderField: "Accept")
-        
-        // Encode the destination + unzip dir into taskDescription
-        let unzipDir = (installedRoot ?? item.dest.deletingLastPathComponent()).path
-        let meta = "\(item.dest.path)|\(unzipDir)"           // simple “dest|dir” format
-        
-        let task = box.session.downloadTask(with: req)
-        task.taskDescription = meta
-        activeTasks.append(task)
-        task.resume()
-    }
-    
-    nonisolated func urlSession(_ session: URLSession,
-                                downloadTask: URLSessionDownloadTask,
-                                didFinishDownloadingTo location: URL) {
-        // ---- Do file work synchronously before returning ----
-        do {
-            guard let meta = downloadTask.taskDescription else {
-                throw NSError(domain: "GitDL", code: -2,
-                              userInfo: [NSLocalizedDescriptionKey: "Missing task metadata"])
-            }
-            let parts = meta.split(separator: "|", maxSplits: 1).map(String.init)
-            guard parts.count == 2 else {
-                throw NSError(domain: "GitDL", code: -3,
-                              userInfo: [NSLocalizedDescriptionKey: "Bad task metadata"])
-            }
-            
-            let dest = URL(fileURLWithPath: parts[0])
-            let unzipDir = URL(fileURLWithPath: parts[1])
-            
-            let fm = FileManager.default
-            // Ensure parent exists (eliminates “folder … doesn’t exist”)
-            try fm.createDirectory(at: dest.deletingLastPathComponent(),
-                                   withIntermediateDirectories: true)
-            
-            // Move/replace robustly (handles cross-volume temp files)
-            if fm.fileExists(atPath: dest.path) {
-                _ = try fm.replaceItemAt(dest, withItemAt: location,
-                                         backupItemName: nil,
-                                         options: [.usingNewMetadataOnly])
+                try fm.replaceDirectoryTree(from: stage, to: dst)
             } else {
-                do {
-                    try fm.moveItem(at: location, to: dest)
-                } catch {
-                    try fm.copyItem(at: location, to: dest)
-                    try? fm.removeItem(at: location)
-                }
+                errorText = "Staging folder not found."
+                return
             }
-            
-            // Unzip if it’s a .zip
-            if dest.pathExtension.lowercased() == "zip" {
-                try fm.createDirectory(at: unzipDir, withIntermediateDirectories: true)
-                let archive = try Archive(url: dest, accessMode: .read)
-                for entry in archive {
-                    let out = unzipDir.appendingPathComponent(entry.path)
-                    try fm.createDirectory(at: out.deletingLastPathComponent(),
-                                           withIntermediateDirectories: true)
-                    _ = try archive.extract(entry, to: out)
-                }
-                try? fm.removeItem(at: dest) // remove the zip
-            }
+
+            if hasUsableModels(at: dst) { isReady = true }
+            else { errorText = "Downloaded assets are missing compiled model folders (.mlmodelc)." }
         } catch {
-            // Hop to main only to surface the error and stop
-            Task { @MainActor in
-                self.fail(error.localizedDescription)
-            }
-            return
-        }
-        
-        // ---- Now update state on the main actor ----
-        Task { @MainActor in
-            self.nextIndex &+= 1
-            self.startNext()
+            errorText = "Failed to finalize assets: \(error.localizedDescription)"
         }
     }
-    
-    nonisolated func urlSession(_ session: URLSession,
-                                downloadTask: URLSessionDownloadTask,
-                                didWriteData bytesWritten: Int64,
-                                totalBytesWritten: Int64,
-                                totalBytesExpectedToWrite: Int64) {
-        Task { @MainActor in
-            let prior = self.wanted.prefix(self.nextIndex).reduce(Int64(0)) { $0 &+ $1.size }
-            self.completedBytes = max(0, prior &+ totalBytesWritten)
-            if self.totalBytes > 0 {
-                self.progress = min(1, Double(self.completedBytes) / Double(self.totalBytes))
-            } else {
-                self.progress = 0
-            }
-            self.updateExtra()
-        }
-    }
-    
-    nonisolated func urlSession(_ session: URLSession,
-                                task: URLSessionTask,
-                                didCompleteWithError error: Error?) {
-        Task { @MainActor in
-            if let error, (error as NSError).code != NSURLErrorCancelled {
-                self.fail(error.localizedDescription)
-            }
-        }
-    }
-    
-    // MARK: Helpers
-    
-    @MainActor
-    private func fail(_ msg: String) {
-        errorText = msg
-        running = false
-        activeTasks.removeAll()
-        progress = 0
-    }
-    
-    @MainActor
-    private func updateExtra() {
-        let fmt = ByteCountFormatter()
-        fmt.allowedUnits = .useAll
-        fmt.countStyle = .file
-        let done = fmt.string(fromByteCount: completedBytes)
-        if totalBytes > 0 {
-            let tot = fmt.string(fromByteCount: totalBytes)
-            progressExtra = "\(done) of \(tot)"
-        } else {
-            progressExtra = done
-        }
-    }
-    
-    // Unzip `.zip` files into `dir`, then delete the `.zip`
-    @MainActor
-    private func unpackIfNeeded(archiveURL: URL, into dir: URL) throws {
-        guard archiveURL.pathExtension.lowercased() == "zip" else { return }
-        
+
+    private func hasUsableModels(at root: URL) -> Bool {
         let fm = FileManager.default
-        try fm.createDirectory(at: dir, withIntermediateDirectories: true)
-        
-        let archive = try Archive(url: archiveURL, accessMode: .read)
-        
-        // 1) Collect top-level names inside the zip (e.g. "WordleGPT_prefill.mlmodelc")
-        var topLevelNames = Set<String>()
-        for entry in archive {
-            if let firstComponent = entry.path.split(separator: "/").first {
-                topLevelNames.insert(String(firstComponent))
-            }
-        }
-        
-        // 2) Remove any existing top-level folders so we get a clean overwrite
-        for name in topLevelNames {
-            let topURL = dir.appendingPathComponent(name, isDirectory: true)
-            if fm.fileExists(atPath: topURL.path) {
-                try? fm.removeItem(at: topURL)
-            }
-        }
-        
-        // 3) Extract each entry, ensuring parent directories exist and removing any existing file
-        for entry in archive {
-            let outURL = dir.appendingPathComponent(entry.path)
-            try fm.createDirectory(at: outURL.deletingLastPathComponent(),
-                                   withIntermediateDirectories: true)
-            if fm.fileExists(atPath: outURL.path) {
-                try? fm.removeItem(at: outURL)
-            }
-            _ = try archive.extract(entry, to: outURL)
-        }
-        
-        // 4) Remove the .zip after successful extraction
-        try? fm.removeItem(at: archiveURL)
+        return fm.fileExists(atPath: root.appendingPathComponent("WordleGPT_decode.mlmodelc").path)
+            || fm.fileExists(atPath: root.appendingPathComponent("WordleGPT_prefill.mlmodelc").path)
     }
-    
-    // MARK: GitHub API
-    
-    private static func fetchRelease(owner: String,
-                                     repo: String,
-                                     tag: String,
-                                     token: String?) async throws -> GHRelease? {
-        // Small helper to send a request
-        func get(_ url: URL) async throws -> (Data, HTTPURLResponse) {
-            var req = URLRequest(url: url)
-            req.addValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
-            if let token, !token.isEmpty {
-                req.addValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+}
+
+#if canImport(ZIPFoundation)
+private extension Archive {
+    func extractAll(to dest: URL) throws {
+        let fm = FileManager.default
+        try fm.ensureDirectory(at: dest)
+        for entry in self {
+            let outURL = dest.appendingPathComponent(entry.path)
+            if entry.type == .directory {
+                try fm.ensureDirectory(at: outURL)
+            } else {
+                try fm.ensureDirectory(at: outURL.deletingLastPathComponent())
+                _ = try self.extract(entry, to: outURL,
+                                     bufferSize: 32_768,
+                                     skipCRC32: false,
+                                     allowUncontainedSymlinks: true,
+                                     progress: nil)
             }
-            let (data, resp) = try await URLSession.shared.data(for: req)
-            guard let http = resp as? HTTPURLResponse else {
-                throw NSError(domain: "GitHub", code: -1,
-                              userInfo: [NSLocalizedDescriptionKey: "No HTTP response"])
-            }
-            return (data, http)
         }
-        
-        // 1) Try the exact tag first
-        let base = "https://api.github.com/repos/\(owner)/\(repo)/releases"
-        let exactURL = URL(string: "\(base)/tags/\(tag)")!
-        
-        do {
-            let (data, http) = try await get(exactURL)
-            if (200..<300).contains(http.statusCode) {
-                return try JSONDecoder().decode(GHRelease.self, from: data)
+    }
+}
+#endif
+
+extension FileManager {
+
+    func ensureDirectory(at url: URL, replaceIfExists: Bool = false) throws {
+        var isDir: ObjCBool = false
+        if fileExists(atPath: url.path, isDirectory: &isDir) {
+            if isDir.boolValue { return }
+            if replaceIfExists { try removeItem(at: url) }
+            else {
+                throw NSError(domain: "ai.fs", code: 4000,
+                              userInfo: [NSLocalizedDescriptionKey: "Path exists and is not a directory: \(url.path)"])
             }
-            if http.statusCode != 404 {
-                throw NSError(domain: "GitHub", code: http.statusCode,
-                              userInfo: [NSLocalizedDescriptionKey: "GitHub API \(http.statusCode) for tag \(tag)"])
-            }
-        } catch { /* fall through to variations */ }
-        
-        // 2) Try common variations: v-prefix and underscore/dash/no-separator
-        let variants: [String] = {
-            var arr = [String]()
-            arr.append(tag.hasPrefix("v") ? String(tag.dropFirst()) : "v\(tag)")
-            arr.append(tag.replacingOccurrences(of: "_", with: "-"))
-            arr.append(tag.replacingOccurrences(of: "-", with: "_"))
-            arr.append(tag.replacingOccurrences(of: "_", with: "")
-                .replacingOccurrences(of: "-", with: ""))
-            return Array(Set(arr)).filter { $0 != tag }
-        }()
-        
-        for candidate in variants {
-            let url = URL(string: "\(base)/tags/\(candidate)")!
+        }
+        try createDirectory(at: url, withIntermediateDirectories: true)
+    }
+
+    /// Backwards-compatible name used in your code.
+    func replaceItemAtOrMove(from src: URL, to dst: URL) throws {
+        try moveReplacingItem(from: src, to: dst)
+    }
+
+    /// Best-effort replace: APFS swap → remove+move → copy+remove.
+    func moveReplacingItem(from src: URL, to dst: URL) throws {
+        guard fileExists(atPath: src.path) else {
+            throw NSError(domain: "ai.fs", code: 4001,
+                          userInfo: [NSLocalizedDescriptionKey: "Source missing: \(src.lastPathComponent)"])
+        }
+        try ensureDirectory(at: dst.deletingLastPathComponent())
+
+        if fileExists(atPath: dst.path) {
             do {
-                let (data, http) = try await get(url)
-                if (200..<300).contains(http.statusCode) {
-                    return try JSONDecoder().decode(GHRelease.self, from: data)
-                }
-            } catch { /* try next */ }
-        }
-        
-        // 3) As a last resort, list releases and match loosely (case-insensitive, ignore _/-)
-        do {
-            let url = URL(string: base)!
-            let (data, http) = try await get(url)
-            if (200..<300).contains(http.statusCode) {
-                struct R: Decodable { let tag_name: String; let assets: [GHRelease.Asset] }
-                let list = try JSONDecoder().decode([R].self, from: data)
-                func norm(_ s: String) -> String {
-                    s.lowercased().replacingOccurrences(of: "_", with: "")
-                        .replacingOccurrences(of: "-", with: "")
-                }
-                if let r = list.first(where: { norm($0.tag_name) == norm(tag) }) {
-                    return GHRelease(tag_name: r.tag_name, assets: r.assets)
-                }
+                _ = try replaceItemAt(dst,
+                                      withItemAt: src,
+                                      backupItemName: nil,
+                                      options: [])
+                return
+            } catch {
+                try? removeItem(at: dst)
             }
-        } catch { /* ignore */ }
-        
-        return nil // not found after all attempts
+        }
+
+        do {
+            try moveItem(at: src, to: dst)
+            return
+        } catch {
+            try ensureDirectory(at: dst.deletingLastPathComponent())
+            do {
+                try moveItem(at: src, to: dst)
+                return
+            } catch {
+                try copyItem(at: src, to: dst)
+                try? removeItem(at: src)
+            }
+        }
+    }
+
+    /// Move every child of `srcDir` into `dstDir`, replacing collisions.
+    func replaceDirectoryTree(from srcDir: URL, to dstDir: URL) throws {
+        try ensureDirectory(at: dstDir)
+        let items = try contentsOfDirectory(
+            at: srcDir,
+            includingPropertiesForKeys: [.isDirectoryKey],
+            options: [.skipsHiddenFiles]
+        )
+        for src in items {
+            let dst = dstDir.appendingPathComponent(src.lastPathComponent, isDirectory: false)
+            try moveReplacingItem(from: src, to: dst)
+        }
     }
 }

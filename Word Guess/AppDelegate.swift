@@ -14,12 +14,15 @@ import UserNotifications
 import WidgetKit
 
 final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
+    
+    // Add with your other public callbacks
+    var backgroundCompletionHandler: (() -> Void)?
+
 
     // MARK: - Launch
     func application(
         _ application: UIApplication,
-        didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]? = nil
-    ) -> Bool {
+        didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]? = nil) -> Bool {
 
         // Facebook SDK
         ApplicationDelegate.shared.application(application, didFinishLaunchingWithOptions: launchOptions)
@@ -59,13 +62,20 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
         
         return true
     }
-
+    
+    func application(
+        _ application: UIApplication,
+        handleEventsForBackgroundURLSession identifier: String,
+        completionHandler: @escaping () -> Void) {
+        BackgroundDownloadCenter.shared.reconnectSession(withIdentifier: identifier)
+        BackgroundDownloadCenter.shared.backgroundCompletionHandler = completionHandler
+    }
+    
     // MARK: - URL Opens (FB / Firebase)
     func application(
         _ app: UIApplication,
         open url: URL,
-        options: [UIApplication.OpenURLOptionsKey : Any] = [:]
-    ) -> Bool {
+        options: [UIApplication.OpenURLOptionsKey : Any] = [:]) -> Bool {
         ApplicationDelegate.shared.application(
             app,
             open: url,
@@ -78,8 +88,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
     // MARK: - APNs Registration
     func application(
         _ application: UIApplication,
-        didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data
-    ) {
+        didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
         // Let Firebase know (if you use Firebase Messaging for other flows)
 #if DEBUG
         let env = "sandbox"
@@ -110,8 +119,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
     func application(
         _ application: UIApplication,
         didReceiveRemoteNotification userInfo: [AnyHashable : Any],
-        fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void
-    ) {
+        fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void) {
         // Example server payload:
         // { aps: { "content-available": 1 }, type: "wordzap.refresh" }
         let type = (userInfo["type"] as? String) ?? ""
@@ -135,8 +143,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
     // Optional: if you also post visible notifications while foregrounded.
     func userNotificationCenter(
         _ center: UNUserNotificationCenter,
-        willPresent notification: UNNotification
-    ) async -> UNNotificationPresentationOptions {
+        willPresent notification: UNNotification) async -> UNNotificationPresentationOptions {
         return [] // or [.banner, .sound] if you want to show while app is open
     }
 

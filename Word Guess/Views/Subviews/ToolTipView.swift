@@ -21,7 +21,7 @@ public struct Tooltip<Content: View>: View {
     private let contentGap: CGFloat
     private let userMaxWidth: CGFloat?
     private let dismissOnTapOutside: Bool
-    private let minBubbleWidth: CGFloat = 92
+    private let minBubbleWidth: CGFloat = 86
     
     // Host content
     private let content: () -> Content

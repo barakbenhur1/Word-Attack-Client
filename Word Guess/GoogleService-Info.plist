@@ -3,9 +3,9 @@
 <plist version="1.0">
 <dict>
 	<key>CLIENT_ID</key>
-	<string>708945301461-tm8r3fjkdci1d8ucn0m4fekeehkstrk1.apps.googleusercontent.com</string>
+	<string>708945301461-3dgphqfg3ogp5n9q30057hhb68b2n98f.apps.googleusercontent.com</string>
 	<key>REVERSED_CLIENT_ID</key>
-	<string>com.googleusercontent.apps.708945301461-tm8r3fjkdci1d8ucn0m4fekeehkstrk1</string>
+	<string>com.googleusercontent.apps.708945301461-3dgphqfg3ogp5n9q30057hhb68b2n98f</string>
 	<key>API_KEY</key>
 	<string>AIzaSyCv23mq4VgfPyeW8FSKDDKLo02kVHzBqlI</string>
 	<key>GCM_SENDER_ID</key>
@@ -17,18 +17,18 @@
 	<key>PROJECT_ID</key>
 	<string>word-guess-c9dde</string>
 	<key>STORAGE_BUCKET</key>
-	<string>word-guess-c9dde.appspot.com</string>
+	<string>word-guess-c9dde.firebasestorage.app</string>
 	<key>IS_ADS_ENABLED</key>
-	<false/>
+	<false></false>
 	<key>IS_ANALYTICS_ENABLED</key>
-	<false/>
+	<false></false>
 	<key>IS_APPINVITE_ENABLED</key>
-	<true/>
+	<true></true>
 	<key>IS_GCM_ENABLED</key>
-	<true/>
+	<true></true>
 	<key>IS_SIGNIN_ENABLED</key>
-	<true/>
+	<true></true>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:708945301461:ios:8777cf8d1d3e0a9673375c</string>
+	<string>1:708945301461:ios:18f3f7583f2d73ed73375c</string>
 </dict>
 </plist>

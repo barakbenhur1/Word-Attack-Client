@@ -23,7 +23,7 @@ public struct ElevatedButtonStyle: ButtonStyle {
         }
         
         // Built-ins (✅ with start/end points)
-        public static let login = Palette (
+        public static let googleLogin = Palette (
             gradient: LinearGradient(
                 colors: [
                     .white,
@@ -31,6 +31,17 @@ public struct ElevatedButtonStyle: ButtonStyle {
                 ],
                 startPoint: .topLeading, endPoint: .bottomTrailing)
         )
+        
+        // Built-ins (✅ with start/end points)
+        public static let appleLogin = Palette (
+            gradient: LinearGradient(
+                colors: [
+                    .white,
+                    .black
+                ],
+                startPoint: .topLeading, endPoint: .bottomTrailing)
+        )
+        
         
         public static let teal  = Palette(
             gradient: LinearGradient(
@@ -161,6 +172,8 @@ public struct ElevatedButtonLabel: View {
                     .font(.system(size: 18, weight: .semibold, design: .rounded))
             }
             Text(title)
+                .multilineTextAlignment(.center)
+                .font(.system(size: 16, weight: .semibold, design: .rounded))
                 .padding(40)
         }
         .frame(maxWidth: .infinity, alignment: alignment)

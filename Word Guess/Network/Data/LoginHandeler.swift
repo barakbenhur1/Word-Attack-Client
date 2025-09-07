@@ -9,6 +9,6 @@ import SwiftUI
 
 @Observable
 class LoginHandeler: ObservableObject {
-    var model: GoogleAuthModel?
+    var model: LoginAuthModel?
     var hasGender: Bool { model != nil && !model!.gender.isEmpty }
 }
