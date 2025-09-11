@@ -15,6 +15,8 @@ class Router: Singleton {
         case difficulty
         case settings
         case score
+        case premium(email: String?)
+        case premiumGame(word: String, allowedLetters: String)
         case game(diffculty: DifficultyType)
     }
     
@@ -24,6 +26,11 @@ class Router: Singleton {
     
     private var lockNavigation: Bool = false
     
+    let timerBridge = HubTimerBridge()
+    
+    // Stored callback for the premium game (instead of putting it into Route)
+    var onForceEndPremium: (() -> Void) = {}
+    
     // Builds the views
     @ViewBuilder func view(for route: Route) -> some View {
         switch route {
@@ -32,6 +39,8 @@ class Router: Singleton {
         case .settings: SettingsView()
         case .score: Scoreboard()
         case .game(let value): gameView(value: value)
+        case .premium(let email): PremiumHubView(email: email).environmentObject(timerBridge)
+        case .premiumGame(let word, let allowed): PremiumHubGameView(vm: .init(word: word), onForceEnd: onForceEndPremium, allowedLetters: Set(allowed)).environmentObject(timerBridge)
         }
     }
     

@@ -6,7 +6,7 @@
 //
 
 import Testing
-@testable import Word_Guess
+@testable import WordZap
 
 struct Word_GuessTests {
 

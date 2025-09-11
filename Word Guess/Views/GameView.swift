@@ -9,21 +9,14 @@ import SwiftUI
 import CoreData
 import Combine
 
-enum FieldFocus: Int {
-    case one
-    case two
-    case trhee
-    case four
-    case five
-    case six
-}
-
 struct GameView<VM: WordViewModel>: View {
     @EnvironmentObject private var coreData: PersistenceController
     @EnvironmentObject private var loginHandeler: LoginHandeler
     @EnvironmentObject private var audio: AudioPlayer
     @EnvironmentObject private var router: Router
     @EnvironmentObject private var local: LanguageSetting
+    @EnvironmentObject private var premium: PremiumManager
+    @EnvironmentObject private var adProvider: AdProvider
     
     private let queue = DispatchQueue.main
     private let InterstitialAdInterval: Int = 7
@@ -31,6 +24,7 @@ struct GameView<VM: WordViewModel>: View {
     private let diffculty: DifficultyType
     private var length: Int { return diffculty.getLength() }
     private var email: String? { return loginHandeler.model?.email }
+    private var interstitialAdManager: InterstitialAdsManager? { adProvider.interstitialAdsManager(id: "GameInterstitial") }
     
     @State private var current: Int = 0
     @State private var score: Int = 0
@@ -42,7 +36,6 @@ struct GameView<VM: WordViewModel>: View {
     @State private var timeAttackAnimation = false
     @State private var timeAttackAnimationDone = true
     @State private var endFetchAnimation = false
-    @State private var interstitialAdManager = InterstitialAdsManager(adUnitID: "GameInterstitial")
     @State private var showError: Bool = false
     
     @State private var cleanCells = false
@@ -58,7 +51,7 @@ struct GameView<VM: WordViewModel>: View {
     
     private func handleWordChange() {
         initMatrixState()
-        guard !keyboard.show || vm.word.number == 0 || vm.word.number % InterstitialAdInterval != 0 else { return interstitialAdManager.loadInterstitialAd() }
+        guard interstitialAdManager == nil || !keyboard.show || vm.word.number == 0 || vm.word.number % InterstitialAdInterval != 0 else { interstitialAdManager?.loadInterstitialAd(); return }
         initalConfigirationForWord()
         guard diffculty != .tutorial && diffculty != .ai else { return }
         Task(priority: .utility) { await SharedStore.writeDifficultyStatsAsync(.init(answers: vm.word.number, score: vm.word.score), for: diffculty.liveValue) }
@@ -112,9 +105,9 @@ struct GameView<VM: WordViewModel>: View {
             }
         }
         .ignoresSafeArea(.keyboard)
-        .onChange(of: interstitialAdManager.interstitialAdLoaded) {
-            guard interstitialAdManager.interstitialAdLoaded else { return }
-            interstitialAdManager.displayInterstitialAd { initalConfigirationForWord() }
+        .onChange(of: interstitialAdManager?.interstitialAdLoaded) {
+            guard interstitialAdManager?.interstitialAdLoaded ?? false else { initalConfigirationForWord(); return }
+            interstitialAdManager?.displayInterstitialAd { initalConfigirationForWord() }
         }
         .customAlert("Network error",
                      type: .fail,
@@ -128,7 +121,7 @@ struct GameView<VM: WordViewModel>: View {
     @ViewBuilder private func topBar() -> some View {
         HStack {
             backButton()
-            AdView(adUnitID: "GameBanner")
+            adProvider.adView(id: "GameBanner")
         }
     }
     

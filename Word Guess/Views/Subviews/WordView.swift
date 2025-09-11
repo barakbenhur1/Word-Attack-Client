@@ -7,6 +7,15 @@
 
 import SwiftUI
 
+enum FieldFocus: Int {
+    case one
+    case two
+    case trhee
+    case four
+    case five
+    case six
+}
+
 struct WordView<VM: ViewModel>: View {
     @EnvironmentObject private var local: LanguageSetting
     
@@ -25,13 +34,15 @@ struct WordView<VM: ViewModel>: View {
     @Binding private var colors: [CharColor]
     @FocusState private var fieldFocus: FieldFocus?
     
+    private let allowed: (set: Set<Character>, onInvalid: () -> Void)?
     private let isAI: Bool
     private let isCurrentRow: Bool
     
     @Binding private var cleanCells: Bool
     
-    init(cleanCells: Binding<Bool>, isAI: Bool = false, current: Binding<Int>, length: Int, placeHolderData: [BestGuess]? = nil, isCurrentRow: Bool = false, word: Binding<[String]>, gainFocus: Binding<Bool>, colors: Binding<[CharColor]>, done: @escaping () -> ()) {
+    init(cleanCells: Binding<Bool>, isAI: Bool = false, allowed: (set: Set<Character>, onInvalid: () -> Void)? = nil, current: Binding<Int>, length: Int, placeHolderData: [BestGuess]? = nil, isCurrentRow: Bool = false, word: Binding<[String]>, gainFocus: Binding<Bool>, colors: Binding<[CharColor]>, done: @escaping () -> ()) {
         self.isAI = isAI
+        self.allowed = allowed
         self.length = length
         self.isCurrentRow = isCurrentRow
         self.placeHolderData = placeHolderData
@@ -160,13 +171,28 @@ struct WordView<VM: ViewModel>: View {
     private func handleWordWriting(value: String, current: Int) {
         guard wordBakup[current] != word[current] else { return }
         
-        if current == 0 { word[current] = value.returnChar(isFinal: current == length - 1) }
+        if current == 0 {
+            let c = value.returnChar(isFinal: current == length - 1)
+            if allowed == nil || allowed!.set.contains(c.lowercased()) {
+                word[current] = c
+            } else {
+                word[current] = ""
+                allowed?.onInvalid()
+            }
+        }
         
         if !value.isEmpty {
             if current < length - 1 && fieldFocus != FieldFocus(rawValue: length - 1) && wordBakup[current].count == 1 || value.count > 1 {
-                var next = current + 1
+                var next: Int = current
                 if !value.isEmpty {
-                    word[current] = value[0].returnChar(isFinal: current == length - 1)
+                    let c = value[0].returnChar(isFinal: current == length - 1)
+                    if allowed == nil || allowed!.set.contains(c.lowercased()) {
+                        word[next] = c
+                        next += 1
+                    } else {
+                        word[next] = ""
+                        allowed?.onInvalid()
+                    }
                     
                     guard next < wordBakup.count && wordBakup[next].isEmpty else { return }
                     
@@ -174,15 +200,18 @@ struct WordView<VM: ViewModel>: View {
                         let string = String(value.suffix(value.count - 1))
                         for i in 0..<string.count {
                             guard next < word.count else { continue }
-                            word[next] = string[i].returnChar(isFinal: next == length - 1)
+                            let c = string[i].returnChar(isFinal: next == length - 1)
+                            guard allowed == nil || allowed!.set.contains(c.lowercased()) else { word[next] = ""; allowed?.onInvalid(); continue }
+                            word[next] = c
                             next += 1
                         }
                     }
                 }
+                
                 fieldFocus = FieldFocus(rawValue: next - 1)!
             }
         } else {
-            if  current > 0 && fieldFocus != .one && !word[current - 1].isEmpty {
+            if current > 0 && fieldFocus != .one && !word[current - 1].isEmpty {
                 fieldFocus = FieldFocus(rawValue: current - 1)!
             }
         }

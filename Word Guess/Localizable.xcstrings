@@ -45,6 +45,22 @@
         }
       }
     },
+    "%@ plan %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ plan %2$@"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ תוכנית %2$@"
+          }
+        }
+      }
+    },
     "%lld" : {
       "localizations" : {
         "he" : {
@@ -64,6 +80,12 @@
           }
         }
       }
+    },
+    "%llds" : {
+      "shouldTranslate" : false
+    },
+    "•" : {
+      "shouldTranslate" : false
     },
     "+ %lld" : {
       "localizations" : {
@@ -98,6 +120,12 @@
     },
     "👋 logout" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "👋 Logout"
+          }
+        },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
@@ -353,6 +381,16 @@
         }
       }
     },
+    "Available letters" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אותיות זמינות"
+          }
+        }
+      }
+    },
     "back" : {
       "localizations" : {
         "he" : {
@@ -578,6 +616,16 @@
         }
       }
     },
+    "Close" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "סגור"
+          }
+        }
+      }
+    },
     "Clueless" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -673,6 +721,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "נכבשת"
+          }
+        }
+      }
+    },
+    "Contains letter" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מכיל אותיות"
           }
         }
       }
@@ -918,6 +976,22 @@
     },
     "Direction" : {
       "shouldTranslate" : false
+    },
+    "Discover letters in tactile mini-games. Use them to solve the word." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Discover letters in tactile mini-games.\nUse them to solve the word."
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "גלה אותיות במשחקים\nהשתמש בהן לנחש את המילה"
+          }
+        }
+      }
     },
     "Dominated" : {
       "extractionState" : "manual",
@@ -1174,6 +1248,16 @@
         }
       }
     },
+    "Find letters in mini-games" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מצא אותיות במשחקים"
+          }
+        }
+      }
+    },
     "Flawless" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1185,6 +1269,17 @@
         }
       }
     },
+    "Fog Wipe" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ערפל"
+          }
+        }
+      }
+    },
     "Forever winner" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1192,6 +1287,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "מנצח לנצח"
+          }
+        }
+      }
+    },
+    "Frost" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "קרח"
           }
         }
       }
@@ -1258,6 +1364,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "כבר מוותר?"
+          }
+        }
+      }
+    },
+    "Go Premium" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "לך לפרימיום"
           }
         }
       }
@@ -1377,6 +1493,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "הימור גרוע"
+          }
+        }
+      }
+    },
+    "Gyro Maze" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מבוך"
           }
         }
       }
@@ -1935,6 +2062,17 @@
         }
       }
     },
+    "Magnet" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מגנט"
+          }
+        }
+      }
+    },
     "Mapping weights into memory…" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1953,6 +2091,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "מוח על"
+          }
+        }
+      }
+    },
+    "May be empty" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "יכול להיות ריק"
           }
         }
       }
@@ -2169,6 +2317,27 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "אין מידע עדיין"
+          }
+        }
+      }
+    },
+    "No letters yet" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אין אותיות עדיין"
+          }
+        }
+      }
+    },
+    "No letters yet — play minis to collect" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אין אותיות — שחק מיני-משחקים כדי לאסוף"
           }
         }
       }
@@ -2584,6 +2753,33 @@
         }
       }
     },
+    "Premium" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "פרימיום"
+          }
+        }
+      }
+    },
+    "Premium Hub" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "PREMIUM HUB"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "היכל פרימיום"
+          }
+        }
+      }
+    },
     "Preparing AI Model" : {
       "localizations" : {
         "he" : {
@@ -2611,6 +2807,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "הקודם"
+          }
+        }
+      }
+    },
+    "Privacy" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "פרטיות"
           }
         }
       }
@@ -2680,6 +2886,16 @@
         }
       }
     },
+    "refresh in %llds" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ריענון בעוד %lld"
+          }
+        }
+      }
+    },
     "Register mismatch" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2729,6 +2945,16 @@
         }
       }
     },
+    "Restore Purchases" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "שחזר רכישות"
+          }
+        }
+      }
+    },
     "Ridiculous" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2740,6 +2966,17 @@
         }
       }
     },
+    "Ripples" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "גלים"
+          }
+        }
+      }
+    },
     "Root rot" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2747,6 +2984,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "ריקבון השורש"
+          }
+        }
+      }
+    },
+    "round" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "סיבוב"
           }
         }
       }
@@ -2769,6 +3016,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "מאמץ עצוב"
+          }
+        }
+      }
+    },
+    "Sand Dig" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "חפירה בחול"
           }
         }
       }
@@ -2962,12 +3220,33 @@
         }
       }
     },
+    "Solved words %lld" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מילים שניחשת %lld"
+          }
+        }
+      }
+    },
     "something went wrong" : {
       "localizations" : {
         "he" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "משהו השתבש"
+          }
+        }
+      }
+    },
+    "Sonar" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "סונאר"
           }
         }
       }
@@ -3094,6 +3373,16 @@
         }
       }
     },
+    "Subscribe %@" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הרשם %@"
+          }
+        }
+      }
+    },
     "Supreme" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -3184,6 +3473,16 @@
     },
     "T %@" : {
       "shouldTranslate" : false
+    },
+    "Terms" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "תנאים"
+          }
+        }
+      }
     },
     "the word is" : {
       "extractionState" : "manual",
@@ -3417,6 +3716,16 @@
         }
       }
     },
+    "Unlock all features, no ads, daily challenges, and more." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "קבל את כל הפיצ׳רים בלי פרסומות אתגרים יומיים ועוד"
+          }
+        }
+      }
+    },
     "Unworthy" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -3424,6 +3733,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "לא ראוי"
+          }
+        }
+      }
+    },
+    "Use allowed letters only" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "השתמש באותיות מורשות בלבד"
+          }
+        }
+      }
+    },
+    "Use the permitted letters if they’re insufficient, acquire more." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "השתמש רק באותיות המורשות—אם הם אינם מספיקות אסוף עוד."
           }
         }
       }
@@ -3472,6 +3803,17 @@
         }
       }
     },
+    "Wax Press" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "שעווה"
+          }
+        }
+      }
+    },
     "Weak guess" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -3501,6 +3843,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "ניצחת"
+          }
+        }
+      }
+    },
+    "Wins" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ניצחונות"
           }
         }
       }

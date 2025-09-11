@@ -19,6 +19,8 @@ struct AIGameView<VM: WordViewModelForAI>: View {
     @EnvironmentObject private var audio: AudioPlayer
     @EnvironmentObject private var router: Router
     @EnvironmentObject private var local: LanguageSetting
+    @EnvironmentObject private var premium: PremiumManager
+    @EnvironmentObject private var adProvider: AdProvider
     
     private enum Turn: Int  { case player = 0, ai = 1 }
     private enum GameState { case inProgress, lose, win }
@@ -30,6 +32,7 @@ struct AIGameView<VM: WordViewModelForAI>: View {
     
     private var email: String? { loginHandeler.model?.email }
     private var gender: String? { loginHandeler.model?.gender }
+    private var interstitialAdManager: InterstitialAdsManager? { adProvider.interstitialAdsManager(id: "GameInterstitial") }
     
     private let fullHP :Int = 100
     private let hitPoints = 10
@@ -41,7 +44,6 @@ struct AIGameView<VM: WordViewModelForAI>: View {
     @State private var keyboard = KeyboardHeightHelper()
     @State private var endFetchAnimation = false
     @State private var didStart = false
-    @State private var interstitialAdManager = InterstitialAdsManager(adUnitID: "GameInterstitial")
     
     @State private var aiHpAnimation: HpAnimationParams = (0, CGFloat(0), CGFloat(0), CGFloat(30))
     @State private var playerHpAnimation: HpAnimationParams = (0, CGFloat(0), CGFloat(0), CGFloat(30))
@@ -160,9 +162,10 @@ struct AIGameView<VM: WordViewModelForAI>: View {
     private func handleWordChange() {
         initMatrixState()
         wordNumber += 1
-        guard wordNumber % InterstitialAdInterval != 0 else {
+        guard interstitialAdManager == nil || wordNumber % InterstitialAdInterval != 0 else {
             disabled = true
-            return interstitialAdManager.loadInterstitialAd()
+            interstitialAdManager?.loadInterstitialAd()
+            return
         }
         initalConfigirationForWord()
     }
@@ -195,6 +198,7 @@ struct AIGameView<VM: WordViewModelForAI>: View {
     private func clearSaved() {
         UserDefaults.standard.set(nil, forKey: "playerHP")
         UserDefaults.standard.set(nil, forKey: "aiDifficulty")
+        Task(priority: .utility) { await SharedStore.writeAIStatsAsync(.init(name: AIDifficulty.easy.rawValue.name, imageName: AIDifficulty.easy.rawValue.image)) }
     }
     
     private func closeView() {
@@ -403,8 +407,8 @@ struct AIGameView<VM: WordViewModelForAI>: View {
     }
     
     private func handleInterstitial() {
-        guard interstitialAdManager.interstitialAdLoaded else { return }
-        interstitialAdManager.displayInterstitialAd { initalConfigirationForWord() }
+        guard interstitialAdManager?.interstitialAdLoaded ?? false else { initalConfigirationForWord(); return }
+        interstitialAdManager?.displayInterstitialAd { initalConfigirationForWord() }
     }
     
     private func initializeAI() {
@@ -511,7 +515,7 @@ struct AIGameView<VM: WordViewModelForAI>: View {
         .ignoresSafeArea(.keyboard)
         .onChange(of: aiDifficulty, handleAiIntroToggle)
         .onChange(of: endFetchAnimation, handleEndFetchAnimation)
-        .onChange(of: interstitialAdManager.interstitialAdLoaded, handleInterstitial)
+        .onChange(of: interstitialAdManager?.interstitialAdLoaded, handleInterstitial)
         .onChange(of: playerHP, handlePlayer)
         .onChange(of: aiHP, handleAi)
         .onChange(of: showCelebrate, handleWin)
@@ -542,7 +546,7 @@ struct AIGameView<VM: WordViewModelForAI>: View {
     @ViewBuilder private func topBar() -> some View {
         HStack {
             backButton()
-            AdView(adUnitID: "GameBanner")
+            adProvider.adView(id: "GameBanner")
         }
     }
     

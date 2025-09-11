@@ -43,7 +43,6 @@ enum DifficultyType: String, Codable, CaseIterable {
             return 6
         }
     }
-    
 }
 
 struct DifficultyView: View {
@@ -51,6 +50,10 @@ struct DifficultyView: View {
     @EnvironmentObject private var router: Router
     @EnvironmentObject private var audio: AudioPlayer
     @EnvironmentObject private var loginHandeler: LoginHandeler
+    @EnvironmentObject private var premium: PremiumManager
+    @EnvironmentObject private var adProvider: AdProvider
+    
+    @State private var showPaywall = false
     
     private var tutorialItem: TutorialItem? { return tutorialItems.first }
     
@@ -71,8 +74,9 @@ struct DifficultyView: View {
         audio.stopAudio(false)
     }
     
-    private func task() {
-        guard tutorialItem == nil else { return }
+    private func task() async {
+        await premium.loadProducts()
+        guard tutorialItem == nil else { return}
         router.navigateTo(.game(diffculty: .tutorial))
     }
     
@@ -91,8 +95,11 @@ struct DifficultyView: View {
             contant()
                 .onDisappear { onDisappear() }
                 .onAppear { onAppear() }
-                .task { task() }
+                .task { await task() }
                 .ignoresSafeArea(.keyboard)
+                .fullScreenCover(isPresented: $showPaywall) {
+                    SubscriptionPaywallView(isPresented: $showPaywall)
+                }
         }
     }
     
@@ -107,11 +114,11 @@ struct DifficultyView: View {
             .padding(.horizontal, 20)
         }
         .safeAreaInset(edge: .top) {
-            AdView(adUnitID: "TopBanner")
+            adProvider.adView(id: "TopBanner")
                 .frame(maxWidth: .infinity, minHeight: 50, maxHeight: 50)
         }
         .safeAreaInset(edge: .bottom) {
-            AdView(adUnitID: "BottomBanner")
+            adProvider.adView(id: "BottomBanner")
                 .frame(maxWidth: .infinity, minHeight: 50, maxHeight: 50)
         }
     }
@@ -137,7 +144,11 @@ struct DifficultyView: View {
             
             Spacer()
             
-            Button { router.navigateTo(.score) }
+            Button {
+                Task.detached {
+                    await MainActor.run { router.navigateTo(.score) }
+                }
+            }
             label: {
                 VStack {
                     Image(systemName: "person.3.fill")
@@ -156,6 +167,26 @@ struct DifficultyView: View {
             }
             .foregroundStyle(.black)
             .shadow(radius: 4)
+            
+            Spacer()
+            
+            Button {
+                if premium.isPremium {
+                    Task.detached {
+                        await MainActor.run { router.navigateTo(.premium(email: loginHandeler.model?.email)) }
+                    }
+                } else { showPaywall = true }
+            } label: {
+                VStack {
+                    PremiumBadge()
+                        .grayscale(premium.isPremium ? 0 : 1)
+                        .frame(height: 40)
+                    
+                    Text("Premium Hub")
+                        .foregroundStyle(premium.isPremium ? .black : .gray)
+                }
+            }
+            .shadow(radius: 4)
         }
     }
     
@@ -169,12 +200,11 @@ struct DifficultyView: View {
                 .blendMode(.luminosity)
                 .blur(radius: 4)
                 
-                VStack {
+                VStack(spacing: 6) {
                     difficultyButton(type: .ai)
                         .shadow(radius: 4)
                     title()
-                        .padding(.top, 8)
-                        .padding(.bottom, 15)
+                        .padding(.top, 2)
                     ForEach(buttons) { button in
                         difficultyButton(type: button.type)
                             .shadow(radius: 4)
@@ -185,7 +215,7 @@ struct DifficultyView: View {
             .clipShape(RoundedRectangle(cornerRadius: 60))
             
             logoutButton()
-                .padding(.all, 20)
+                .padding(.all, 14)
                 .shadow(radius: 4)
         }
     }
@@ -227,3 +257,15 @@ struct DifficultyView: View {
             .buttonStyle(ElevatedButtonStyle(palette: .slate))
     }
 }
+
+private struct PremiumBadge: View {
+    var body: some View {
+        Image(systemName: "crown.fill")
+            .symbolRenderingMode(.palette)
+            .foregroundStyle(.yellow, .orange)   // two-tone palette
+            .font(.system(size: 32, weight: .semibold))
+            .shadow(color: .yellow.opacity(0.35), radius: 8, x: 0, y: 2)
+            .accessibilityLabel("Premium")
+    }
+}
+

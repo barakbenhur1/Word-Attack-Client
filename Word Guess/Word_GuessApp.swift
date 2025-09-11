@@ -19,6 +19,7 @@ struct WordGuessApp: App {
     @Environment(\.scenePhase) private var scenePhase
     
     @StateObject private var vm = AppStateViewModel()
+    @StateObject private var premium = PremiumManager.shared
     
     @State private var tooltipPusher = PhraseProvider()
     
@@ -30,6 +31,7 @@ struct WordGuessApp: App {
     private let router = Router.shared
     private let deepLinker = DeepLinker.shared
     private let login = LoginViewModel()
+    private let adProvider = AdProvider(premium: PremiumManager.shared)
     
     var body: some Scene {
         WindowGroup {
@@ -78,6 +80,8 @@ struct WordGuessApp: App {
         .environmentObject(persistenceController)
         .environmentObject(loginHaneler)
         .environmentObject(local)
+        .environmentObject(premium)
+        .environmentObject(adProvider)
         .environment(\.locale, local.locale)
         .environment(\.managedObjectContext, persistenceController.container.viewContext)
     }

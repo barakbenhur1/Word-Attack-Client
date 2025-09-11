@@ -68,6 +68,7 @@ struct Scoreboard<VM: ScoreboardViewModel>: View {
     @EnvironmentObject private var loginHandeler: LoginHandeler
     @EnvironmentObject private var router: Router
     @EnvironmentObject private var local: LanguageSetting
+    @EnvironmentObject private var adProvider: AdProvider
     @Environment(\.horizontalSizeClass) private var hSize
     
     @State private var vm = VM()
@@ -190,7 +191,7 @@ struct Scoreboard<VM: ScoreboardViewModel>: View {
                 }
                 
                 // Ad
-                AdView(adUnitID: "ScoreBanner")
+                adProvider.adView(id: "ScoreBanner")
                     .frame(maxWidth: 728) // leaderboard-like width for iPad
             }
         }

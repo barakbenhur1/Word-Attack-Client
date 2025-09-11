@@ -20,6 +20,7 @@ struct SettingsView: View {
     @EnvironmentObject private var local: LanguageSetting
     @EnvironmentObject private var audio: AudioPlayer
     @EnvironmentObject private var router: Router
+    @EnvironmentObject private var adProvider: AdProvider
     
     @State private var items: [SettingsOptionButton] = [.init(type: .sound),
                                                         .init(type: .ai),
@@ -47,6 +48,7 @@ struct SettingsView: View {
     private func resetAI() {
         UserDefaults.standard.set(nil, forKey: "aiDifficulty")
         UserDefaults.standard.set(nil, forKey: "playerHP")
+        Task(priority: .utility) { await SharedStore.writeAIStatsAsync(.init(name: AIDifficulty.easy.rawValue.name, imageName: AIDifficulty.easy.rawValue.image)) }
     }
     
     var body: some View {
@@ -55,7 +57,7 @@ struct SettingsView: View {
             VStack {
                 topView()
                 list()
-                AdView(adUnitID: "SettingsBanner")
+                adProvider.adView(id: "SettingsBanner")
             }
         }
         .customAlert("Reset AI Difficulty",
