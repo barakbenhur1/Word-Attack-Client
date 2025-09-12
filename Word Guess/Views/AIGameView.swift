@@ -203,6 +203,7 @@ struct AIGameView<VM: WordViewModelForAI>: View {
     
     private func closeView() {
         screenManager.keepScreenOn = false
+        ai?.hidePhrase()
         ai?.deassign()
         audio.stop()
         router.navigateBack()

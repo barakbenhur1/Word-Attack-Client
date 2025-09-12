@@ -295,13 +295,14 @@ private final class PremiumHubModel: ObservableObject {
     
     @Published private(set) var slots: [MiniSlot] = []
     @Published private(set) var mainSecondsLeft: Int = 180
-    let mainRoundLength = 180
     
     @Published var discoveredLetters: Set<Character> = []
     @Published var canInteract: Bool = true
     @Published var aiDifficulty: AIDifficulty? = nil
     
+    let mainRoundLength = 180
     let vm = PremiumHubViewModel()
+    
     private var tick: AnyCancellable?
     private let email: String?
     
