@@ -283,6 +283,8 @@ private final class PremiumHubModel: ObservableObject {
     private static let hebrewAlphabet: [Character] = Array("אבגדהוזחטיכלמנסעפצקרשת")
     private static var currentAlphabet: [Character] = englishAlphabet
     
+    private static let staticMainRoundLength = 60 * 5 // round length
+    
     static func configureFor(language: String?) {
         currentAlphabet = (language == "he") ? hebrewAlphabet : englishAlphabet
     }
@@ -294,14 +296,15 @@ private final class PremiumHubModel: ObservableObject {
     }
     
     @Published private(set) var slots: [MiniSlot] = []
-    @Published private(set) var mainSecondsLeft: Int = 180
+    @Published private(set) var mainSecondsLeft: Int = PremiumHubModel.staticMainRoundLength
     
     @Published var discoveredLetters: Set<Character> = []
     @Published var canInteract: Bool = true
     @Published var aiDifficulty: AIDifficulty? = nil
     
-    let mainRoundLength = 180
     let vm = PremiumHubViewModel()
+    
+    var mainRoundLength: Int { PremiumHubModel.staticMainRoundLength }
     
     private var tick: AnyCancellable?
     private let email: String?
