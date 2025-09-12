@@ -2999,6 +2999,17 @@
         }
       }
     },
+    "round" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "סיבוב"
+          }
+        }
+      }
+    },
     "Run-on alert" : {
       "extractionState" : "manual",
       "localizations" : {
