@@ -126,14 +126,13 @@ struct SubscriptionPaywallView: View {
             
             Text("•").foregroundStyle(.tertiary)
             
-            // TODO: Replace URLs
-            Link("Terms", destination: URL(string: "https://example.com/terms")!)
+            Link("Terms", destination: URL(string: "https://barakbenhur1.github.io/terms.html")!)
                 .font(.footnote)
                 .foregroundStyle(.secondary)
             
             Text("•").foregroundStyle(.tertiary)
             
-            Link("Privacy", destination: URL(string: "https://example.com/privacy")!)
+            Link("Privacy", destination: URL(string: "https://barakbenhur1.github.io/privacy.html")!)
                 .font(.footnote)
                 .foregroundStyle(.secondary)
         }

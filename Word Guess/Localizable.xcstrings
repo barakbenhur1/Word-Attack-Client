@@ -2875,6 +2875,17 @@
         }
       }
     },
+    "Purchase" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "לרכוש"
+          }
+        }
+      }
+    },
     "Rare word, rarer win" : {
       "extractionState" : "manual",
       "localizations" : {

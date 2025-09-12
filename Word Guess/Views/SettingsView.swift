@@ -8,7 +8,7 @@
 import SwiftUI
 
 enum SettingsOption: String {
-    case language = "language", sound = "sound", ai = "ai"
+    case language = "language", sound = "sound", ai = "ai", premium = "Premium"
 }
 
 struct SettingsOptionButton: Identifiable {
@@ -21,12 +21,16 @@ struct SettingsView: View {
     @EnvironmentObject private var audio: AudioPlayer
     @EnvironmentObject private var router: Router
     @EnvironmentObject private var adProvider: AdProvider
+    @EnvironmentObject private var premium: PremiumManager
     
-    @State private var items: [SettingsOptionButton] = [.init(type: .sound),
+    @State private var items: [SettingsOptionButton] = [.init(type: .premium),
+                                                        .init(type: .sound),
                                                         .init(type: .ai),
                                                         .init(type: .language)]
     
     @State private var showResetAI: Bool = false
+    
+    @State private var showPaywall = false
     
     @State private var difficulty = UserDefaults.standard.string(forKey: "aiDifficulty")
     
@@ -37,7 +41,13 @@ struct SettingsView: View {
         case .language: showLanguage()
         case .sound:    audio.isOn.toggle()
         case .ai:       showResetAI = difficulty != nil
+        case .premium:  handlePremium()
         }
+    }
+    
+    private func handlePremium() {
+        if premium.isPremium { Task(priority: .userInitiated) { await premium.restore() } }
+        else { showPaywall = true }
     }
     
     private func showLanguage() {
@@ -67,6 +77,9 @@ struct SettingsView: View {
                      cancelButtonText: "Cancel",
                      action: resetAI,
                      message: { Text("Are you sure you want to reset AI difficulty process is unreversible") })
+        .fullScreenCover(isPresented: $showPaywall) {
+            SubscriptionPaywallView(isPresented: $showPaywall)
+        }
     }
     
     @ViewBuilder private func background() -> some View {
@@ -112,6 +125,19 @@ struct SettingsView: View {
     @ViewBuilder private func label(item: SettingsOptionButton) -> some View {
         ZStack {
             switch item.type {
+            case .premium:
+                HStack {
+                    Text(item.type.rawValue.localized)
+                        .font(.headline.bold().italic())
+                        .foregroundStyle(.black)
+                    
+                    Spacer()
+                    
+                    Text(premium.isPremium ? "Restore Purchases" : "Purchase")
+                        .font(.headline.bold().italic())
+                        .foregroundStyle(Color(red: 0.30, green: 0.29, blue: 0.49))
+                }
+                
             case .language:
                 HStack {
                     Text(item.type.rawValue.localized)
@@ -124,12 +150,14 @@ struct SettingsView: View {
                         .font(.headline)
                         .foregroundStyle(.cyan)
                 }
+                
             case .sound:
                 Toggle(item.type.rawValue.localized, isOn: $audio.isOn)
                     .font(.headline)
                     .foregroundStyle(.black)
                     .tint(.cyan)
                     .toggleStyle(.switch)
+                
             case .ai:
                 HStack {
                     Text(item.type.rawValue.localized)
