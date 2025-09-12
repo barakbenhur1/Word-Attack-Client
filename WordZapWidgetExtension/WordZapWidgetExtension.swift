@@ -196,7 +196,7 @@ struct WordZapWidgetView: View {
                 .minimumScaleFactor(1.0)   // keep all rows same size
                 .allowsTightening(false)
         }
-        .padding(.horizontal, 10)
+        .padding(.horizontal, 6)
         .padding(.vertical, isExtraLarge ? 7 : 6)
         .frame(maxWidth: expand ? .infinity : nil, alignment: .leading)
         .background(RoundedRectangle(cornerRadius: 12).fill(Color.primary.opacity(0.14)))

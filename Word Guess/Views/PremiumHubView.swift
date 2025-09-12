@@ -8,15 +8,24 @@ import CoreHaptics
 import CoreMotion
 import Foundation
 
+// MARK: - AI Difficulty
+private func loadAIDifficulty() -> AIDifficulty? {
+    // Do NOT default to easy. When no value -> AI OFF.
+    guard let s = UserDefaults.standard.string(forKey: "aiDifficulty") else { return nil }
+    switch s {
+    case AIDifficulty.easy.rawValue.name:   return .easy
+    case AIDifficulty.medium.rawValue.name: return .medium
+    case AIDifficulty.hard.rawValue.name:   return .hard
+    case AIDifficulty.boss.rawValue.name:   return .boss
+    default: return nil
+    }
+}
+
 /// Tiny bridge so GameView can mirror the Hub's main round timer.
 final class HubTimerBridge: ObservableObject {
     @Published var secondsLeft: Int = 0
     @Published var total: Int = 90
-    
-    func set(_ s: Int, total t: Int) {
-        secondsLeft = s
-        total = t
-    }
+    func set(_ s: Int, total t: Int) { secondsLeft = s; total = t }
 }
 
 // MARK: - Entry
@@ -26,20 +35,14 @@ public struct PremiumHubView: View {
     @EnvironmentObject private var router: Router
     @EnvironmentObject private var local: LanguageSetting
     
-    // language code like "en", "he"
-    private var language: String? { return local.locale.identifier.components(separatedBy: "_").first }
-    
+    private var language: String? { local.locale.identifier.components(separatedBy: "_").first }
     @StateObject private var hub: PremiumHubModel
-    
     @State private var engine: CHHapticEngine? = try? CHHapticEngine()
     
-    // Which mini is open
     @State private var presentedSlot: MiniSlot?
-    // Track to refresh when the sheet closes (even if dismissed)
     @State private var activeSlot: MiniSlot?
     @State private var didResolveSheet = false
     
-    // 🔢 Live count of solved words (shared with the game via UserDefaults)
     @AppStorage("wins_count") private var solvedWords: Int = 0
     
     public init(email: String?) {
@@ -54,30 +57,24 @@ public struct PremiumHubView: View {
             
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 18) {
-                    // Tagline under the global title area (your outer header can be elsewhere)
-                    Text("Discover letters in tactile mini-games. Use them to solve the word.")
+                    Text("Discover letters in tactile mini-games. Use them to solve the word.".localized)
                         .font(.system(.title3, design: .rounded))
                         .foregroundStyle(.white.opacity(0.7))
                         .padding(.top, 8)
                     
-                    // Grid 3×3 with center main circle
-                    Grid3x3(hub: hub,
-                            presentedSlot: $presentedSlot,
-                            engine: engine,
-                            reset: { /*hub.resetAll*/ })
-                    .disabled(hub.vm.word == .empty)
+                    Grid3x3(hub: hub, presentedSlot: $presentedSlot, engine: engine, reset: {})
+                        .disabled(hub.vm.word == .empty)
                     
-                    // Available letters belt (always visible request)
                     if !hub.discoveredLetters.isEmpty {
                         VStack(alignment: .leading, spacing: 8) {
-                            Text("Available letters")
+                            Text("Available letters".localized)
                                 .font(.footnote.weight(.semibold))
                                 .foregroundStyle(.white.opacity(0.7))
                             DiscoveredBeltView(letters: Array(hub.discoveredLetters).sorted())
                         }
                         .padding(.top, 4)
                     } else {
-                        Text("No letters yet")
+                        Text("No letters yet".localized)
                             .font(.subheadline)
                             .foregroundStyle(.white.opacity(0.6))
                             .padding(.top, 4)
@@ -85,7 +82,7 @@ public struct PremiumHubView: View {
                     
                     Button { lightTap(engine) } label: {
                         HStack {
-                            Text("Find letters in mini-games")
+                            Text("Find letters in mini-games".localized)
                             Spacer()
                             Image(systemName: "arrow.right")
                         }
@@ -103,7 +100,6 @@ public struct PremiumHubView: View {
             }
         }
         .environmentObject(hub.vm)
-        // Top bar that never clips
         .safeAreaInset(edge: .top) {
             HStack(spacing: 12) {
                 BackPill {
@@ -111,7 +107,6 @@ public struct PremiumHubView: View {
                     router.navigateBack()
                 }
                 Spacer()
-                // 🏆 Solved words counter pill
                 SolvedCounterPill(count: solvedWords)
                 MainRoundTimerView(secondsLeft: hub.mainSecondsLeft, total: hub.mainRoundLength)
                     .frame(maxWidth: min(UIScreen.main.bounds.width * 0.55, 360), minHeight: 18, maxHeight: 18)
@@ -119,27 +114,32 @@ public struct PremiumHubView: View {
             .padding(.horizontal, 16)
             .padding(.top, 4)
         }
-        // Track opening of sheet
         .onChange(of: presentedSlot) { _, newValue in
             if let s = newValue { activeSlot = s; didResolveSheet = false }
         }
-        // Single modal popup for ALL mini games (iPhone/iPad consistent)
         .sheet(item: $presentedSlot, onDismiss: {
-            // If user dismissed without finishing, refresh the tile now
             if let s = activeSlot, !didResolveSheet { hub.replaceSlot(s) }
             activeSlot = nil
         }) { slot in
             MiniGameSheet(slot: slot, hub: hub) { result in
-                didResolveSheet = true
+                func close() {
+                    didResolveSheet = true
+                    hub.replaceSlot(slot)
+                    presentedSlot = nil
+                }
                 switch result {
                 case .found(let ch):
                     hub.discoveredLetters.insert(ch)
                     success(engine)
+                    if slot.kind != .aiMerchant { close() }
+                case .foundMany(let chars):
+                    for ch in chars { hub.discoveredLetters.insert(ch) }
+                    success(engine); close()
                 case .nothing:
-                    warn(engine)
+                    warn(engine); close()
+                case .close:
+                    close()
                 }
-                hub.replaceSlot(slot)     // refresh when game ends
-                presentedSlot = nil       // triggers onDismiss
             }
             .presentationDetents([.medium, .large])
             .presentationDragIndicator(.visible)
@@ -151,19 +151,19 @@ public struct PremiumHubView: View {
                 presentedSlot = nil
             }
         }
-        // 🔤 Configure alphabet by current language (e.g., "he" for Hebrew)
         .onAppear {
             PremiumHubModel.configureFor(language: language)
+            hub.refreshAIDifficulty()
             hub.start()
             timerBridge.set(hub.mainSecondsLeft, total: hub.mainRoundLength)
         }
         .onChange(of: local.locale) {
-            // If user changes language while the view is on screen, reconfigure and reset
             PremiumHubModel.configureFor(language: language)
             hub.resetAll()
             timerBridge.set(hub.mainSecondsLeft, total: hub.mainRoundLength)
         }
-//        .onDisappear { hub.stop() }
+        //        .onDisappear { hub.stop() }
+        .environment(\.layoutDirection, .leftToRight)
     }
 }
 
@@ -171,9 +171,7 @@ public struct PremiumHubView: View {
 
 private struct BackPill: View {
     var action: () -> Void
-    var body: some View {
-        BackButton()
-    }
+    var body: some View { BackButton() }
 }
 
 // 🏆 Pill showing solved words count
@@ -181,19 +179,15 @@ private struct SolvedCounterPill: View {
     let count: Int
     var body: some View {
         HStack(spacing: 6) {
-            Image(systemName: "trophy.fill")
-                .font(.system(size: 12, weight: .bold))
-            Text("\(count)")
-                .font(.caption.weight(.bold))
-                .monospacedDigit()
+            Image(systemName: "trophy.fill").font(.system(size: 12, weight: .bold))
+            Text("\(count)").font(.caption.weight(.bold)).monospacedDigit()
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 6)
+        .padding(.horizontal, 10).padding(.vertical, 6)
         .foregroundStyle(.white)
         .background(.ultraThinMaterial, in: Capsule())
         .overlay(Capsule().stroke(.white.opacity(0.15)))
         .shadow(color: .black.opacity(0.25), radius: 4, y: 1)
-        .accessibilityLabel("Solved words \(count)")
+        .accessibilityLabel("Solved words \(count)".localized)
     }
 }
 
@@ -214,7 +208,11 @@ private enum PremiumPalette {
 // MARK: - Model
 
 private enum MiniKind: CaseIterable {
+    // legacy
     case sand, wax, fog, sonar, ripple, magnet, frost, gyro
+    // new
+    case aiMerchant, symbolPick, symbolPuzzle, luckyWait
+    
     var title: String {
         switch self {
         case .sand: "Sand Dig".localized
@@ -225,8 +223,13 @@ private enum MiniKind: CaseIterable {
         case .magnet: "Magnet".localized
         case .frost: "Frost".localized
         case .gyro: "Gyro Maze".localized
+        case .aiMerchant: "AI Merchant".localized
+        case .symbolPick: "Spot the Letter".localized
+        case .symbolPuzzle: "Symbol Puzzle".localized
+        case .luckyWait: "Lucky Wait".localized
         }
     }
+    
     var icon: String {
         switch self {
         case .sand: "hand.draw"
@@ -237,8 +240,13 @@ private enum MiniKind: CaseIterable {
         case .magnet: "paperclip.circle.fill"
         case .frost: "snowflake"
         case .gyro: "gyroscope"
+        case .aiMerchant: "brain.head.profile"
+        case .symbolPick: "textformat.abc.dottedunderline"
+        case .symbolPuzzle: "puzzlepiece.extension"
+        case .luckyWait: "hourglass"
         }
     }
+    
     var baseLetterChance: Double {
         switch self {
         case .fog:    return 0.22
@@ -249,16 +257,14 @@ private enum MiniKind: CaseIterable {
         case .magnet: return 0.40
         case .frost:  return 0.30
         case .gyro:   return 0.40
+        case .aiMerchant: return 1.0
+        case .symbolPick: return 1.0
+        case .symbolPuzzle: return 1.0
+        case .luckyWait: return 0.0
         }
     }
-    var paceSeconds: Double {
-        switch self {
-        case .fog: 6
-        case .sand, .wax: 14
-        case .sonar: 20
-        default: 12
-        }
-    }
+    
+    static var legacyCases: [MiniKind] { [.sand, .wax, .fog, .sonar, .ripple, .magnet, .frost, .gyro] }
 }
 
 private struct MiniSlot: Identifiable, Hashable {
@@ -273,24 +279,18 @@ private struct MiniSlot: Identifiable, Hashable {
 private final class PremiumHubModel: ObservableObject {
     // 🔤 Alphabets (static, configured at runtime)
     private static let englishAlphabet: [Character] = Array("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
-    // 22 Hebrew letters (no final forms for single-letter pickups)
+    // 22 Hebrew letters (no final forms)
     private static let hebrewAlphabet: [Character] = Array("אבגדהוזחטיכלמנסעפצקרשת")
-    
-    // Current alphabet for seeding minis/slots
     private static var currentAlphabet: [Character] = englishAlphabet
     
-    /// Call once on appear or when locale changes.
     static func configureFor(language: String?) {
-        if language == "he" {
-            currentAlphabet = hebrewAlphabet
-        } else {
-            currentAlphabet = englishAlphabet
-        }
+        currentAlphabet = (language == "he") ? hebrewAlphabet : englishAlphabet
     }
-    
-    // Locale-aware random letter used across minis & slots
-    static func randomLetter() -> Character {
-        currentAlphabet.randomElement() ?? "A"
+    static func randomLetter() -> Character { currentAlphabet.randomElement() ?? "A" }
+    static func isLetter(_ ch: Character) -> Bool { currentAlphabet.contains(ch) }
+    static func randomNonLetter() -> Character {
+        let symbols = Array("!@#$%^&*()_-+=~[]{}<>/\\|:;,.?0123456789")
+        return symbols.randomElement() ?? "#"
     }
     
     @Published private(set) var slots: [MiniSlot] = []
@@ -299,43 +299,45 @@ private final class PremiumHubModel: ObservableObject {
     
     @Published var discoveredLetters: Set<Character> = []
     @Published var canInteract: Bool = true
+    @Published var aiDifficulty: AIDifficulty? = nil
     
     let vm = PremiumHubViewModel()
-    
     private var tick: AnyCancellable?
-    
     private let email: String?
     
     init(email: String?) {
         self.email = email
+        self.aiDifficulty = loadAIDifficulty()
+    }
+    
+    /// Refresh AI difficulty and purge any existing AI-Merchant slots if AI is disabled.
+    func refreshAIDifficulty() {
+        self.aiDifficulty = loadAIDifficulty()
+        if aiDifficulty == nil {
+            // Replace any existing AI Merchant slots immediately so chance is truly 0%.
+            slots = slots.map { $0.kind == .aiMerchant ? Self.makeSlot(hasAI: false) : $0 }
+        }
     }
     
     func start() {
-        // Only seed slots once
         if slots.isEmpty {
-            slots = (0..<8).map { _ in Self.makeSlot() }
+            slots = (0..<8).map { _ in Self.makeSlot(hasAI: aiDifficulty != nil) }
+        } else if aiDifficulty == nil {
+            // Safety: if AI was turned off while slots already existed.
+            slots = slots.map { $0.kind == .aiMerchant ? Self.makeSlot(hasAI: false) : $0 }
         }
         
-        if vm.word == .empty {
-            if let email {
-                Task(priority: .userInitiated) {
-                    await self.vm.word(email: email)
-                }
-            }
+        if vm.word == .empty, let email {
+            Task(priority: .userInitiated) { await self.vm.word(email: email) }
         }
-        
-        // Only attach the tick once; DO NOT reset mainSecondsLeft here
         guard tick == nil else { return }
-        
         tick = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
             .sink { [weak self] _ in
                 guard let self else { return }
                 self.mainSecondsLeft -= 1
-                if self.mainSecondsLeft <= 0 {
-                    resetTimer() // natural end-of-round still resets like before
-                }
+                if self.mainSecondsLeft <= 0 { resetTimer() }
                 self.slots = self.slots.map { s in
-                    s.expiresAt <= Date() ? Self.makeSlot() : s
+                    s.expiresAt <= Date() ? Self.makeSlot(hasAI: self.aiDifficulty != nil) : s
                 }
             }
     }
@@ -343,14 +345,13 @@ private final class PremiumHubModel: ObservableObject {
     private func resetTimer() {
         self.mainSecondsLeft = self.mainRoundLength
         self.discoveredLetters = []
-        guard let email else { return }
-        Task(priority: .userInitiated) {
-            await self.vm.word(email: email)
+        if let email {
+            Task(priority: .userInitiated) { await self.vm.word(email: email) }
         }
     }
     
     func resetAll() {
-        self.slots = (0..<8).map { _ in Self.makeSlot() }
+        self.slots = (0..<8).map { _ in Self.makeSlot(hasAI: aiDifficulty != nil) }
         resetTimer()
     }
     
@@ -362,16 +363,65 @@ private final class PremiumHubModel: ObservableObject {
         guard i >= 0, i < slots.count else { return nil }
         return slots[i]
     }
+    
     func replaceSlot(_ s: MiniSlot) {
         guard let i = slots.firstIndex(of: s) else { return }
-        slots[i] = Self.makeSlot()
+        slots[i] = Self.makeSlot(hasAI: aiDifficulty != nil)
     }
     
-    private static func makeSlot() -> MiniSlot {
-        let kind = MiniKind.allCases.randomElement() ?? .sand
-        let contains = Double.random(in: 0...1) < kind.baseLetterChance
-        let seed: Character? = contains ? randomLetter() : nil
-        let ttl = max(12, Int(kind.paceSeconds * 2.2))
+    private static func selectKind(hasAI: Bool) -> MiniKind {
+        // Requested appearance rates (must sum to 100 when AI is enabled)
+        // sand 11, wax 11, fog 11, sonar 11, ripple 11,
+        // magnet 10, frost 9, gyro 8, aiMerchant 3, symbolPick 5,
+        // symbolPuzzle 5, luckyWait 5
+        var weights: [(MiniKind, Double)] = [
+            (.sand, 11), (.wax, 11), (.fog, 11), (.sonar, 11), (.ripple, 11),
+            (.magnet, 10), (.frost, 9), (.gyro, 8),
+            (.aiMerchant, 3),
+            (.symbolPick, 5), (.symbolPuzzle, 5), (.luckyWait, 5)
+        ]
+        if !hasAI {
+            // ABSOLUTE: 0% chance to show AI Merchant when AI is nil
+            weights.removeAll { $0.0 == .aiMerchant }
+        }
+        let total = weights.reduce(0) { $0 + $1.1 }
+        let r = Double.random(in: 0..<total)
+        var acc = 0.0
+        for (kind, w) in weights {
+            acc += w
+            if r < acc { return kind }
+        }
+        return weights.last?.0 ?? .sand
+    }
+    
+    private static func makeSlot(hasAI: Bool) -> MiniSlot {
+        let kind = selectKind(hasAI: hasAI)
+        let contains: Bool
+        let seed: Character?
+        let ttl: Int
+        
+        switch kind {
+        case .aiMerchant:
+            contains = true; seed = nil; ttl = 20
+        case .symbolPick:
+            contains = true; seed = nil; ttl = 15
+        case .symbolPuzzle:
+            contains = true; seed = nil; ttl = 30
+        case .luckyWait:
+            contains = false; seed = nil; ttl = 12   // 12s slot TTL
+        default:
+            contains = Double.random(in: 0...1) < kind.baseLetterChance
+            seed = contains ? randomLetter() : nil
+            let pace: Double
+            switch kind {
+            case .fog: pace = 6
+            case .sand, .wax: pace = 14
+            case .sonar: pace = 20
+            default: pace = 12
+            }
+            ttl = max(12, Int(pace * 2.2))
+        }
+        
         return MiniSlot(kind: kind,
                         expiresAt: Date().addingTimeInterval(TimeInterval(ttl)),
                         containsLetter: contains,
@@ -386,7 +436,6 @@ private struct Grid3x3: View {
     @Binding var presentedSlot: MiniSlot?
     let engine: CHHapticEngine?
     let reset: () -> Void
-    
     private let spacing: CGFloat = 16
     
     var body: some View {
@@ -394,21 +443,25 @@ private struct Grid3x3: View {
             let totalW = geo.size.width
             let gridW = max(1, totalW - 2*18)
             let cell = max(64, floor((gridW - 2*spacing) / 3))
-            
             VStack(spacing: spacing) {
                 ForEach(0..<3, id: \.self) { r in
                     HStack(spacing: spacing) {
                         ForEach(0..<3, id: \.self) { c in
                             if r == 1 && c == 1 {
-                                MainRoundCircle(hub: hub, reset: reset)               // uses AppTitle() inside
+                                MainRoundCircle(hub: hub, reset: reset)
                                     .frame(width: cell * 0.72, height: cell * 0.72)
                                     .frame(width: cell, height: cell)
                             } else if let slot = hub.slot(atVisualIndex: r, c) {
-                                MiniGameSlotView(slot: slot)
+                                MiniGameSlotView(slot: slot, ai: hub.aiDifficulty)
                                     .frame(width: cell, height: cell)
                                     .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                                     .onTapGesture {
                                         guard hub.canInteract else { return }
+                                        // Block AI sheet if AI is OFF; replace tile instead.
+                                        if slot.kind == .aiMerchant, hub.aiDifficulty == nil {
+                                            hub.replaceSlot(slot)
+                                            return
+                                        }
                                         presentedSlot = slot
                                         lightTap(engine)
                                     }
@@ -425,33 +478,26 @@ private struct Grid3x3: View {
     }
 }
 
-// MARK: - Main circle (COMPACT) — uses AppTitle() + shows available letters inside
+// MARK: - Main circle
 
 private struct MainRoundCircle: View {
     @EnvironmentObject private var router: Router
     @EnvironmentObject private var vm: PremiumHubViewModel
     @ObservedObject var hub: PremiumHubModel
-    
     let reset: () -> Void
     
     var body: some View {
         Button {
-            router.navigateTo(.premiumGame(word: vm.word.value, allowedLetters: String(hub.discoveredLetters).lowercased()))
+            router.navigateTo(.premiumGame(word: vm.word.value,
+                                           allowedLetters: String(hub.discoveredLetters).lowercased()))
         } label: {
             ZStack {
                 Circle()
                     .fill(PremiumPalette.card)
                     .overlay(Circle().stroke(PremiumPalette.stroke, lineWidth: 1))
                     .shadow(color: PremiumPalette.glow, radius: 10, y: 6)
-                
                 VStack(spacing: 8) {
-                    // Your title component inside the circle
-                    AppTitle()
-                        .shadow(radius: 4)
-                        .scaleEffect(.init(width: 0.7, height: 0.7))
-                        .padding(.all, -8)
-                    
-                    // 5 little dots as progress
+                    AppTitle().shadow(radius: 4).scaleEffect(.init(width: 0.7, height: 0.7)).padding(.all, -8)
                     HStack(spacing: 6) {
                         ForEach(0..<5, id: \.self) { i in
                             let show = i < min(5, hub.discoveredLetters.count)
@@ -460,19 +506,13 @@ private struct MainRoundCircle: View {
                                 .frame(width: 8, height: 8)
                                 .overlay(Circle().stroke(.white.opacity(0.35), lineWidth: 0.5))
                         }
-                    }
-                    .padding(.bottom, 4)
-                }
-                .padding(10)
+                    }.padding(.bottom, 4)
+                }.padding(10)
             }
         }
         .tint(.black)
-        .onAppear {
-            router.onForceEndPremium = reset
-        }
-        .onDisappear {
-            router.onForceEndPremium = {}
-        }
+        .onAppear { router.onForceEndPremium = reset }
+        .onDisappear { router.onForceEndPremium = {} }
     }
 }
 
@@ -480,21 +520,31 @@ private struct MainRoundCircle: View {
 
 private struct MiniGameSlotView: View {
     let slot: MiniSlot
+    var ai: AIDifficulty?
     var body: some View {
         VStack(spacing: 8) {
-            Image(systemName: slot.kind.icon)
-                .font(.system(size: 26, weight: .medium))
-                .foregroundStyle(.white.opacity(0.95))
-                .frame(height: 30)
-            
+            ZStack {
+                // Show the fancy AI ring only when AI is enabled
+                if slot.kind == .aiMerchant, ai != nil {
+                    Circle().stroke(
+                        LinearGradient(colors: [.white.opacity(0.9), PremiumPalette.accent],
+                                       startPoint: .topLeading, endPoint: .bottomTrailing),
+                        lineWidth: 2.5
+                    )
+                    .frame(width: 36, height: 36)
+                    .shadow(color: PremiumPalette.glow, radius: 6, y: 3)
+                }
+                Image(systemName: slot.kind.icon)
+                    .font(.system(size: 26, weight: .medium))
+                    .foregroundStyle(.white.opacity(0.95))
+                    .frame(height: 30)
+            }
             Text(slot.kind.title)
                 .font(.system(.subheadline, design: .rounded).weight(.semibold))
                 .foregroundStyle(.white.opacity(0.9))
-            
-            // Live countdown that updates every second
             TimelineView(.periodic(from: .now, by: 1)) { timeline in
                 let secs = max(0, Int(slot.expiresAt.timeIntervalSince(timeline.date).rounded()))
-                Text("refresh in \(secs)s")
+                Text("refresh in \(secs)s".localized)
                     .font(.system(.caption2, design: .rounded))
                     .foregroundStyle(.white.opacity(0.55))
             }
@@ -510,30 +560,30 @@ private struct MiniGameSlotView: View {
 
 // MARK: - Popup host
 
-private enum MiniResult { case found(Character), nothing }
+private enum MiniResult { case found(Character), foundMany([Character]), nothing, close }
 
 private struct MiniGameSheet: View {
     let slot: MiniSlot
     @ObservedObject var hub: PremiumHubModel
     var onDone: (MiniResult) -> Void
+    @State private var closed = false
     
     var body: some View {
         VStack(spacing: 16) {
             Capsule().fill(.secondary.opacity(0.35)).frame(width: 38, height: 5).padding(.top, 8)
-            
             HStack {
                 Label(slot.kind.title, systemImage: slot.kind.icon)
                     .labelStyle(.titleAndIcon)
                     .font(.system(.headline, design: .rounded).weight(.semibold))
                 Spacer()
                 if slot.containsLetter {
-                    Text("Contains letter")
+                    Text("Contains letter".localized)
                         .font(.caption2.weight(.bold))
                         .padding(.horizontal, 8).padding(.vertical, 4)
                         .background(Capsule().fill(PremiumPalette.accent.opacity(0.22)))
                         .foregroundStyle(.white.opacity(0.9))
                 } else {
-                    Text("May be empty")
+                    Text("May be empty".localized)
                         .font(.caption2)
                         .foregroundStyle(.white.opacity(0.6))
                 }
@@ -550,16 +600,28 @@ private struct MiniGameSheet: View {
                 case .magnet: MagnetMini(hasLetter: slot.containsLetter, letter: slot.seededLetter, onDone: onDone)
                 case .frost:  FrostMini(hasLetter: slot.containsLetter, letter: slot.seededLetter, onDone: onDone)
                 case .gyro:   GyroMazeMini(letter: slot.seededLetter ?? PremiumHubModel.randomLetter(), onDone: onDone)
+                case .aiMerchant: AIMerchantMini(deadline: slot.expiresAt, ai: hub.aiDifficulty, onDone: onDone)
+                case .symbolPick: SymbolPickMini(deadline: slot.expiresAt, onDone: onDone)
+                case .symbolPuzzle: SymbolPuzzleMini(deadline: slot.expiresAt, onDone: onDone)
+                case .luckyWait: LuckyWaitMini(deadline: slot.expiresAt, onDone: onDone)
                 }
             }
             .padding(.horizontal)
             .padding(.bottom, 14)
         }
         .background(
-            LinearGradient(colors: [Color.black.opacity(0.88), Color.black.opacity(0.94)], startPoint: .top, endPoint: .bottom)
-                .ignoresSafeArea()
+            LinearGradient(colors: [Color.black.opacity(0.88), Color.black.opacity(0.94)],
+                           startPoint: .top, endPoint: .bottom)
+            .ignoresSafeArea()
         )
-        // 🔧 FIX: force LTR inside minis so gestures/taps aren't mirrored under RTL (Hebrew).
+        // global auto-close on expiry
+        .onReceive(Timer.publish(every: 0.25, on: .main, in: .common).autoconnect()) { _ in
+            guard !closed else { return }
+            if Date() >= slot.expiresAt {
+                closed = true
+                onDone(.nothing)
+            }
+        }
         .environment(\.layoutDirection, .leftToRight)
     }
 }
@@ -607,7 +669,7 @@ struct MainRoundTimerView: View {
         .overlay(
             HStack(spacing: 6) {
                 Text("\(secondsLeft)s").font(.caption2.monospacedDigit()).foregroundStyle(.white.opacity(0.9))
-                Text("round").font(.caption2).foregroundStyle(.white.opacity(0.5))
+                Text("round".localized).font(.caption2).foregroundStyle(.white.opacity(0.5))
             }
                 .padding(.horizontal, 6),
             alignment: .trailing
@@ -617,7 +679,7 @@ struct MainRoundTimerView: View {
     }
 }
 
-// MARK: - Mini #1: Sand Dig
+// MARK: - Legacy Minis (unchanged behavior)
 
 private struct SandDigMini: View {
     let hasLetter: Bool
@@ -632,10 +694,8 @@ private struct SandDigMini: View {
     var body: some View {
         GeometryReader { geo in
             ZStack {
-                RoundedRectangle(cornerRadius: 18)
-                    .fill(PremiumPalette.sand)
+                RoundedRectangle(cornerRadius: 18).fill(PremiumPalette.sand)
                     .overlay(RoundedRectangle(cornerRadius: 18).stroke(PremiumPalette.stroke, lineWidth: 1))
-                
                 if hasLetter {
                     Text(String(seeded))
                         .font(.system(size: min(geo.size.width, geo.size.height) * 0.42, weight: .heavy, design: .rounded))
@@ -644,7 +704,6 @@ private struct SandDigMini: View {
                         .mask(RevealMask(points: strokes))
                         .animation(.easeInOut(duration: 0.2), value: strokes.count)
                 }
-                
                 Canvas { ctx, _ in
                     for p in strokes {
                         let rect = CGRect(x: p.x - 14, y: p.y - 14, width: 28, height: 28)
@@ -679,14 +738,10 @@ private struct RevealMask: Shape {
     let points: [CGPoint]
     func path(in rect: CGRect) -> Path {
         var p = Path()
-        for pt in points {
-            p.addEllipse(in: CGRect(x: pt.x-28, y: pt.y-28, width: 56, height: 56))
-        }
+        for pt in points { p.addEllipse(in: CGRect(x: pt.x-28, y: pt.y-28, width: 56, height: 56)) }
         return p
     }
 }
-
-// MARK: - Mini #2: Wax Press
 
 private struct WaxPressMini: View {
     let hasLetter: Bool
@@ -701,8 +756,7 @@ private struct WaxPressMini: View {
     var body: some View {
         GeometryReader { geo in
             ZStack {
-                RoundedRectangle(cornerRadius: 18)
-                    .fill(PremiumPalette.wax)
+                RoundedRectangle(cornerRadius: 18).fill(PremiumPalette.wax)
                     .overlay(
                         LinearGradient(colors: [.white.opacity(0.7), .white.opacity(0.15)],
                                        startPoint: .topLeading, endPoint: .bottomTrailing)
@@ -710,7 +764,6 @@ private struct WaxPressMini: View {
                         .opacity(0.7 - 0.6 * clarity)
                     )
                     .overlay(RoundedRectangle(cornerRadius: 18).stroke(PremiumPalette.stroke, lineWidth: 1))
-                
                 if hasLetter {
                     Text(String(seeded))
                         .font(.system(size: min(geo.size.width, geo.size.height) * 0.42, weight: .heavy, design: .rounded))
@@ -728,10 +781,7 @@ private struct WaxPressMini: View {
             }
             .contentShape(RoundedRectangle(cornerRadius: 18))
             .gesture(DragGesture(minimumDistance: 0)
-                .onChanged { g in
-                    pressPoint = g.location
-                    clarity = min(1, clarity + 0.02)
-                }
+                .onChanged { g in pressPoint = g.location; clarity = min(1, clarity + 0.02) }
                 .onEnded { _ in
                     let success = hasLetter && overlap(pressPoint ?? .zero, letterPos, clarity: clarity)
                     onDone(success ? .found(seeded) : .nothing)
@@ -746,31 +796,24 @@ private struct WaxPressMini: View {
         }
         .frame(height: 300)
     }
-    
     private func overlap(_ a: CGPoint, _ b: CGPoint, clarity: CGFloat) -> Bool {
         hypot(a.x - b.x, a.y - b.y) < 80 * max(0.4, clarity)
     }
 }
 
-// MARK: - Mini #3: Fog Wipe
-
 private struct FogWipeMini: View {
     let hasLetter: Bool
     let letter: Character?
     let onDone: (MiniResult) -> Void
-    
     @State private var strokes: [CGPoint] = []
     @State private var letterPos: CGPoint = .zero
     @State private var seeded: Character = "A"
     @State private var finished = false
-    
     var body: some View {
         GeometryReader { geo in
             ZStack {
-                RoundedRectangle(cornerRadius: 18)
-                    .fill(Color.black.opacity(0.9))
+                RoundedRectangle(cornerRadius: 18).fill(Color.black.opacity(0.9))
                     .overlay(RoundedRectangle(cornerRadius: 18).stroke(PremiumPalette.stroke, lineWidth: 1))
-                
                 if hasLetter {
                     Text(String(seeded))
                         .font(.system(size: min(geo.size.width, geo.size.height) * 0.42, weight: .heavy, design: .rounded))
@@ -778,7 +821,6 @@ private struct FogWipeMini: View {
                         .position(letterPos)
                         .mask(RevealMask(points: strokes))
                 }
-                
                 RoundedRectangle(cornerRadius: 18)
                     .fill(PremiumPalette.frost)
                     .mask(
@@ -816,28 +858,20 @@ private struct FogWipeMini: View {
     }
 }
 
-// MARK: - Mini #4: Sonar
-
 private struct SonarMini: View {
     let letter: Character
     let onDone: (MiniResult) -> Void
-    
     @State private var target: CGPoint = .zero
     @State private var pings: [Ping] = []
     @State private var solved = false
-    
     struct Ping: Identifiable { let id = UUID(); let center: CGPoint; let date: Date; let strength: Double }
-    
     var body: some View {
         GeometryReader { geo in
             ZStack {
-                RoundedRectangle(cornerRadius: 18)
-                    .fill(Color.black.opacity(0.75))
+                RoundedRectangle(cornerRadius: 18).fill(Color.black.opacity(0.75))
                     .overlay(RoundedRectangle(cornerRadius: 18).stroke(PremiumPalette.stroke, lineWidth: 1))
-                
                 GridPattern().stroke(Color.white.opacity(0.15), lineWidth: 1)
                     .clipShape(RoundedRectangle(cornerRadius: 18))
-                
                 TimelineView(.animation) { timeline in
                     Canvas { ctx, _ in
                         for ping in pings {
@@ -850,7 +884,6 @@ private struct SonarMini: View {
                         }
                     }
                 }
-                
                 if solved {
                     Text(String(letter))
                         .font(.system(size: min(geo.size.width, geo.size.height) * 0.40, weight: .heavy, design: .rounded))
@@ -879,44 +912,40 @@ private struct SonarMini: View {
         .frame(height: 300)
     }
 }
-
 private struct GridPattern: Shape {
     func path(in rect: CGRect) -> Path {
         var p = Path()
-        for x in stride(from: rect.minX, through: rect.maxX, by: 24) { p.move(to: CGPoint(x: x, y: rect.minY)); p.addLine(to: CGPoint(x: x, y: rect.maxY)) }
-        for y in stride(from: rect.minY, through: rect.maxY, by: 24) { p.move(to: CGPoint(x: rect.minX, y: y)); p.addLine(to: CGPoint(x: rect.maxX, y: y)) }
+        for x in stride(from: rect.minX, through: rect.maxX, by: 24) {
+            p.move(to: CGPoint(x: x, y: rect.minY)); p.addLine(to: CGPoint(x: x, y: rect.maxY))
+        }
+        for y in stride(from: rect.minY, through: rect.maxY, by: 24) {
+            p.move(to: CGPoint(x: rect.minX, y: y)); p.addLine(to: CGPoint(x: rect.maxX, y: y))
+        }
         return p
     }
 }
-
-// MARK: - Mini #5: Ripples — state updates moved out of Canvas
 
 private struct RippleMini: View {
     let hasLetter: Bool
     let letter: Character?
     let onDone: (MiniResult) -> Void
-    
     struct Ring: Identifiable { let id = UUID(); let center: CGPoint; let start: Date }
     @State private var rings: [Ring] = []
     @State private var target: CGPoint = .zero
     @State private var seeded: Character = "A"
     @State private var solved = false
     @State private var frameTimer = Timer.publish(every: 1/60, on: .main, in: .common).autoconnect()
-    
     var body: some View {
         GeometryReader { geo in
             ZStack {
-                RoundedRectangle(cornerRadius: 18)
-                    .fill(Color.black.opacity(0.85))
+                RoundedRectangle(cornerRadius: 18).fill(Color.black.opacity(0.85))
                     .overlay(RoundedRectangle(cornerRadius: 18).stroke(PremiumPalette.stroke, lineWidth: 1))
-                
                 if solved, hasLetter {
                     Text(String(seeded))
                         .font(.system(size: min(geo.size.width, geo.size.height) * 0.40, weight: .heavy, design: .rounded))
                         .foregroundStyle(.white)
                         .position(target)
                 }
-                
                 TimelineView(.animation) { tl in
                     Canvas { ctx, _ in
                         for ring in rings {
@@ -955,13 +984,10 @@ private struct RippleMini: View {
     }
 }
 
-// MARK: - Mini #6: Magnet — physics outside Canvas
-
 private struct MagnetMini: View {
     let hasLetter: Bool
     let letter: Character?
     let onDone: (MiniResult) -> Void
-    
     struct Particle: Identifiable { let id = UUID(); var p: CGPoint; var v: CGVector }
     @State private var filings: [Particle] = []
     @State private var magnetPos: CGPoint = .zero
@@ -969,16 +995,12 @@ private struct MagnetMini: View {
     @State private var seeded: Character = "A"
     @State private var closeTicks = 0
     @State private var physicsTimer = Timer.publish(every: 1/60, on: .main, in: .common).autoconnect()
-    
     var body: some View {
         GeometryReader { geo in
             let bounds = geo.size
-            
             ZStack {
-                RoundedRectangle(cornerRadius: 18)
-                    .fill(Color.black.opacity(0.85))
+                RoundedRectangle(cornerRadius: 18).fill(Color.black.opacity(0.85))
                     .overlay(RoundedRectangle(cornerRadius: 18).stroke(PremiumPalette.stroke, lineWidth: 1))
-                
                 Canvas { ctx, _ in
                     var path = Path()
                     for _ in 0..<7 {
@@ -990,22 +1012,18 @@ private struct MagnetMini: View {
                     }
                     ctx.stroke(path, with: .color(.white.opacity(0.08)), lineWidth: 5)
                 }
-                
                 if hasLetter {
                     Text(String(seeded))
                         .font(.system(size: min(bounds.width, bounds.height) * 0.42, weight: .heavy, design: .rounded))
                         .foregroundStyle(.white.opacity(0.04))
                         .position(letterPos)
                 }
-                
                 Canvas { ctx, _ in
                     for f in filings {
                         let rect = CGRect(x: f.p.x - 2, y: f.p.y - 2, width: 4, height: 4)
                         ctx.fill(Ellipse().path(in: rect), with: .color(.white.opacity(0.8)))
                     }
                 }
-                
-                // Use a safe symbol (magnet.fill may not exist on older sets)
                 Image(systemName: "paperclip.circle.fill")
                     .font(.system(size: 28, weight: .regular))
                     .foregroundStyle(PremiumPalette.accent)
@@ -1014,9 +1032,8 @@ private struct MagnetMini: View {
                         .onChanged { g in magnetPos = g.location }
                         .onEnded { _ in
                             let d = hypot(magnetPos.x - letterPos.x, magnetPos.y - letterPos.y)
-                            if hasLetter && d < 46 { onDone(.found(seeded)) } else { onDone(.nothing) }
-                        }
-                    )
+                            onDone((hasLetter && d < 46) ? .found(seeded) : .nothing)
+                        })
             }
             .onReceive(physicsTimer) { _ in
                 var updated: [Particle] = []
@@ -1031,7 +1048,6 @@ private struct MagnetMini: View {
                     updated.append(f)
                 }
                 filings = updated
-                
                 if hasLetter {
                     let d = hypot(magnetPos.x - letterPos.x, magnetPos.y - letterPos.y)
                     closeTicks = d < 48 ? (closeTicks + 1) : 0
@@ -1044,7 +1060,6 @@ private struct MagnetMini: View {
                 letterPos = CGPoint(x: .random(in: inset...(bounds.width - inset)),
                                     y: .random(in: inset...(bounds.height - inset)))
                 magnetPos = CGPoint(x: bounds.width/2, y: 28)
-                
                 filings = (0..<90).map { _ in
                     Particle(p: CGPoint(x: .random(in: 20...(bounds.width-20)),
                                         y: .random(in: 20...(bounds.height-20))),
@@ -1056,24 +1071,18 @@ private struct MagnetMini: View {
     }
 }
 
-// MARK: - Mini #7: Frost
-
 private struct FrostMini: View {
     let hasLetter: Bool
     let letter: Character?
     let onDone: (MiniResult) -> Void
-    
     @State private var heatPoints: [CGPoint] = []
     @State private var letterPos: CGPoint = .zero
     @State private var seeded: Character = "A"
-    
     var body: some View {
         GeometryReader { geo in
             ZStack {
-                RoundedRectangle(cornerRadius: 18)
-                    .fill(Color.black.opacity(0.88))
+                RoundedRectangle(cornerRadius: 18).fill(Color.black.opacity(0.88))
                     .overlay(RoundedRectangle(cornerRadius: 18).stroke(PremiumPalette.stroke, lineWidth: 1))
-                
                 if hasLetter {
                     Text(String(seeded))
                         .font(.system(size: min(geo.size.width, geo.size.height) * 0.42, weight: .heavy, design: .rounded))
@@ -1081,10 +1090,7 @@ private struct FrostMini: View {
                         .position(letterPos)
                         .mask(HeatMask(points: heatPoints))
                 }
-                
-                FrostOverlay()
-                    .clipShape(RoundedRectangle(cornerRadius: 18))
-                    .opacity(0.9)
+                FrostOverlay().clipShape(RoundedRectangle(cornerRadius: 18)).opacity(0.9)
             }
             .gesture(DragGesture(minimumDistance: 0)
                 .onChanged { g in heatPoints.append(g.location) }
@@ -1102,14 +1108,11 @@ private struct FrostMini: View {
         .frame(height: 280)
     }
 }
-
 private struct HeatMask: Shape {
     let points: [CGPoint]
     func path(in rect: CGRect) -> Path {
         var p = Path()
-        for pt in points {
-            p.addEllipse(in: CGRect(x: pt.x-28, y: pt.y-28, width: 56, height: 56))
-        }
+        for pt in points { p.addEllipse(in: CGRect(x: pt.x-28, y: pt.y-28, width: 56, height: 56)) }
         return p
     }
 }
@@ -1120,38 +1123,31 @@ private struct FrostOverlay: View {
                 let r = CGFloat.random(in: 1...2.6)
                 let x = CGFloat.random(in: 0...size.width)
                 let y = CGFloat.random(in: 0...size.height)
-                ctx.fill(Ellipse().path(in: CGRect(x: x, y: y, width: r, height: r)), with: .color(.white.opacity(0.6)))
+                ctx.fill(Ellipse().path(in: CGRect(x: x, y: y, width: r, height: r)),
+                         with: .color(.white.opacity(0.6)))
             }
-        }
-        .blur(radius: 1.2)
+        }.blur(radius: 1.2)
     }
 }
-
-// MARK: - Mini #8: Gyro Maze
 
 private struct GyroMazeMini: View {
     let letter: Character
     let onDone: (MiniResult) -> Void
-    
     @State private var ball = CGPoint(x: 40, y: 40)
     @State private var target = CGPoint(x: 260, y: 220)
     @State private var vel = CGVector(dx: 0, dy: 0)
     private let motion = CMMotionManager()
-    
     var body: some View {
         GeometryReader { geo in
             ZStack {
-                RoundedRectangle(cornerRadius: 18)
-                    .fill(Color.black.opacity(0.88))
+                RoundedRectangle(cornerRadius: 18).fill(Color.black.opacity(0.88))
                     .overlay(RoundedRectangle(cornerRadius: 18).stroke(PremiumPalette.stroke, lineWidth: 1))
-                
                 Text(String(letter))
                     .font(.system(size: 42, weight: .heavy, design: .rounded))
                     .foregroundStyle(.white)
                     .frame(width: 56, height: 56)
                     .background(Circle().fill(PremiumPalette.accent.opacity(0.25)))
                     .position(target)
-                
                 Circle()
                     .fill(.white)
                     .frame(width: 22, height: 22)
@@ -1160,9 +1156,7 @@ private struct GyroMazeMini: View {
                     .gesture(DragGesture(minimumDistance: 0)
                         .onChanged { g in ball = g.location }
                         .onEnded { _ in checkSuccess() })
-                
-                RoundedRectangle(cornerRadius: 18)
-                    .stroke(.white.opacity(0.1), lineWidth: 8)
+                RoundedRectangle(cornerRadius: 18).stroke(.white.opacity(0.1), lineWidth: 8)
             }
             .onAppear {
                 let inset: CGFloat = 36
@@ -1170,7 +1164,6 @@ private struct GyroMazeMini: View {
                                y: .random(in: inset...(geo.size.height - inset)))
                 target = CGPoint(x: .random(in: inset...(geo.size.width - inset)),
                                  y: .random(in: inset...(geo.size.height - inset)))
-                
                 if motion.isDeviceMotionAvailable {
                     motion.deviceMotionUpdateInterval = 1/60
                     motion.startDeviceMotionUpdates(to: .main) { data, _ in
@@ -1188,9 +1181,388 @@ private struct GyroMazeMini: View {
         }
         .frame(height: 280)
     }
-    
     private func checkSuccess() {
         if hypot(ball.x - target.x, ball.y - target.y) < 28 { onDone(.found(letter)) }
+    }
+}
+
+// MARK: - NEW: AI Merchant
+
+private struct AIMerchantMini: View {
+    let deadline: Date
+    let ai: AIDifficulty?
+    var onDone: (MiniResult) -> Void
+    
+    @State private var offered: [Character] = []
+    @State private var picked: Set<Character> = []
+    
+    var body: some View {
+        VStack(spacing: 12) {
+            HStack(spacing: 10) {
+                if let ai {
+                    Image(ai.rawValue.image) // assets: easyAI / mediumAI / hardAI / bossAI
+                        .resizable().scaledToFill()
+                        .frame(width: 40, height: 40)
+                        .clipShape(Circle())
+                        .overlay(Circle().stroke(.white.opacity(0.6), lineWidth: 1))
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(ai.rawValue.name).font(.subheadline.weight(.semibold))
+                        Text("take this".localized).font(.caption).foregroundStyle(.white.opacity(0.7))
+                    }
+                } else { Text("Unavailable".localized).font(.subheadline) }
+                Spacer()
+                CountdownPill(deadline: deadline)
+            }
+            .padding(.bottom, 6)
+            
+            // Spaced AI tokens (adaptive grid)
+            WrapLetters(letters: offered, picked: picked, spacing: 6, runSpacing: 8) { ch in
+                guard !picked.contains(ch) else { return }
+                picked.insert(ch)
+                onDone(.found(ch))
+                if picked.count == offered.count { onDone(.close) }
+            }
+        }
+        .onAppear {
+            let count = ai?.premiumLetterCount ?? 0
+            var set: Set<Character> = []
+            while set.count < count { set.insert(PremiumHubModel.randomLetter()) }
+            offered = Array(set).shuffled()
+        }
+    }
+}
+
+private struct CountdownPill: View {
+    let deadline: Date
+    @State private var now = Date()
+    var body: some View {
+        let s = max(0, Int(deadline.timeIntervalSince(now).rounded()))
+        Text("\(s)s")
+            .font(.caption2.monospacedDigit())
+            .padding(.horizontal, 10).padding(.vertical, 4)
+            .background(Capsule().fill(.white.opacity(0.12)))
+            .onReceive(Timer.publish(every: 0.5, on: .main, in: .common).autoconnect()) { d in now = d }
+    }
+}
+
+// MARK: - FlowLayout (kept for other views if needed)
+fileprivate struct FlowLayout: Layout {
+    var spacing: CGFloat = 8
+    var runSpacing: CGFloat = 8
+    
+    func sizeThatFits(
+        proposal: ProposedViewSize,
+        subviews: Subviews,
+        cache: inout ()
+    ) -> CGSize {
+        let maxWidth = proposal.width ?? .infinity
+        var x: CGFloat = 0
+        var y: CGFloat = 0
+        var lineHeight: CGFloat = 0
+        var maxLineWidth: CGFloat = 0
+        
+        for s in subviews {
+            let sz = s.sizeThatFits(.unspecified)
+            if x > 0, x + sz.width > maxWidth {
+                maxLineWidth = max(maxLineWidth, x - spacing)
+                x = 0
+                y += lineHeight + runSpacing
+                lineHeight = 0
+            }
+            x += (x > 0 ? spacing : 0) + sz.width
+            lineHeight = max(lineHeight, sz.height)
+        }
+        maxLineWidth = max(maxLineWidth, x)
+        return CGSize(width: maxLineWidth, height: y + lineHeight)
+    }
+    
+    func placeSubviews(
+        in bounds: CGRect,
+        proposal: ProposedViewSize,
+        subviews: Subviews,
+        cache: inout ()
+    ) {
+        let maxWidth = bounds.width
+        var x: CGFloat = 0
+        var y: CGFloat = 0
+        var lineHeight: CGFloat = 0
+        
+        for s in subviews {
+            let sz = s.sizeThatFits(.unspecified)
+            if x > 0, x + sz.width > maxWidth {
+                x = 0
+                y += lineHeight + runSpacing
+                lineHeight = 0
+            }
+            s.place(
+                at: CGPoint(x: bounds.minX + x, y: bounds.minY + y),
+                proposal: ProposedViewSize(width: sz.width, height: sz.height)
+            )
+            x += (x > 0 ? spacing : 0) + sz.width
+            lineHeight = max(lineHeight, sz.height)
+        }
+    }
+}
+
+private struct ThickGlassCell: View {
+    let character: Character
+    
+    var body: some View {
+        ZStack {
+            // faint base so background shines through
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(Color.white.opacity(0.04))
+            
+            // content behind the glass
+            Text(String(character))
+                .font(.system(size: 28, weight: .bold, design: .rounded))
+                .foregroundStyle(.white)
+                .scaleEffect(1.06)
+                .opacity(0.85)
+                .blur(radius: 1.2)
+            
+            // the glass itself – translucent
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(.thickMaterial)
+                .overlay(
+                    LinearGradient(
+                        colors: [.white.opacity(0.45), .white.opacity(0.10), .clear],
+                        startPoint: .topLeading, endPoint: .bottomTrailing
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .blendMode(.screen)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .stroke(.white.opacity(0.16), lineWidth: 1)  // crisp rim
+                )
+                .overlay(GlassSpeckle().opacity(0.05)
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous)))
+                .shadow(color: .black.opacity(0.30), radius: 7, y: 3)
+                .allowsHitTesting(false)
+        }
+        .frame(height: 56)
+    }
+}
+
+fileprivate struct GlassSpeckle: View {
+    var body: some View {
+        Canvas { ctx, size in
+            for _ in 0..<36 {
+                let r = CGFloat.random(in: 0.6...1.6)
+                let x = CGFloat.random(in: 0...size.width)
+                let y = CGFloat.random(in: 0...size.height)
+                ctx.fill(
+                    Ellipse().path(in: CGRect(x: x, y: y, width: r, height: r)),
+                    with: .color(.white.opacity(0.8))
+                )
+            }
+        }
+        .blur(radius: 0.8)
+    }
+}
+
+fileprivate struct WrapLetters: View {
+    let letters: [Character]
+    let picked: Set<Character>
+    var spacing: CGFloat = 14
+    var runSpacing: CGFloat = 12
+    let tap: (Character) -> Void
+    
+    var body: some View {
+        // Adaptive grid guarantees spacing & line breaks
+        LazyVGrid(columns: [GridItem(.adaptive(minimum: 46), spacing: spacing)],
+                  spacing: runSpacing) {
+            ForEach(letters, id: \.self) { ch in
+                Button { tap(ch) } label: {
+                    Text(String(ch))
+                        .font(.system(.title2, design: .rounded).weight(.heavy))
+                        .foregroundStyle(.black)
+                        .frame(width: 46, height: 46)
+                        .background(Circle().fill(PremiumPalette.accent))
+                        .overlay(Circle().stroke(.white.opacity(0.5), lineWidth: 1))
+                        .opacity(picked.contains(ch) ? 0.25 : 1)
+                        .scaleEffect(picked.contains(ch) ? 0.82 : 1)
+                        .animation(.spring(response: 0.35, dampingFraction: 0.8),
+                                   value: picked.contains(ch))
+                }
+                .disabled(picked.contains(ch))
+            }
+        }
+                  .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+// MARK: - NEW: Symbol Pick (blurred grid)
+
+private struct SymbolPickMini: View {
+    let deadline: Date
+    var onDone: (MiniResult) -> Void
+    
+    @State private var grid: [(Character, Bool)] = [] // (char, isLetter)
+    
+    var body: some View {
+        VStack(spacing: 8) {
+            HStack {
+                Text("Tap a letter".localized).font(.subheadline.weight(.semibold))
+                Spacer()
+                CountdownPill(deadline: deadline)
+            }
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 4), spacing: 8) {
+                ForEach(0..<grid.count, id: \.self) { i in
+                    let (ch, isL) = grid[i]
+                    Button {
+                        onDone(isL ? .found(ch) : .nothing)
+                    } label: {
+                        ThickGlassCell(character: ch)
+                    }
+                }
+            }
+        }
+        .onAppear {
+            var items: [(Character, Bool)] = []
+            var letters: [Character] = []
+            for _ in 0..<16 {
+                if Bool.random() {
+                    let l = PremiumHubModel.randomLetter()
+                    items.append((l, true)); letters.append(l)
+                } else {
+                    items.append((PremiumHubModel.randomNonLetter(), false))
+                }
+            }
+            if letters.isEmpty {
+                let l = PremiumHubModel.randomLetter()
+                items[Int.random(in: 0..<items.count)] = (l, true)
+            }
+            grid = items.shuffled()
+        }
+    }
+}
+
+// MARK: - NEW: Symbol Puzzle (rotate & decide)
+
+private struct SymbolPuzzleMini: View {
+    let deadline: Date
+    var onDone: (MiniResult) -> Void
+    
+    @State private var symbol: Character = "?"
+    @State private var isLetter = false
+    @State private var angle: Double = [0, 90, 180, 270].randomElement()!
+    
+    var body: some View {
+        VStack(spacing: 14) {
+            HStack {
+                Text("Is this a letter?".localized).font(.subheadline.weight(.semibold))
+                Spacer()
+                CountdownPill(deadline: deadline)
+            }
+            ZStack {
+                RoundedRectangle(cornerRadius: 16).fill(.white.opacity(0.06))
+                    .overlay(RoundedRectangle(cornerRadius: 16).stroke(.white.opacity(0.12)))
+                Text(String(symbol))
+                    .font(.system(size: 120, weight: .heavy, design: .rounded))
+                    .foregroundStyle(.white)
+                    .rotationEffect(.degrees(angle))
+                    .animation(.spring(response: 0.35, dampingFraction: 0.8), value: angle)
+                    .padding(10)
+            }
+            .frame(height: 200)
+            HStack(spacing: 12) {
+                Button { angle -= 90 } label: {
+                    Label("Rotate", systemImage: "rotate.left")
+                }
+                .buttonStyle(.borderedProminent)
+                
+                Button { angle += 90 } label: {
+                    Label("Rotate", systemImage: "rotate.right")
+                }
+                .buttonStyle(.bordered)
+                Spacer()
+                Button {
+                    let upright = Int(((angle.truncatingRemainder(dividingBy: 360)) + 360).truncatingRemainder(dividingBy: 360))
+                    if isLetter && upright % 360 == 0 {
+                        onDone(.found(symbol))
+                    } else {
+                        onDone(.nothing)
+                    }
+                } label: { Text("Yes".localized).bold() }
+                    .buttonStyle(.borderedProminent)
+                
+                Button { onDone(.nothing) } label: { Text("No".localized) }
+                    .buttonStyle(.bordered)
+            }
+        }
+        .onAppear {
+            if Bool.random() {
+                symbol = PremiumHubModel.randomLetter()
+                isLetter = true
+            } else {
+                symbol = PremiumHubModel.randomNonLetter()
+                isLetter = false
+            }
+        }
+    }
+}
+
+// MARK: - NEW: Lucky Wait
+private struct LuckyWaitMini: View {
+    let deadline: Date
+    var onDone: (MiniResult) -> Void
+    
+    @State private var started = Date()
+    @State private var resolved = false
+    @State private var showLetter: Character? = nil
+    @State private var showNo = false
+    
+    var body: some View {
+        VStack(spacing: 12) {
+            HStack {
+                Text("Wait 5 seconds…".localized).font(.subheadline.weight(.semibold))
+                Spacer()
+                CountdownPill(deadline: deadline)
+            }
+            ZStack {
+                RoundedRectangle(cornerRadius: 18).fill(.white.opacity(0.06))
+                    .overlay(RoundedRectangle(cornerRadius: 18).stroke(.white.opacity(0.1)))
+                    .frame(height: 140)
+                if let ch = showLetter {
+                    Text(String(ch))
+                        .font(.system(size: 72, weight: .heavy, design: .rounded))
+                        .foregroundStyle(.white)
+                        .transition(.scale.combined(with: .opacity))
+                } else if showNo {
+                    Text("No letter".localized)
+                        .font(.headline)
+                        .foregroundStyle(.white.opacity(0.8))
+                        .transition(.opacity)
+                } else {
+                    ProgressView()
+                        .progressViewStyle(.circular)
+                        .tint(.white)
+                }
+            }
+        }
+        .onAppear { started = Date() }
+        .onReceive(Timer.publish(every: 0.1, on: .main, in: .common).autoconnect()) { now in
+            guard !resolved else { return }
+            if now.timeIntervalSince(started) >= 5 {
+                resolved = true
+                if Bool.random() {
+                    let ch = PremiumHubModel.randomLetter()
+                    withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                        showLetter = ch
+                    }
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) {
+                        onDone(.found(ch))
+                    }
+                } else {
+                    withAnimation(.easeInOut(duration: 0.35)) { showNo = true }
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+                        onDone(.nothing)
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -1205,6 +1577,7 @@ private func lightTap(_ engine: CHHapticEngine?) {
     try? engine?.start()
     try? engine?.makePlayer(with: CHHapticPattern(events: [evt], parameters: [])).start(atTime: 0)
 }
+
 private func success(_ engine: CHHapticEngine?) {
     guard CHHapticEngine.capabilitiesForHardware().supportsHaptics else { return }
     let evts = [
@@ -1220,6 +1593,7 @@ private func success(_ engine: CHHapticEngine?) {
     try? engine?.start()
     try? engine?.makePlayer(with: CHHapticPattern(events: evts, parameters: [])).start(atTime: 0)
 }
+
 private func warn(_ engine: CHHapticEngine?) {
     guard CHHapticEngine.capabilitiesForHardware().supportsHaptics else { return }
     let evts = [

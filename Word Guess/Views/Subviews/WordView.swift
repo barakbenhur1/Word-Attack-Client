@@ -172,9 +172,9 @@ struct WordView<VM: ViewModel>: View {
         guard wordBakup[current] != word[current] else { return }
         
         if current == 0 {
-            let c = value.returnChar(isFinal: current == length - 1)
+            let c = value.returnChar(isFinal: false)
             if allowed == nil || allowed!.set.contains(c.lowercased()) {
-                word[current] = c
+                word[current] = c.returnChar(isFinal: current == length - 1)
             } else {
                 word[current] = ""
                 allowed?.onInvalid()
@@ -185,9 +185,9 @@ struct WordView<VM: ViewModel>: View {
             if current < length - 1 && fieldFocus != FieldFocus(rawValue: length - 1) && wordBakup[current].count == 1 || value.count > 1 {
                 var next: Int = current
                 if !value.isEmpty {
-                    let c = value[0].returnChar(isFinal: current == length - 1)
+                    let c = value[0].returnChar(isFinal: false)
                     if allowed == nil || allowed!.set.contains(c.lowercased()) {
-                        word[next] = c
+                        word[next] = c.returnChar(isFinal: current == length - 1)
                         next += 1
                     } else {
                         word[next] = ""
@@ -200,9 +200,9 @@ struct WordView<VM: ViewModel>: View {
                         let string = String(value.suffix(value.count - 1))
                         for i in 0..<string.count {
                             guard next < word.count else { continue }
-                            let c = string[i].returnChar(isFinal: next == length - 1)
+                            let c = string[i].returnChar(isFinal: false)
                             guard allowed == nil || allowed!.set.contains(c.lowercased()) else { word[next] = ""; allowed?.onInvalid(); continue }
-                            word[next] = c
+                            word[next] = c.returnChar(isFinal: next == length - 1)
                             next += 1
                         }
                     }

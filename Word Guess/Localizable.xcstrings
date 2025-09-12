@@ -271,6 +271,17 @@
         }
       }
     },
+    "AI Merchant" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הסוחר"
+          }
+        }
+      }
+    },
     "AI Opponent" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -382,6 +393,7 @@
       }
     },
     "Available letters" : {
+      "extractionState" : "manual",
       "localizations" : {
         "he" : {
           "stringUnit" : {
@@ -725,16 +737,6 @@
         }
       }
     },
-    "Contains letter" : {
-      "localizations" : {
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "מכיל אותיות"
-          }
-        }
-      }
-    },
     "Continue with Apple" : {
       "localizations" : {
         "he" : {
@@ -976,22 +978,6 @@
     },
     "Direction" : {
       "shouldTranslate" : false
-    },
-    "Discover letters in tactile mini-games. Use them to solve the word." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Discover letters in tactile mini-games.\nUse them to solve the word."
-          }
-        },
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "גלה אותיות במשחקים\nהשתמש בהן לנחש את המילה"
-          }
-        }
-      }
     },
     "Dominated" : {
       "extractionState" : "manual",
@@ -1249,11 +1235,23 @@
       }
     },
     "Find letters in mini-games" : {
+      "extractionState" : "manual",
       "localizations" : {
         "he" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "מצא אותיות במשחקים"
+          }
+        }
+      }
+    },
+    "Find the Letter" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מצא את האות"
           }
         }
       }
@@ -1768,6 +1766,17 @@
         }
       }
     },
+    "Is this a letter?" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "האם זאת אות?"
+          }
+        }
+      }
+    },
     "Jargon jammed" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2062,6 +2071,17 @@
         }
       }
     },
+    "Lucky Wait" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מזל"
+          }
+        }
+      }
+    },
     "Magnet" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2091,16 +2111,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "מוח על"
-          }
-        }
-      }
-    },
-    "May be empty" : {
-      "localizations" : {
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "יכול להיות ריק"
           }
         }
       }
@@ -2321,12 +2331,13 @@
         }
       }
     },
-    "No letters yet" : {
+    "No letter" : {
+      "extractionState" : "manual",
       "localizations" : {
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "אין אותיות עדיין"
+            "value" : "אין אות"
           }
         }
       }
@@ -2886,16 +2897,6 @@
         }
       }
     },
-    "refresh in %llds" : {
-      "localizations" : {
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ריענון בעוד %lld"
-          }
-        }
-      }
-    },
     "Register mismatch" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2988,12 +2989,12 @@
         }
       }
     },
-    "round" : {
+    "Rotate" : {
       "localizations" : {
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "סיבוב"
+            "value" : "סובב"
           }
         }
       }
@@ -3220,12 +3221,13 @@
         }
       }
     },
-    "Solved words %lld" : {
+    "Solved words" : {
+      "extractionState" : "manual",
       "localizations" : {
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "מילים שניחשת %lld"
+            "value" : "מלים שנוחשו"
           }
         }
       }
@@ -3308,6 +3310,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "שם פועל מפוצל!"
+          }
+        }
+      }
+    },
+    "Spot the Letter" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "גלה את האות"
           }
         }
       }
@@ -3416,6 +3429,17 @@
         }
       }
     },
+    "Symbol Puzzle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "פאזל"
+          }
+        }
+      }
+    },
     "Syntax error" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -3473,6 +3497,34 @@
     },
     "T %@" : {
       "shouldTranslate" : false
+    },
+    "take this" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Take This"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "קח את זה"
+          }
+        }
+      }
+    },
+    "Tap a letter" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "לחץ על אות"
+          }
+        }
+      }
     },
     "Terms" : {
       "localizations" : {
@@ -3705,6 +3757,17 @@
         }
       }
     },
+    "Unavailable" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "לא זמין"
+          }
+        }
+      }
+    },
     "Undefeated" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -3799,6 +3862,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "ואקום אוצר מילים"
+          }
+        }
+      }
+    },
+    "Wait 5 seconds…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "חכה 5 שניות…"
           }
         }
       }

@@ -45,6 +45,15 @@ public enum AIDifficulty {
         case .hard, .boss: return (0.00, 1)
         }
     }
+    
+    var premiumLetterCount: Int {
+        switch self {
+        case .easy: 2
+        case .medium: 3
+        case .hard: 4
+        case .boss: 5
+        }
+    }
 }
 
 public enum WordlePrompt {

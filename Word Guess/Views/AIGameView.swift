@@ -350,7 +350,6 @@ struct AIGameView<VM: WordViewModelForAI>: View {
         
         let difficulty = UserDefaults.standard.string(forKey: "aiDifficulty")
         
-#if DEBUG
         switch difficulty ?? AIDifficulty.easy.rawValue.name {
         case AIDifficulty.easy.rawValue.name: self.aiDifficulty = .easy
         case AIDifficulty.medium.rawValue.name: self.aiDifficulty = .medium
@@ -358,16 +357,6 @@ struct AIGameView<VM: WordViewModelForAI>: View {
         case AIDifficulty.boss.rawValue.name: self.aiDifficulty = .boss
         default: fatalError()
         }
-        //        self.aiDifficulty = .boss // change back to easy
-#else
-        switch difficulty ?? AIDifficulty.easy.rawValue.name {
-        case AIDifficulty.easy.rawValue.name: self.aiDifficulty = .easy
-        case AIDifficulty.medium.rawValue.name: self.aiDifficulty = .medium
-        case AIDifficulty.hard.rawValue.name: self.aiDifficulty = .hard
-        case AIDifficulty.boss.rawValue.name: self.aiDifficulty = .boss
-        default: fatalError()
-        }
-#endif
     }
     
     private func aiIntroToggle() {
