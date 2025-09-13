@@ -36,6 +36,8 @@ struct SettingsView: View {
     
     private var language: String? { return local.locale.identifier.components(separatedBy: "_").first }
     
+    var showBack = true
+    
     private func action(item: SettingsOptionButton) {
         switch item.type {
         case .language: showLanguage()
@@ -109,11 +111,13 @@ struct SettingsView: View {
     
     @ViewBuilder private func topView() -> some View {
         ZStack {
-            HStack {
-                BackButton()
-                Spacer()
+            if showBack {
+                HStack {
+                    BackButton()
+                    Spacer()
+                }
+                .environment(\.layoutDirection, language == "he" ? .rightToLeft : .leftToRight)
             }
-            .environment(\.layoutDirection, language == "he" ? .rightToLeft : .leftToRight)
             
             Text("Settings")
                 .font(.largeTitle)

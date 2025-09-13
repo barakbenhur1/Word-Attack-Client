@@ -2421,6 +2421,17 @@
         }
       }
     },
+    "No scores yet" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אין תוצאות עדיין"
+          }
+        }
+      }
+    },
     "No stats yet" : {
       "localizations" : {
         "he" : {
@@ -2752,6 +2763,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "שחק סיבוב\nבשביל לראות\nאת הדירוג שלך"
+          }
+        }
+      }
+    },
+    "Play premium rounds to climb the board." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "שחק סיבובי פרימיום בכדי לטפס בדירוג."
           }
         }
       }
@@ -4014,17 +4036,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "ניצחת"
-          }
-        }
-      }
-    },
-    "Wins" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ניצחונות"
           }
         }
       }

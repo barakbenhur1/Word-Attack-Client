@@ -112,10 +112,10 @@ struct PremiumLeaderboardView<VM: PremiumScoreboardViewModel>: View {
     
     private var emptyState: some View {
         VStack(spacing: 8) {
-            Text("No scores yet".localized)
+            Text("No scores yet")
                 .font(.headline)
                 .foregroundStyle(.white)
-            Text("Play premium rounds to climb the board.".localized)
+            Text("Play premium rounds to climb the board.")
                 .font(.subheadline)
                 .foregroundStyle(.white.opacity(0.7))
         }

@@ -53,6 +53,8 @@ struct DifficultyView: View {
     @EnvironmentObject private var premium: PremiumManager
     @EnvironmentObject private var adProvider: AdProvider
     
+    @State private var isMenuOpen: Bool = false
+    
     @State private var showPaywall = false
     
     private var tutorialItem: TutorialItem? { return tutorialItems.first }
@@ -99,6 +101,9 @@ struct DifficultyView: View {
                 .fullScreenCover(isPresented: $showPaywall) {
                     SubscriptionPaywallView(isPresented: $showPaywall)
                 }
+            
+            SideMenu(isOpen: $isMenuOpen,
+                     content: { SettingsView(showBack: false) })
         }
     }
     
@@ -126,7 +131,12 @@ struct DifficultyView: View {
         HStack {
             Button {
                 Task.detached {
-                    await MainActor.run { router.navigateTo(.settings) }
+                    await MainActor.run {
+                        /*router.navigateTo(.settings)*/
+                        withAnimation {
+                            isMenuOpen = true
+                        }
+                    }
                 }
             } label: {
                 VStack {
