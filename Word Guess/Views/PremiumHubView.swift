@@ -1126,7 +1126,7 @@ private struct WaxPressMini: View {
                             Group {
                                 if let p = pressPoint {
                                     Circle()
-                                        .size(CGSize(width: 40 + 140 * clarity, height: 40 + 140 * clarity))
+                                        .size(CGSize(width: 40 + 40 * clarity, height: 40 + 40 * clarity))
                                         .offset(x: p.x - (20 + 70 * clarity),
                                                 y: p.y - (20 + 70 * clarity))
                                 }
@@ -1158,7 +1158,7 @@ private struct WaxPressMini: View {
                     // subtle ring pulse
                     Circle()
                         .stroke(.white.opacity(0.45), lineWidth: 2)
-                        .frame(width: 38 + 140 * clarity, height: 38 + 140 * clarity)
+                        .frame(width: 38 + 100 * clarity, height: 38 + 100 * clarity)
                         .position(p)
                         .scaleEffect(ringPulse ? 1.06 : 0.96)
                         .opacity(0.9)
@@ -1413,19 +1413,33 @@ private struct MagnetMini: View {
     let hasLetter: Bool
     let letter: Character?
     let onDone: (MiniResult) -> Void
+
     struct Particle: Identifiable { let id = UUID(); var p: CGPoint; var v: CGVector }
+
     @State private var filings: [Particle] = []
     @State private var magnetPos: CGPoint = .zero
     @State private var letterPos: CGPoint = .zero
     @State private var seeded: Character = "A"
+
     @State private var closeTicks = 0
     @State private var physicsTimer = Timer.publish(every: 1/60, on: .main, in: .common).autoconnect()
+
+    // Reveal state
+    @State private var discovered = false
+    @State private var captureAt: Date? = nil
+    @State private var letterScale: CGFloat = 0.92
+    @State private var letterOpacity: Double = 0.04   // faint by default
+
     var body: some View {
         GeometryReader { geo in
             let bounds = geo.size
             ZStack {
-                RoundedRectangle(cornerRadius: 18).fill(Color.black.opacity(0.85))
+                // Background
+                RoundedRectangle(cornerRadius: 18)
+                    .fill(Color.black.opacity(0.85))
                     .overlay(RoundedRectangle(cornerRadius: 18).stroke(PremiumPalette.stroke, lineWidth: 1))
+
+                // Rails (purely decorative)
                 Canvas { ctx, _ in
                     var path = Path()
                     for _ in 0..<7 {
@@ -1433,34 +1447,71 @@ private struct MagnetMini: View {
                         let h = Double.random(in: 10...16)
                         let x = Double.random(in: 20...(bounds.width-80))
                         let y = Double.random(in: 20...(bounds.height-20))
-                        path.addRoundedRect(in: CGRect(x: x, y: y, width: w, height: h), cornerSize: CGSize(width: 7, height: 7))
+                        path.addRoundedRect(in: CGRect(x: x, y: y, width: w, height: h),
+                                            cornerSize: CGSize(width: 7, height: 7))
                     }
                     ctx.stroke(path, with: .color(.white.opacity(0.08)), lineWidth: 5)
                 }
+
+                // Letter (faint → bright when discovered)
                 if hasLetter {
                     Text(String(seeded))
-                        .font(.system(size: min(bounds.width, bounds.height) * 0.42, weight: .heavy, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.04))
+                        .font(.system(size: min(bounds.width, bounds.height) * 0.42,
+                                      weight: .heavy, design: .rounded))
+                        .foregroundStyle(.white.opacity(letterOpacity))
+                        .scaleEffect(letterScale)
                         .position(letterPos)
+                        .animation(.spring(response: 0.35, dampingFraction: 0.8), value: letterScale)
+                        .animation(.easeInOut(duration: 0.18), value: letterOpacity)
                 }
+
+                // Metal filings
                 Canvas { ctx, _ in
                     for f in filings {
                         let rect = CGRect(x: f.p.x - 2, y: f.p.y - 2, width: 4, height: 4)
                         ctx.fill(Ellipse().path(in: rect), with: .color(.white.opacity(0.8)))
                     }
                 }
+
+                // Magnet (user)
                 Image(systemName: "paperclip.circle.fill")
                     .font(.system(size: 28, weight: .regular))
                     .foregroundStyle(PremiumPalette.accent)
                     .position(magnetPos)
                     .gesture(DragGesture(minimumDistance: 0)
-                        .onChanged { g in magnetPos = g.location }
+                        .onChanged { g in guard !discovered else { return }; magnetPos = g.location }
                         .onEnded { _ in
+                            guard !discovered else { return }
                             let d = hypot(magnetPos.x - letterPos.x, magnetPos.y - letterPos.y)
-                            onDone((hasLetter && d < 46) ? .found(seeded) : .nothing)
+                            if hasLetter && d < 46 { triggerReveal() }
+                            else { onDone(.nothing) }
                         })
+
+                // Ripple burst when revealed
+                TimelineView(.animation) { tl in
+                    if let start = captureAt {
+                        let dt = tl.date.timeIntervalSince(start)
+                        Canvas { ctx, _ in
+                            let c = letterPos
+                            for i in 0..<3 {
+                                let t = dt - Double(i) * 0.06
+                                guard t >= 0, t <= 0.6 else { continue }
+                                let p = t / 0.6
+                                let r = CGFloat(12 + p * 130)
+                                let a = 1.0 - p
+                                let rect = CGRect(x: c.x - r, y: c.y - r, width: r*2, height: r*2)
+                                ctx.stroke(Circle().path(in: rect),
+                                           with: .color(.white.opacity(0.35 * a)),
+                                           lineWidth: 2)
+                            }
+                        }
+                    }
+                }
             }
             .onReceive(physicsTimer) { _ in
+                guard !discovered else { return }
+
+                // Update filings with magnet pull
                 var updated: [Particle] = []
                 for var f in filings {
                     let dx = magnetPos.x - f.p.x, dy = magnetPos.y - f.p.y
@@ -1473,10 +1524,12 @@ private struct MagnetMini: View {
                     updated.append(f)
                 }
                 filings = updated
+
+                // Proximity dwell → reveal
                 if hasLetter {
                     let d = hypot(magnetPos.x - letterPos.x, magnetPos.y - letterPos.y)
                     closeTicks = d < 48 ? (closeTicks + 1) : 0
-                    if closeTicks > 15 { onDone(.found(seeded)) }
+                    if closeTicks > 15 { triggerReveal() }  // ~0.25s at 60fps
                 }
             }
             .onAppear {
@@ -1493,6 +1546,30 @@ private struct MagnetMini: View {
             }
         }
         .frame(height: 300)
+    }
+
+    // MARK: - Reveal & close after animation
+    private func triggerReveal() {
+        guard !discovered else { return }
+        discovered = true
+        captureAt = Date()
+
+        // pop + brighten letter
+        UIImpactFeedbackGenerator(style: .soft).impactOccurred()
+        withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
+            letterScale = 1.10
+            letterOpacity = 1.0
+        }
+        // settle a bit
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.20) {
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                letterScale = 1.00
+            }
+        }
+        // close after users see it
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.65) {
+            onDone(.found(seeded))
+        }
     }
 }
 
@@ -1558,7 +1635,7 @@ private struct FrostMini: View {
                     // breathing ring
                     Circle()
                         .stroke(.white.opacity(0.45), lineWidth: 2)
-                        .frame(width: 38 + 140 * heatLevel, height: 38 + 140 * heatLevel)
+                        .frame(width: 38 + 40 * heatLevel, height: 38 + 40 * heatLevel)
                         .position(p)
                         .scaleEffect(ringPulse ? 1.06 : 0.96)
                         .opacity(0.9)

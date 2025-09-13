@@ -21,7 +21,7 @@ struct PremiumLeaderboardView<VM: PremiumScoreboardViewModel>: View {
     @State private var vm = VM()
     
     var body: some View {
-        ZStack {
+        ZStack(alignment: .top) {
             // PremiumHub background
             LinearGradient(colors: [Color.black, Color(hue: 0.64, saturation: 0.25, brightness: 0.18)],
                            startPoint: .topLeading, endPoint: .bottomTrailing)

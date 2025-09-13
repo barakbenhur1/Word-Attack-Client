@@ -11,6 +11,8 @@ struct PremiumScoreData: Codable, Hashable {
     let name: String
     let email: String
     let value: Int
-    
+}
+
+extension PremiumScoreData {
     var id: String { email }
 }

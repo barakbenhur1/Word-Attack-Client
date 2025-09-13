@@ -475,30 +475,25 @@ private struct WinCelebrationView: View {
     var body: some View {
         ZStack {
             ConfettiLayer(active: confettiFall).allowsHitTesting(false)
-            VStack(spacing: 8) {
-                Text("Wins")
-                    .font(.system(.caption, design: .rounded).weight(.bold))
-                    .foregroundStyle(.white.opacity(0.8))
-                ZStack {
-                    Circle()
-                        .strokeBorder(AngularGradient(colors: [.yellow, .green, .cyan, .yellow], center: .center),
-                                      lineWidth: 3)
-                        .scaleEffect(ringScale)
-                        .opacity(ringOpacity)
-                    Text("\(wins)")
-                        .font(.system(size: 42, weight: .heavy, design: .rounded))
-                        .foregroundStyle(
-                            AngularGradient(colors: [.yellow, .green, .mint, .cyan, .yellow],
-                                            center: .center,
-                                            angle: .degrees(Double(shimmerPhase) * 360))
-                        )
-                        .padding(.horizontal, 22)
-                        .padding(.vertical, 10)
-                        .background(.thinMaterial, in: Capsule())
-                        .overlay(Capsule().stroke(.white.opacity(0.2)))
-                        .scaleEffect(scale)
-                        .shadow(color: .black.opacity(0.35), radius: 8, y: 3)
-                }
+            ZStack {
+                Circle()
+                    .strokeBorder(AngularGradient(colors: [.yellow, .green, .cyan, .yellow], center: .center),
+                                  lineWidth: 3)
+                    .scaleEffect(ringScale)
+                    .opacity(ringOpacity)
+                Text("\(wins)")
+                    .font(.system(size: 42, weight: .heavy, design: .rounded))
+                    .foregroundStyle(
+                        AngularGradient(colors: [.yellow, .green, .mint, .cyan, .yellow],
+                                        center: .center,
+                                        angle: .degrees(Double(shimmerPhase) * 360))
+                    )
+                    .padding(.horizontal, 22)
+                    .padding(.vertical, 10)
+                    .background(.thinMaterial, in: Capsule())
+                    .overlay(Capsule().stroke(.white.opacity(0.2)))
+                    .scaleEffect(scale)
+                    .shadow(color: .black.opacity(0.35), radius: 8, y: 3)
             }
             .padding(.top, 8)
         }
@@ -579,30 +574,27 @@ private struct LoseCelebrationView: View {
     var body: some View {
         ZStack {
             DebrisLayer(active: debrisFall).allowsHitTesting(false)
-            VStack(spacing: 8) {
-                Text("Round Over".localized)
-                    .font(.system(.caption, design: .rounded).weight(.bold))
-                    .foregroundStyle(.white.opacity(0.75))
-                ZStack {
-                    Circle()
-                        .strokeBorder(AngularGradient(colors: [.red, .orange, .pink, .red], center: .center),
-                                      lineWidth: 3)
-                        .scaleEffect(ringScale)
-                        .opacity(ringOpacity)
-                    Text("×")
-                        .font(.system(size: 48, weight: .heavy, design: .rounded))
-                        .foregroundStyle(
-                            AngularGradient(colors: [.red, .orange, .pink, .red],
-                                            center: .center,
-                                            angle: .degrees(Double(shimmerPhase) * 360))
-                        )
-                        .padding(.horizontal, 24)
-                        .padding(.vertical, 10)
-                        .background(.thinMaterial, in: Capsule())
-                        .overlay(Capsule().stroke(.white.opacity(0.18)))
-                        .scaleEffect(scale)
-                        .shadow(color: .black.opacity(0.35), radius: 8, y: 3)
-                }
+                .font(.system(.caption, design: .rounded).weight(.bold))
+                .foregroundStyle(.white.opacity(0.75))
+            ZStack {
+                Circle()
+                    .strokeBorder(AngularGradient(colors: [.red, .orange, .pink, .red], center: .center),
+                                  lineWidth: 3)
+                    .scaleEffect(ringScale)
+                    .opacity(ringOpacity)
+                Text("×")
+                    .font(.system(size: 48, weight: .heavy, design: .rounded))
+                    .foregroundStyle(
+                        AngularGradient(colors: [.red, .orange, .pink, .red],
+                                        center: .center,
+                                        angle: .degrees(Double(shimmerPhase) * 360))
+                    )
+                    .padding(.horizontal, 24)
+                    .padding(.vertical, 10)
+                    .background(.thinMaterial, in: Capsule())
+                    .overlay(Capsule().stroke(.white.opacity(0.18)))
+                    .scaleEffect(scale)
+                    .shadow(color: .black.opacity(0.35), radius: 8, y: 3)
             }
             .padding(.top, 8)
         }
