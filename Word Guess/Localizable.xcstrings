@@ -81,6 +81,22 @@
         }
       }
     },
+    "%lld. %@, %lld points" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld. %2$@, %3$lld points"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lld. %2$@, %3$lld נקודות"
+          }
+        }
+      }
+    },
     "%lld/3" : {
       "shouldTranslate" : false
     },
@@ -2833,6 +2849,17 @@
         }
       }
     },
+    "Premium Leaderboard" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "לוח התוצאות פרימיום"
+          }
+        }
+      }
+    },
     "Preparing AI Model" : {
       "localizations" : {
         "he" : {
@@ -3133,7 +3160,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "SCOREBORAD"
+            "value" : "LEADERBOARD"
           }
         },
         "he" : {
@@ -3146,6 +3173,12 @@
     },
     "SCOREBOARD" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rank"
+          }
+        },
         "he" : {
           "stringUnit" : {
             "state" : "translated",

@@ -109,7 +109,8 @@ public struct PremiumHubView: View {
                     router.navigateBack()
                 }
                 Spacer()
-                SolvedCounterPill(count: hub.solvedWords)
+                SolvedCounterPill(count: hub.solvedWords,
+                                  onTap: { router.navigateTo(.premiumScore) } )
                 MainRoundTimerView(secondsLeft: hub.mainSecondsLeft,
                                    total: hub.mainRoundLength)
                 .frame(maxWidth: min(UIScreen.main.bounds.width * 0.55, 360), minHeight: 18, maxHeight: 18)
@@ -182,6 +183,7 @@ private struct BackPill: View {
 // 🏆 Pill showing solved words count
 private struct SolvedCounterPill: View {
     let count: Int
+    let onTap: () -> Void
     var body: some View {
         HStack(spacing: 6) {
             Image(systemName: "trophy.fill").font(.system(size: 12, weight: .bold))
@@ -193,12 +195,13 @@ private struct SolvedCounterPill: View {
         .overlay(Capsule().stroke(.white.opacity(0.15)))
         .shadow(color: .black.opacity(0.25), radius: 4, y: 1)
         .accessibilityLabel("Solved words \(count)".localized)
+        .onTapGesture { onTap() }
     }
 }
 
 // MARK: - Palette
 
-private enum PremiumPalette {
+enum PremiumPalette {
     static let card = Color.white.opacity(0.06)
     static let stroke = Color.white.opacity(0.09)
     static let glow = Color.white.opacity(0.22)
@@ -374,6 +377,7 @@ private final class PremiumHubModel: ObservableObject {
             Task(priority: .userInitiated) {
                 await vm.word(email: email)
                 let solved = await vm.getScore(email: email)
+                UserDefaults.standard.set(solved, forKey: "wins_count")
                 await MainActor.run {
                     solvedWords = solved
                 }
@@ -382,7 +386,7 @@ private final class PremiumHubModel: ObservableObject {
     }
     
     func resetAll() {
-        self.slots = uniqueInitialSlots(hasAI: aiDifficulty != nil)   // ← unique on full reset
+        slots = uniqueInitialSlots(hasAI: aiDifficulty != nil)   // ← unique on full reset
         resetLoop()
     }
     

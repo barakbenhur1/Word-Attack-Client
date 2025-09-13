@@ -20,6 +20,7 @@ class Router: Singleton {
         case difficulty
         case settings
         case score
+        case premiumScore
         case premium(email: String?)
         case premiumGame(word: String, history: [[String]], allowedLetters: String)
         case game(diffculty: DifficultyType)
@@ -39,7 +40,8 @@ class Router: Singleton {
         case .login:                                           LoginView()
         case .difficulty:                                      DifficultyView()
         case .settings:                                        SettingsView()
-        case .score:                                           Scoreboard()
+        case .score:                                           LeaderboardView()
+        case .premiumScore:                                    PremiumLeaderboardView()
         case .game(let value):                                 gameView(value: value)
         case .premium(let email):                              PremiumHubView(email: email).environmentObject(timerBridge)
         case .premiumGame(let word, let history, let allowed): PremiumHubGameView(vm: .init(word: word),

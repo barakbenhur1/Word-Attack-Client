@@ -17,8 +17,13 @@ struct PremiumScoreProvider {
     func getPremium(email: String) async -> PremiumScoreData? {
         let value: PremiumScoreData? = await network.send(route: "getPremiumScore",
                                                           parameters: ["email": email])
-        
-        let wins = value
-        return wins
+        return value
+    }
+    
+    
+    func getAllPremium(email: String) async -> [PremiumScoreData]? {
+        let value: [PremiumScoreData]? = await network.send(route: "getAllPremiumScores",
+                                                          parameters: ["email": email])
+        return value
     }
 }

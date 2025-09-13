@@ -8,5 +8,9 @@
 import Foundation
 
 struct PremiumScoreData: Codable, Hashable {
+    let name: String
+    let email: String
     let value: Int
+    
+    var id: String { email }
 }

@@ -45,7 +45,6 @@ class PremiumHubViewModel: ViewModel {
     
     func getScore(email: String) async -> Int {
         let score = await scoreProvider.getPremium(email: email)?.value ?? 0
-        UserDefaults.standard.set(score, forKey: "wins_count")
         return score
     }
 }

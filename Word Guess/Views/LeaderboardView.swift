@@ -64,7 +64,7 @@ private enum LBLayout {
 }
 
 // MARK: - Scoreboard
-struct Scoreboard<VM: ScoreboardViewModel>: View {
+struct LeaderboardView<VM: ScoreboardViewModel>: View {
     @EnvironmentObject private var loginHandeler: LoginHandeler
     @EnvironmentObject private var router: Router
     @EnvironmentObject private var local: LanguageSetting
