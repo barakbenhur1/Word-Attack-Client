@@ -10,13 +10,15 @@ import Alamofire
 
 @Observable
 class PremiumHubViewModel: ViewModel {
-    private let network: Network
-    var word: WordForAiMode
+    private let scoreProvider: PremiumScoreProvider
+    private let wordProvider: WordProvider
+    var word: SimpleWord
     
     override var wordValue: String { word.value }
     
     required override init() {
-        network = Network(root: "words")
+        scoreProvider = .init()
+        wordProvider = .init()
         word = .empty
     }
     
@@ -31,8 +33,7 @@ class PremiumHubViewModel: ViewModel {
     
     func word(email: String) async {
         word = .empty
-        let value: WordForAiMode? = await network.send(route: "word",
-                                                       parameters: ["email": email])
+        let value: SimpleWord? = await wordProvider.word(email: email)
         
         guard let value else { await initMoc(); return }
         await MainActor.run { [weak self] in
@@ -40,5 +41,11 @@ class PremiumHubViewModel: ViewModel {
             Trace.log("🛟", "word is \(value.value)", Fancy.mag)
             word = value
         }
+    }
+    
+    func getScore(email: String) async -> Int {
+        let score = await scoreProvider.getPremium(email: email)?.value ?? 0
+        UserDefaults.standard.set(score, forKey: "wins_count")
+        return score
     }
 }

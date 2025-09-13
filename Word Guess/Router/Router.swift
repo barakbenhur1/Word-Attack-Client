@@ -8,6 +8,11 @@
 import SwiftUI
 
 @Observable
+class PremiumCoplitionHandler: Singleton {
+    var onForceEndPremium: (([[String]]?, Bool) -> Void) = { _, _ in }
+}
+
+@Observable
 class Router: Singleton {
     // Contains the possible destinations in our Router
     enum Route: Codable, Hashable {
@@ -16,7 +21,7 @@ class Router: Singleton {
         case settings
         case score
         case premium(email: String?)
-        case premiumGame(word: String, allowedLetters: String)
+        case premiumGame(word: String, history: [[String]], allowedLetters: String)
         case game(diffculty: DifficultyType)
     }
     
@@ -26,28 +31,36 @@ class Router: Singleton {
     
     private var lockNavigation: Bool = false
     
-    let timerBridge = HubTimerBridge()
-    
-    // Stored callback for the premium game (instead of putting it into Route)
-    var onForceEndPremium: (() -> Void) = {}
+    private let timerBridge = HubTimerBridge()
     
     // Builds the views
     @ViewBuilder func view(for route: Route) -> some View {
         switch route {
-        case .login: LoginView()
-        case .difficulty: DifficultyView()
-        case .settings: SettingsView()
-        case .score: Scoreboard()
-        case .game(let value): gameView(value: value)
-        case .premium(let email): PremiumHubView(email: email).environmentObject(timerBridge)
-        case .premiumGame(let word, let allowed): PremiumHubGameView(vm: .init(word: word), onForceEnd: onForceEndPremium, allowedLetters: Set(allowed)).environmentObject(timerBridge)
+        case .login:                                           LoginView()
+        case .difficulty:                                      DifficultyView()
+        case .settings:                                        SettingsView()
+        case .score:                                           Scoreboard()
+        case .game(let value):                                 gameView(value: value)
+        case .premium(let email):                              PremiumHubView(email: email).environmentObject(timerBridge)
+        case .premiumGame(let word, let history, let allowed): PremiumHubGameView(vm: .init(word: word),
+                                                                                  history: history,
+                                                                                  allowedLetters: Set(allowed),
+                                                                                  onForceEnd: PremiumCoplitionHandler.shared.onForceEndPremium).environmentObject(timerBridge)
         }
     }
     
     @ViewBuilder private func gameView(value: DifficultyType) -> some View {
         switch value {
         case .ai: AIGameView()
-        default: GameView(diffculty: value)
+        default:  GameView(diffculty: value)
+        }
+    }
+    
+    private func handeleNavigationAnimation(for appRoute: Route) {
+        switch appRoute {
+        case .premiumGame(_, _, _): navigationAnimation = false
+        case .game(let diffculty):  navigationAnimation = diffculty != .tutorial
+        default:                    navigationAnimation = true
         }
     }
     
@@ -55,7 +68,7 @@ class Router: Singleton {
     func navigateTo(_ appRoute: Route) {
         guard !lockNavigation else { return }
         UIApplication.shared.hideKeyboard()
-        navigationAnimation = appRoute != .game(diffculty: .tutorial)
+        handeleNavigationAnimation(for: appRoute)
         path.append(appRoute)
         lockNavigation = true
         Task(priority: .high) {

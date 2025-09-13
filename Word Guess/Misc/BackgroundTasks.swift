@@ -149,7 +149,7 @@ func performWordZapRefresh(deeper: Bool) async -> Bool {
 }
 
 func refreshWordZapPlaces(email: String) async {
-    let provider = ScorePlaceProvider()
+    let provider = ScoreProvider()
     if let places = await provider.getPlaceInLeaderboard(email: email) {
         await SharedStore.writePlacesDataAsync(places)
     }

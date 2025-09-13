@@ -7,10 +7,32 @@ import Combine
 import CoreHaptics
 
 // MARK: - VM that plugs into your existing ViewModel APIs
+@Observable
 final class PremiumHubGameVM: ViewModel {
+    private let network: Network
     private let word: String
     override var wordValue: String { word }
-    init(word: String) { self.word = word; super.init() }
+    
+    required init(word: String) {
+        self.network = Network(root: "score")
+        self.word = word
+    }
+    
+    func score(email: String) async -> Bool {
+        let value: EmptyModel? = await network.send(route: "premiumScore",
+                                                       parameters: ["email": email])
+        
+        return value != nil
+    }
+}
+
+// MARK: - Hub-like palette (local to this file)
+private enum HubGamePalette {
+    static let card   = Color.white.opacity(0.06)
+    static let stroke = Color.white.opacity(0.09)
+    static let glow   = Color.white.opacity(0.22)
+    static let accent = Color.cyan
+    static let accent2 = Color.mint
 }
 
 // EN + HE alphabets (non-generic container)
@@ -28,8 +50,9 @@ struct PremiumHubGameView<VM: PremiumHubGameVM>: View {
     @EnvironmentObject private var router: Router
     @EnvironmentObject private var timer: HubTimerBridge
     @EnvironmentObject private var local: LanguageSetting
+    @EnvironmentObject private var loginHandeler: LoginHandeler
     
-    private let onForceEnd: () -> Void
+    private let onForceEnd: ([[String]]?, Bool) -> Void
     
     // Allowed letters passed via init (supports EN + HE)
     private let allowedUpper: Set<Character>
@@ -39,10 +62,13 @@ struct PremiumHubGameView<VM: PremiumHubGameVM>: View {
     private let length: Int
     
     // Matrix & colors
+    private var initilizeHistory: [[String]]
     @State private var matrix: [[String]]
     @State private var colors: [[CharColor]]
     @State private var current: Int = 0
     @State private var vm: VM
+    
+    private var history: [[String]] { current > 0 ? Array(matrix.prefix(current)) : [] }
     
     // Timer mirror to drive UI updates
     @State private var secondsLeftLocal: Int = 0
@@ -54,9 +80,15 @@ struct PremiumHubGameView<VM: PremiumHubGameVM>: View {
     @State private var invalidPulse = false
     @State private var toastVisible = false
     
-    // Win banner
+    // Win / Lose banners
     @State private var wins: Int = UserDefaults.standard.integer(forKey: "wins_count")
     @State private var showWinBanner = false
+    @State private var showLoseBanner = false
+    @State private var loseResetFlag = true  // true: reset board on close; false: keep (timeout)
+    
+    private var endBannerUp: Bool { showWinBanner || showLoseBanner }
+    
+    private var email: String? { loginHandeler.model?.email }
     
     private var isHE: Bool {
         local.locale.identifier.lowercased().hasPrefix("he")
@@ -68,10 +100,11 @@ struct PremiumHubGameView<VM: PremiumHubGameVM>: View {
     
     /// - Parameters:
     ///   - allowedLetters: letters the user is allowed to type (case-insensitive).
-    init(vm: VM, onForceEnd: @escaping () -> Void, allowedLetters: Set<Character>) {
+    init(vm: VM, history: [[String]], allowedLetters: Set<Character>, onForceEnd: @escaping ([[String]]?, Bool) -> Void) {
         _vm = State(initialValue: vm)
         self.onForceEnd = onForceEnd
         self.length = vm.wordValue.count
+        self.initilizeHistory = history
         _matrix = State(initialValue: Array(repeating: Array(repeating: "", count: vm.wordValue.count), count: rows))
         _colors = State(initialValue: Array(repeating: Array(repeating: .noGuess, count: vm.wordValue.count), count: rows))
         
@@ -95,12 +128,12 @@ struct PremiumHubGameView<VM: PremiumHubGameVM>: View {
             VStack(spacing: 10) {
                 topBar()
                 
-                // Compact, readable timer container
+                // Compact, hub-like timer container
                 ZStack {
                     RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .fill(Color.black.opacity(0.32))
-                        .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.white.opacity(0.10)))
-                        .shadow(color: .black.opacity(0.20), radius: 6, y: 2)
+                        .fill(HubGamePalette.card)
+                        .overlay(RoundedRectangle(cornerRadius: 14).stroke(HubGamePalette.stroke, lineWidth: 1))
+                        .shadow(color: HubGamePalette.glow, radius: 7, y: 3)
                     
                     MainRoundTimerView(secondsLeft: secondsLeftLocal, total: timer.total)
                         .frame(height: 14)
@@ -125,7 +158,7 @@ struct PremiumHubGameView<VM: PremiumHubGameVM>: View {
                 
                 gameArea()
                     .padding(.horizontal, 12)
-                    .opacity(showWinBanner ? 0.25 : 1)
+                    .opacity(endBannerUp ? 0.25 : 1)
                 
                 AppTitle(size: 50)
                     .padding(.top, UIDevice.isPad ? 100 : 80)
@@ -136,16 +169,22 @@ struct PremiumHubGameView<VM: PremiumHubGameVM>: View {
             .ignoresSafeArea(.keyboard)
             
             if showWinBanner {
-                WinCelebrationView(wins: wins) { router.navigateBack() }
+                WinCelebrationView(wins: wins) { forceEnd(asFail: false, reset: true) }
+                    .transition(.scale.combined(with: .opacity))
+                    .zIndex(2)
+            }
+            
+            if showLoseBanner {
+                LoseCelebrationView { forceEnd(asFail: true, reset: loseResetFlag) }
                     .transition(.scale.combined(with: .opacity))
                     .zIndex(2)
             }
         }
         .onAppear {
             isVisible = true
+            fillHistory()
             secondsLeftLocal = timer.secondsLeft
             startAmbient()
-            current = 0
         }
         .onDisappear { isVisible = false }
         
@@ -153,9 +192,9 @@ struct PremiumHubGameView<VM: PremiumHubGameVM>: View {
         .onReceive(timer.$secondsLeft.removeDuplicates()) { new in
             // If hub still drives, trust it.
             secondsLeftLocal = new
-            guard isVisible, !showWinBanner else { return }
+            guard isVisible, !endBannerUp else { return }
             // If the hub reset while we’re here, end the game as a fail.
-            if new == timer.total && new > 0 { forceEnd(asFail: true) }
+            if new == timer.total && new > 0 { forceEnd(asFail: true, reset: false) }
         }
         .onReceive(timer.$total.removeDuplicates()) { _ in
             secondsLeftLocal = timer.secondsLeft
@@ -163,7 +202,7 @@ struct PremiumHubGameView<VM: PremiumHubGameVM>: View {
         
         // Local fallback ticker: if hub stopped (e.g., hub view disappeared), we drive time.
         .onReceive(localTicker) { _ in
-            guard isVisible, !showWinBanner else { return }
+            guard isVisible, !endBannerUp else { return }
             
             // If hub already advanced this tick, just mirror it and skip.
             if timer.secondsLeft != secondsLeftLocal {
@@ -176,7 +215,11 @@ struct PremiumHubGameView<VM: PremiumHubGameVM>: View {
                 secondsLeftLocal -= 1
                 timer.set(secondsLeftLocal, total: timer.total)
             } else {
-                forceEnd(asFail: true)
+                // TIMEOUT → lose animation (no reset)
+                loseResetFlag = false
+                audio.stop()
+                audio.playSound(sound: "fail", type: "wav")
+                withAnimation(.spring(response: 0.55, dampingFraction: 0.75)) { showLoseBanner = true }
             }
         }
     }
@@ -190,11 +233,17 @@ struct PremiumHubGameView<VM: PremiumHubGameVM>: View {
     @ViewBuilder private func topBar() -> some View {
         ZStack {
             HStack {
-                BackButton(title: "back") { forceEnd(asFail: false) }
-                    .padding(.vertical, 8)
+                BackButton(title: nil ,icon: "xmark",
+                           action: { forceEnd(asFail: false, reset: false, withHistory: true) })
+                .environment(\.colorScheme, .dark)
+                .padding(.vertical, 8)
                 Spacer()
             }
-            Text("WordZap").font(.title3.weight(.heavy)).shadow(radius: 4)
+            
+            Text("WordZap")
+                .font(.title3.weight(.heavy))
+                .foregroundStyle(.white.opacity(0.95))
+                .shadow(radius: 4)
         }
         .padding(.horizontal, 16)
         .padding(.top, 2)
@@ -210,13 +259,13 @@ struct PremiumHubGameView<VM: PremiumHubGameVM>: View {
                         current: $current,
                         length: length,
                         word: $matrix[i],
-                        gainFocus: Binding(get: { current == i && !showWinBanner }, set: { _ in }),
+                        gainFocus: Binding(get: { current == i && !endBannerUp }, set: { _ in }),
                         colors: $colors[i]
                     ) {
-                        guard i == current, !showWinBanner else { return }
+                        guard i == current, !endBannerUp else { return }
                         nextLine(i: i)
                     }
-                    .disabled(current != i || showWinBanner)
+                    .disabled(current != i || endBannerUp)
                     .shadow(radius: 4)
                 }
             }
@@ -225,14 +274,25 @@ struct PremiumHubGameView<VM: PremiumHubGameVM>: View {
     }
     
     @ViewBuilder private func background() -> some View {
-        LinearGradient(colors: [.red, .yellow, .green, .blue],
-                       startPoint: .topLeading, endPoint: .bottomTrailing)
-        .blur(radius: 4)
-        .opacity(0.1)
+        LinearGradient(
+            colors: [Color.black,
+                     Color(hue: 0.64, saturation: 0.25, brightness: 0.18)],
+            startPoint: .topLeading, endPoint: .bottomTrailing
+        )
         .ignoresSafeArea()
     }
     
     // MARK: - Logic
+    
+    private func fillHistory() {
+        for h in initilizeHistory {
+            guard let i = initilizeHistory.firstIndex(of: h) else { continue }
+            self.matrix[i] = h
+            self.colors[i] = vm.calculateColors(with: h)
+        }
+        
+        current = initilizeHistory.count
+    }
     
     private func startAmbient() {
         if difficulty != .tutorial {
@@ -240,11 +300,11 @@ struct PremiumHubGameView<VM: PremiumHubGameVM>: View {
         }
     }
     
-    private func forceEnd(asFail: Bool) {
+    private func forceEnd(asFail: Bool, reset: Bool, withHistory: Bool = false) {
         isVisible = false
         audio.stop()
         if asFail { audio.playSound(sound: "fail", type: "wav") }
-        onForceEnd()
+        onForceEnd(withHistory ? history : nil, reset)
         router.navigateBack()
     }
     
@@ -260,18 +320,17 @@ struct PremiumHubGameView<VM: PremiumHubGameVM>: View {
             
             if correct {
                 wins += 1
-                UserDefaults.standard.set(wins, forKey: "wins_count")
+                if let email { Task(priority: .high, operation: { await vm.score(email: email) }) }
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
                     audio.playSound(sound: "success", type: "wav")
                     withAnimation(.spring(response: 0.55, dampingFraction: 0.75)) { showWinBanner = true }
                 }
             } else {
+                // OUT OF TRIES → lose animation (reset after)
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                    loseResetFlag = true
                     audio.playSound(sound: "fail", type: "wav")
-                }
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
-                    onForceEnd()
-                    router.navigateBack()
+                    withAnimation(.spring(response: 0.55, dampingFraction: 0.75)) { showLoseBanner = true }
                 }
             }
         } else if i == current {
@@ -307,13 +366,13 @@ struct PremiumHubGameView<VM: PremiumHubGameVM>: View {
             invalidPulse = true
             toastVisible = true
         }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.75) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
             withAnimation(.easeOut(duration: 0.2)) { invalidPulse = false; toastVisible = false }
         }
     }
 }
 
-// MARK: - Allowed letters belt + feedback
+// MARK: - Allowed letters belt + feedback (hub-style)
 private struct AllowedBeltView: View {
     let letters: [Character]
     var shakeTick: CGFloat
@@ -330,13 +389,13 @@ private struct AllowedBeltView: View {
                             .font(.system(.callout, design: .rounded).weight(.bold))
                             .foregroundStyle(.black.opacity(0.35))
                             .frame(width: 30, height: 30)
-                            .background(Circle().fill(.white.opacity(0.45)))
-                            .overlay(Circle().stroke(.black.opacity(0.06), lineWidth: 0.5))
-                            .shadow(color: .black.opacity(0.10), radius: 1, y: 1)
+                            .background(Circle().fill(.white.opacity(0.70)))
+                            .overlay(Circle().stroke(.white.opacity(0.35), lineWidth: 1))
+                            .shadow(color: .black.opacity(0.15), radius: 2, y: 1)
                     }
                     Text(placeholder)
                         .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.white.opacity(0.65))
                         .lineLimit(1)
                         .minimumScaleFactor(0.8)
                 }
@@ -346,13 +405,13 @@ private struct AllowedBeltView: View {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 8) {
                         ForEach(letters, id: \.self) { ch in
-                            Text(String(ch))
+                            Text(String(ch.uppercased()))
                                 .font(.system(.callout, design: .rounded).weight(.bold))
                                 .foregroundStyle(.black)
                                 .frame(width: 30, height: 30)
-                                .background(Circle().fill(.white))
-                                .overlay(Circle().stroke(.black.opacity(0.08), lineWidth: 0.5))
-                                .shadow(color: .black.opacity(0.15), radius: 2, y: 1)
+                                .background(Circle().fill(HubGamePalette.accent))
+                                .overlay(Circle().stroke(.white.opacity(0.4), lineWidth: 1))
+                                .shadow(color: .black.opacity(0.25), radius: 3, y: 2)
                         }
                     }
                     .padding(.vertical, 6)
@@ -362,9 +421,9 @@ private struct AllowedBeltView: View {
         }
         .background(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(.ultraThinMaterial)
-                .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.white.opacity(0.15)))
-                .shadow(color: .black.opacity(0.15), radius: 4, y: 1)
+                .fill(HubGamePalette.card)
+                .overlay(RoundedRectangle(cornerRadius: 12).stroke(HubGamePalette.stroke, lineWidth: 1))
+                .shadow(color: HubGamePalette.glow, radius: 6, y: 2)
         )
         .modifier(Shake(animatableData: shakeTick))
         .overlay(
@@ -375,7 +434,6 @@ private struct AllowedBeltView: View {
     }
 }
 
-
 // MARK: - Small helpers
 
 private struct CapsuleToast: View {
@@ -385,9 +443,9 @@ private struct CapsuleToast: View {
             .font(.caption.bold())
             .padding(.horizontal, 12).padding(.vertical, 6)
             .background(.thinMaterial, in: Capsule())
-            .overlay(Capsule().stroke(Color.red.opacity(0.45)))
-            .foregroundStyle(.primary)
-            .shadow(radius: 4, y: 2)
+            .overlay(Capsule().stroke(.white.opacity(0.15)))
+            .foregroundStyle(.white)
+            .shadow(color: .black.opacity(0.25), radius: 4, y: 2)
     }
 }
 
@@ -495,6 +553,110 @@ private struct ConfettiPiece: View {
         Text(seed.symbol)
             .font(.system(size: 12, weight: .bold, design: .rounded))
             .foregroundStyle(seed.color.opacity(0.9))
+            .rotationEffect(.degrees(rot))
+            .position(x: seed.x * size.width, y: y)
+            .onAppear {
+                guard active else { return }
+                withAnimation(.easeIn(duration: seed.speed)) { y = 120 }
+                withAnimation(.linear(duration: seed.speed)) { rot = seed.rotation }
+            }
+    }
+}
+
+// MARK: - Lose Celebration (new)
+
+private struct LoseCelebrationView: View {
+    var onDone: () -> Void
+    
+    @State private var scale: CGFloat = 1.6
+    @State private var ringOpacity: CGFloat = 0.9
+    @State private var ringScale: CGFloat = 0.7
+    @State private var shimmerPhase: CGFloat = 0
+    @State private var debrisFall: Bool = false
+    
+    private let duration: Double = 2.8
+    
+    var body: some View {
+        ZStack {
+            DebrisLayer(active: debrisFall).allowsHitTesting(false)
+            VStack(spacing: 8) {
+                Text("Round Over".localized)
+                    .font(.system(.caption, design: .rounded).weight(.bold))
+                    .foregroundStyle(.white.opacity(0.75))
+                ZStack {
+                    Circle()
+                        .strokeBorder(AngularGradient(colors: [.red, .orange, .pink, .red], center: .center),
+                                      lineWidth: 3)
+                        .scaleEffect(ringScale)
+                        .opacity(ringOpacity)
+                    Text("×")
+                        .font(.system(size: 48, weight: .heavy, design: .rounded))
+                        .foregroundStyle(
+                            AngularGradient(colors: [.red, .orange, .pink, .red],
+                                            center: .center,
+                                            angle: .degrees(Double(shimmerPhase) * 360))
+                        )
+                        .padding(.horizontal, 24)
+                        .padding(.vertical, 10)
+                        .background(.thinMaterial, in: Capsule())
+                        .overlay(Capsule().stroke(.white.opacity(0.18)))
+                        .scaleEffect(scale)
+                        .shadow(color: .black.opacity(0.35), radius: 8, y: 3)
+                }
+            }
+            .padding(.top, 8)
+        }
+        .onAppear {
+            withAnimation(.spring(response: 0.48, dampingFraction: 0.72)) { scale = 1.0 }
+            withAnimation(.easeOut(duration: 0.85)) { ringScale = 1.9; ringOpacity = 0.0 }
+            withAnimation(.linear(duration: duration).repeatForever(autoreverses: false)) { shimmerPhase = 1 }
+            withAnimation(.easeOut(duration: 0.55)) { debrisFall = true }
+            DispatchQueue.main.asyncAfter(deadline: .now() + duration) { onDone() }
+        }
+    }
+}
+
+private struct DebrisLayer: View {
+    let active: Bool
+    @State private var seeds: [DebrisSeed] = (0..<22).map { _ in DebrisSeed.random() }
+    var body: some View {
+        GeometryReader { geo in
+            ZStack { ForEach(seeds) { DebrisPiece(seed: $0, size: geo.size, active: active) } }
+        }
+        .frame(height: 140)
+    }
+}
+
+private struct DebrisSeed: Identifiable {
+    let id = UUID()
+    let x: CGFloat
+    let delay: Double
+    let speed: Double
+    let rotation: Double
+    let symbol: String
+    let color: Color
+    static func random() -> DebrisSeed {
+        let symbols = ["✖︎","•","—","·"]
+        let colors: [Color] = [.red, .orange, .pink, .white.opacity(0.9)]
+        return .init(x: .random(in: 0.05...0.95),
+                     delay: .random(in: 0...0.25),
+                     speed: .random(in: 0.7...1.2),
+                     rotation: .random(in: -80...80),
+                     symbol: symbols.randomElement()!,
+                     color: colors.randomElement()!)
+    }
+}
+
+private struct DebrisPiece: View {
+    let seed: DebrisSeed
+    let size: CGSize
+    let active: Bool
+    @State private var y: CGFloat = -18
+    @State private var rot: Double = 0
+    var body: some View {
+        Text(seed.symbol)
+            .font(.system(size: 12, weight: .bold, design: .rounded))
+            .foregroundStyle(seed.color.opacity(0.85))
             .rotationEffect(.degrees(rot))
             .position(x: seed.x * size.width, y: y)
             .onAppear {

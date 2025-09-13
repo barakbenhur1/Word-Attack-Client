@@ -23,8 +23,8 @@ struct Word: Codable, Equatable, Hashable {
 }
 
 
-struct WordForAiMode: Codable, Equatable, Hashable {
+struct SimpleWord: Codable, Equatable, Hashable {
     let value: String
     
-    static let empty = WordForAiMode(value: "")
+    static let empty = SimpleWord(value: "")
 }

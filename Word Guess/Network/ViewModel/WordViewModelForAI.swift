@@ -11,7 +11,7 @@ import Alamofire
 @Observable
 class WordViewModelForAI: ViewModel {
     private let network: Network
-    var word: WordForAiMode
+    var word: SimpleWord
     var aiDownloaded: Bool = ModelStorage.localHasUsableModels()
     var fatalError: Bool { errorCount >= maxErrorCount }
     var numberOfErrors: Int { errorCount }
@@ -39,7 +39,7 @@ class WordViewModelForAI: ViewModel {
     }
     
     func word(email: String) async {
-        let value: WordForAiMode? = await network.send(route: "word",
+        let value: SimpleWord? = await network.send(route: "word",
                                                        parameters: ["email": email])
         
         guard let value else { return await handleError() }

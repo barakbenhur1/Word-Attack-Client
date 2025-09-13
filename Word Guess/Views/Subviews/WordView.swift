@@ -177,7 +177,9 @@ struct WordView<VM: ViewModel>: View {
                 word[current] = c.returnChar(isFinal: current == length - 1)
             } else {
                 word[current] = ""
-                allowed?.onInvalid()
+                if value.count == 1 {
+                    allowed?.onInvalid()
+                }
             }
         }
         

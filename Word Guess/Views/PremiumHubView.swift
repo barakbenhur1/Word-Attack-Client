@@ -24,7 +24,7 @@ private func loadAIDifficulty() -> AIDifficulty? {
 /// Tiny bridge so GameView can mirror the Hub's main round timer.
 final class HubTimerBridge: ObservableObject {
     @Published var secondsLeft: Int = 0
-    @Published var total: Int = 90
+    @Published var total: Int = 0
     func set(_ s: Int, total t: Int) { secondsLeft = s; total = t }
 }
 
@@ -34,16 +34,17 @@ public struct PremiumHubView: View {
     @EnvironmentObject private var timerBridge: HubTimerBridge
     @EnvironmentObject private var router: Router
     @EnvironmentObject private var local: LanguageSetting
+    @EnvironmentObject private var loginHandeler: LoginHandeler
     
     private var language: String? { local.locale.identifier.components(separatedBy: "_").first }
+    private var email: String? { loginHandeler.model?.email }
+    
     @StateObject private var hub: PremiumHubModel
     @State private var engine: CHHapticEngine? = try? CHHapticEngine()
     
     @State private var presentedSlot: MiniSlot?
     @State private var activeSlot: MiniSlot?
     @State private var didResolveSheet = false
-    
-    @AppStorage("wins_count") private var solvedWords: Int = 0
     
     public init(email: String?) {
         _hub = StateObject(wrappedValue: PremiumHubModel(email: email))
@@ -62,7 +63,7 @@ public struct PremiumHubView: View {
                         .foregroundStyle(.white.opacity(0.7))
                         .padding(.top, 8)
                     
-                    Grid3x3(hub: hub, presentedSlot: $presentedSlot, engine: engine, reset: {})
+                    Grid3x3(hub: hub, presentedSlot: $presentedSlot, engine: engine)
                         .disabled(hub.vm.word == .empty)
                     
                     if !hub.discoveredLetters.isEmpty {
@@ -84,7 +85,7 @@ public struct PremiumHubView: View {
                         HStack {
                             Text("Find letters in mini-games".localized)
                             Spacer()
-                            Image(systemName: "arrow.right")
+                            Image(systemName: language == "he" ? "arrow.left" : "arrow.right")
                         }
                         .font(.system(.headline, design: .rounded))
                         .foregroundStyle(.white)
@@ -103,13 +104,15 @@ public struct PremiumHubView: View {
         .safeAreaInset(edge: .top) {
             HStack(spacing: 12) {
                 BackPill {
+                    PremiumCoplitionHandler.shared.onForceEndPremium = { _, _ in }
                     hub.stop()
                     router.navigateBack()
                 }
                 Spacer()
-                SolvedCounterPill(count: solvedWords)
-                MainRoundTimerView(secondsLeft: hub.mainSecondsLeft, total: hub.mainRoundLength)
-                    .frame(maxWidth: min(UIScreen.main.bounds.width * 0.55, 360), minHeight: 18, maxHeight: 18)
+                SolvedCounterPill(count: hub.solvedWords)
+                MainRoundTimerView(secondsLeft: hub.mainSecondsLeft,
+                                   total: hub.mainRoundLength)
+                .frame(maxWidth: min(UIScreen.main.bounds.width * 0.55, 360), minHeight: 18, maxHeight: 18)
             }
             .padding(.horizontal, 16)
             .padding(.top, 4)
@@ -130,10 +133,14 @@ public struct PremiumHubView: View {
                 switch result {
                 case .found(let ch):
                     hub.discoveredLetters.insert(ch)
+                    hub.recordFoundLetter(ch) // ← track word-letter discovery time
                     success(engine)
                     if slot.kind != .aiMerchant { close() }
                 case .foundMany(let chars):
-                    for ch in chars { hub.discoveredLetters.insert(ch) }
+                    for ch in chars {
+                        hub.discoveredLetters.insert(ch)
+                        hub.recordFoundLetter(ch) // ← track time for each
+                    }
                     success(engine); close()
                 case .nothing:
                     warn(engine); close()
@@ -141,7 +148,7 @@ public struct PremiumHubView: View {
                     close()
                 }
             }
-            .presentationDetents([.medium, .large])
+            .presentationDetents([.medium])
             .presentationDragIndicator(.visible)
             .interactiveDismissDisabled(false)
         }
@@ -162,8 +169,6 @@ public struct PremiumHubView: View {
             hub.resetAll()
             timerBridge.set(hub.mainSecondsLeft, total: hub.mainRoundLength)
         }
-        //        .onDisappear { hub.stop() }
-        .environment(\.layoutDirection, .leftToRight)
     }
 }
 
@@ -171,7 +176,7 @@ public struct PremiumHubView: View {
 
 private struct BackPill: View {
     var action: () -> Void
-    var body: some View { BackButton() }
+    var body: some View { BackButton(action: action).environment(\.colorScheme, .dark) }
 }
 
 // 🏆 Pill showing solved words count
@@ -222,7 +227,7 @@ private enum MiniKind: CaseIterable {
         case .ripple: "Ripples".localized
         case .magnet: "Magnet".localized
         case .frost: "Frost".localized
-        case .gyro: "Gyro Maze".localized
+        case .gyro: "Playing Tag".localized
         case .aiMerchant: "AI Merchant".localized
         case .symbolPick: "Spot the Letter".localized
         case .symbolPuzzle: "Symbol Puzzle".localized
@@ -239,7 +244,7 @@ private enum MiniKind: CaseIterable {
         case .ripple: "aqi.low"
         case .magnet: "paperclip.circle.fill"
         case .frost: "snowflake"
-        case .gyro: "gyroscope"
+        case .gyro: "figure.run.circle.fill"
         case .aiMerchant: "brain.head.profile"
         case .symbolPick: "textformat.abc.dottedunderline"
         case .symbolPuzzle: "puzzlepiece.extension"
@@ -283,7 +288,7 @@ private final class PremiumHubModel: ObservableObject {
     private static let hebrewAlphabet: [Character] = Array("אבגדהוזחטיכלמנסעפצקרשת")
     private static var currentAlphabet: [Character] = englishAlphabet
     
-    private static let staticMainRoundLength = 60 * 5 // round length
+    private static let staticMainRoundLength = Int(60 * 6) // round length in minutes
     
     static func configureFor(language: String?) {
         currentAlphabet = (language == "he") ? hebrewAlphabet : englishAlphabet
@@ -299,12 +304,18 @@ private final class PremiumHubModel: ObservableObject {
     @Published private(set) var mainSecondsLeft: Int = PremiumHubModel.staticMainRoundLength
     
     @Published var discoveredLetters: Set<Character> = []
+    @Published var gameHistory: [[String]] = []
     @Published var canInteract: Bool = true
     @Published var aiDifficulty: AIDifficulty? = nil
+    @Published var solvedWords: Int = 0
+    
+    /// last time a **current word** letter was discovered
+    private var lastWordLetterFoundAt: Date = Date()
     
     let vm = PremiumHubViewModel()
     
     var mainRoundLength: Int { PremiumHubModel.staticMainRoundLength }
+    private var windowSeconds: TimeInterval { Double(mainRoundLength) / 8.0 }
     
     private var tick: AnyCancellable?
     private let email: String?
@@ -312,6 +323,7 @@ private final class PremiumHubModel: ObservableObject {
     init(email: String?) {
         self.email = email
         self.aiDifficulty = loadAIDifficulty()
+        self.resetLoop()
     }
     
     /// Refresh AI difficulty and purge any existing AI-Merchant slots if AI is disabled.
@@ -319,44 +331,59 @@ private final class PremiumHubModel: ObservableObject {
         self.aiDifficulty = loadAIDifficulty()
         if aiDifficulty == nil {
             // Replace any existing AI Merchant slots immediately so chance is truly 0%.
-            slots = slots.map { $0.kind == .aiMerchant ? Self.makeSlot(hasAI: false) : $0 }
+            slots = slots.map { $0.kind == .aiMerchant ? self.makeSlot(hasAI: false) : $0 }
         }
     }
     
     func start() {
         if slots.isEmpty {
-            slots = (0..<8).map { _ in Self.makeSlot(hasAI: aiDifficulty != nil) }
+            slots = uniqueInitialSlots(hasAI: aiDifficulty != nil)    // ← unique on first fill
         } else if aiDifficulty == nil {
-            // Safety: if AI was turned off while slots already existed.
-            slots = slots.map { $0.kind == .aiMerchant ? Self.makeSlot(hasAI: false) : $0 }
+            // If AI turned off while running, purge AI tiles (refreshing those is fine to duplicate)
+            slots = slots.map { $0.kind == .aiMerchant ? self.makeSlot(hasAI: false) : $0 }
         }
         
-        if vm.word == .empty, let email {
-            Task(priority: .userInitiated) { await self.vm.word(email: email) }
-        }
         guard tick == nil else { return }
         tick = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
             .sink { [weak self] _ in
                 guard let self else { return }
                 self.mainSecondsLeft -= 1
-                if self.mainSecondsLeft <= 0 { resetTimer() }
+                if self.mainSecondsLeft <= 0 {
+                    Task(priority: .high) {
+                        try? await Task.sleep(nanoseconds: 1_000_000)
+                        await MainActor.run { [weak self] in
+                            guard let self else { return }
+                            resetAll()
+                        }
+                    }
+                    return
+                }
+                // Allow duplicates on expiry refresh:
                 self.slots = self.slots.map { s in
-                    s.expiresAt <= Date() ? Self.makeSlot(hasAI: self.aiDifficulty != nil) : s
+                    s.expiresAt <= Date() ? self.makeSlot(hasAI: self.aiDifficulty != nil) : s
                 }
             }
     }
     
-    private func resetTimer() {
+    private func resetLoop() {
         self.mainSecondsLeft = self.mainRoundLength
         self.discoveredLetters = []
+        self.gameHistory = []
+        self.lastWordLetterFoundAt = Date() // start window from "now"
         if let email {
-            Task(priority: .userInitiated) { await self.vm.word(email: email) }
+            Task(priority: .userInitiated) {
+                await vm.word(email: email)
+                let solved = await vm.getScore(email: email)
+                await MainActor.run {
+                    solvedWords = solved
+                }
+            }
         }
     }
     
     func resetAll() {
-        self.slots = (0..<8).map { _ in Self.makeSlot(hasAI: aiDifficulty != nil) }
-        resetTimer()
+        self.slots = uniqueInitialSlots(hasAI: aiDifficulty != nil)   // ← unique on full reset
+        resetLoop()
     }
     
     func stop() { tick?.cancel(); tick = nil }
@@ -370,14 +397,59 @@ private final class PremiumHubModel: ObservableObject {
     
     func replaceSlot(_ s: MiniSlot) {
         guard let i = slots.firstIndex(of: s) else { return }
-        slots[i] = Self.makeSlot(hasAI: aiDifficulty != nil)
+        slots[i] = self.makeSlot(hasAI: aiDifficulty != nil)
+    }
+    
+    // Create a slot for a specific kind (used for unique initial grid)
+    private func makeSlot(kind: MiniKind) -> MiniSlot {
+        let contains: Bool
+        let seed: Character?
+        let ttl: Int
+        
+        switch kind {
+        case .aiMerchant:
+            contains = true; seed = nil; ttl = 20
+        case .symbolPick:
+            contains = true; seed = nil; ttl = 15
+        case .symbolPuzzle:
+            contains = false; seed = nil; ttl = 30   // “unknown” in header; mini decides
+        case .luckyWait:
+            contains = false; seed = nil; ttl = 12
+        case .gyro:
+            contains = true; seed = pickLetterForOffer() // always letter for gyro
+            let pace: Double = 12
+            ttl = max(12, Int(pace * 2.2))
+        default:
+            contains = Double.random(in: 0...1) < kind.baseLetterChance
+            seed = contains ? pickLetterForOffer() : nil
+            let pace: Double
+            switch kind {
+            case .fog: pace = 6
+            case .sand, .wax: pace = 14
+            case .sonar: pace = 20
+            default: pace = 12
+            }
+            ttl = max(12, Int(pace * 2.2))
+        }
+        
+        return MiniSlot(kind: kind,
+                        expiresAt: Date().addingTimeInterval(TimeInterval(ttl)),
+                        containsLetter: contains,
+                        seededLetter: seed)
+    }
+    
+    // Build the initial 8 slots with no duplicate kinds
+    private func uniqueInitialSlots(hasAI: Bool) -> [MiniSlot] {
+        var available = MiniKind.allCases
+        if !hasAI {
+            available.removeAll { $0 == .aiMerchant } // enforce 0% AI when disabled
+        }
+        let chosen = Array(available.shuffled().prefix(8))
+        return chosen.map { makeSlot(kind: $0) }
     }
     
     private static func selectKind(hasAI: Bool) -> MiniKind {
-        // Requested appearance rates (must sum to 100 when AI is enabled)
-        // sand 11, wax 11, fog 11, sonar 11, ripple 11,
-        // magnet 10, frost 9, gyro 8, aiMerchant 3, symbolPick 5,
-        // symbolPuzzle 5, luckyWait 5
+        // Requested appearance rates
         var weights: [(MiniKind, Double)] = [
             (.sand, 11), (.wax, 11), (.fog, 11), (.sonar, 11), (.ripple, 11),
             (.magnet, 10), (.frost, 9), (.gyro, 8),
@@ -385,7 +457,6 @@ private final class PremiumHubModel: ObservableObject {
             (.symbolPick, 5), (.symbolPuzzle, 5), (.luckyWait, 5)
         ]
         if !hasAI {
-            // ABSOLUTE: 0% chance to show AI Merchant when AI is nil
             weights.removeAll { $0.0 == .aiMerchant }
         }
         let total = weights.reduce(0) { $0 + $1.1 }
@@ -398,8 +469,63 @@ private final class PremiumHubModel: ObservableObject {
         return weights.last?.0 ?? .sand
     }
     
-    private static func makeSlot(hasAI: Bool) -> MiniSlot {
-        let kind = selectKind(hasAI: hasAI)
+    // MARK: Preference & picking
+    
+    /// letters from alphabet that are not discovered yet
+    private func undiscoveredAlphabetLetters() -> [Character] {
+        let all = Set(Self.currentAlphabet)
+        return Array(all.subtracting(discoveredLetters))
+    }
+    
+    /// undiscovered letters that belong to the current word
+    private func remainingWordLetters() -> [Character] {
+        let wordUpper = vm.wordValue.uppercased()
+        let wordSet = Set(wordUpper.filter { Self.isLetter($0) })
+        let missing = wordSet.subtracting(discoveredLetters)
+        return Array(missing)
+    }
+    
+    /// true when we should prefer giving a current-word letter next
+    private func shouldPreferWordLetter() -> Bool {
+        guard !vm.wordValue.isEmpty else { return false }
+        let missing = remainingWordLetters()
+        guard !missing.isEmpty else { return false }
+        return Date().timeIntervalSince(lastWordLetterFoundAt) >= windowSeconds
+    }
+    
+    /// pick a single letter to seed/offer, honoring preference rule
+    func pickLetterForOffer() -> Character {
+        let preferWord = shouldPreferWordLetter()
+        let pool = preferWord ? remainingWordLetters() : undiscoveredAlphabetLetters()
+        if let choice = pool.randomElement() { return choice }
+        let alt = preferWord ? undiscoveredAlphabetLetters() : remainingWordLetters()
+        if let choice = alt.randomElement() { return choice }
+        return Self.randomLetter()
+    }
+    
+    /// pick several unique letters to offer (best effort uniqueness)
+    func pickLettersForOffer(count: Int) -> [Character] {
+        var set = Set<Character>()
+        while set.count < count {
+            set.insert(pickLetterForOffer())
+            if set.count < count && set.count >= Self.currentAlphabet.count {
+                break
+            }
+        }
+        return Array(set)
+    }
+    
+    /// record letter discovery time if it's in the current word
+    func recordFoundLetter(_ ch: Character) {
+        let wordU = vm.wordValue.uppercased()
+        if wordU.contains(String(ch).uppercased()) {
+            lastWordLetterFoundAt = Date()
+        }
+    }
+    
+    // MARK: Slot creation (instance, so it can consult state)
+    private func makeSlot(hasAI: Bool) -> MiniSlot {
+        let kind = Self.selectKind(hasAI: hasAI)
         let contains: Bool
         let seed: Character?
         let ttl: Int
@@ -410,12 +536,17 @@ private final class PremiumHubModel: ObservableObject {
         case .symbolPick:
             contains = true; seed = nil; ttl = 15
         case .symbolPuzzle:
-            contains = true; seed = nil; ttl = 30
+            contains = false; seed = nil; ttl = 30     // keep header honest
         case .luckyWait:
-            contains = false; seed = nil; ttl = 12   // 12s slot TTL
+            contains = false; seed = nil; ttl = 12
+        case .gyro:
+            contains = true
+            seed = pickLetterForOffer()                // always letter for gyro
+            let pace: Double = 12
+            ttl = max(12, Int(pace * 2.2))
         default:
             contains = Double.random(in: 0...1) < kind.baseLetterChance
-            seed = contains ? randomLetter() : nil
+            seed = contains ? pickLetterForOffer() : nil
             let pace: Double
             switch kind {
             case .fog: pace = 6
@@ -439,7 +570,6 @@ private struct Grid3x3: View {
     @ObservedObject var hub: PremiumHubModel
     @Binding var presentedSlot: MiniSlot?
     let engine: CHHapticEngine?
-    let reset: () -> Void
     private let spacing: CGFloat = 16
     
     var body: some View {
@@ -452,7 +582,7 @@ private struct Grid3x3: View {
                     HStack(spacing: spacing) {
                         ForEach(0..<3, id: \.self) { c in
                             if r == 1 && c == 1 {
-                                MainRoundCircle(hub: hub, reset: reset)
+                                MainRoundCircle(hub: hub)
                                     .frame(width: cell * 0.72, height: cell * 0.72)
                                     .frame(width: cell, height: cell)
                             } else if let slot = hub.slot(atVisualIndex: r, c) {
@@ -482,43 +612,160 @@ private struct Grid3x3: View {
     }
 }
 
-// MARK: - Main circle
+// MARK: - Gold gradient (strong contrast)
+extension LinearGradient {
+    static let ready = LinearGradient(
+        gradient: Gradient(colors: [
+            Color(red: 1.0, green: 0.95, blue: 0.70),
+            Color(red: 1.0, green: 0.84, blue: 0.0),
+            Color(red: 0.80, green: 0.50, blue: 0.0),
+            Color(red: 0.55, green: 0.35, blue: 0.05),
+            Color(red: 1.0, green: 0.95, blue: 0.70)
+        ]),
+        startPoint: .topLeading,
+        endPoint: .bottomTrailing
+    )
+    
+    static let notReady = LinearGradient(
+        gradient: Gradient(colors: [
+            Color(red: 0.90, green: 0.92, blue: 0.95),
+            Color(red: 0.66, green: 0.71, blue: 0.76),
+            Color(red: 0.42, green: 0.47, blue: 0.52),
+            Color(red: 0.22, green: 0.26, blue: 0.31),
+            Color(red: 0.90, green: 0.92, blue: 0.95)
+        ]),
+        startPoint: .topLeading,
+        endPoint: .bottomTrailing
+    )
+    
+}
 
+// MARK: - Pressed bounce style (cute spring)
+struct PressedBounceStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.94 : 1.0)
+            .shadow(radius: configuration.isPressed ? 6 : 12, y: configuration.isPressed ? 4 : 8)
+            .animation(.spring(response: 0.22, dampingFraction: 0.65, blendDuration: 0.1),
+                       value: configuration.isPressed)
+    }
+}
+
+// MARK: - Shimmer sweep overlay
+private struct ShimmerSweep: View {
+    @Binding var trigger: Bool
+    var body: some View {
+        GeometryReader { geo in
+            let w = geo.size.width
+            Rectangle()
+                .fill(
+                    LinearGradient(gradient: Gradient(stops: [
+                        .init(color: .white.opacity(0.0), location: 0.00),
+                        .init(color: .white.opacity(0.10), location: 0.45),
+                        .init(color: .white.opacity(0.45), location: 0.50),
+                        .init(color: .white.opacity(0.10), location: 0.55),
+                        .init(color: .white.opacity(0.00), location: 1.00),
+                    ]), startPoint: .topLeading, endPoint: .bottomTrailing)
+                )
+                .frame(width: w * 0.45)
+                .rotationEffect(.degrees(30))
+                .offset(x: trigger ? w*1.1 : -w*1.1)
+                .animation(.easeOut(duration: 0.06), value: trigger)
+        }
+        .allowsHitTesting(false)
+        .blendMode(.plusLighter)
+        .clipShape(Circle())
+    }
+}
+
+// MARK: - Ripple ring overlay
+private struct RippleRing: View {
+    @Binding var fire: Bool
+    var body: some View {
+        Circle()
+            .strokeBorder(Color.white.opacity(0.65), lineWidth: 2)
+            .scaleEffect(fire ? 1.45 : 0.9)
+            .opacity(fire ? 0.0 : 0.8)
+            .animation(.easeOut(duration: 0.06), value: fire)
+            .allowsHitTesting(false)
+    }
+}
+
+// MARK: - Main
 private struct MainRoundCircle: View {
     @EnvironmentObject private var router: Router
     @EnvironmentObject private var vm: PremiumHubViewModel
     @ObservedObject var hub: PremiumHubModel
-    let reset: () -> Void
+    
+    @State private var shimmer = false
+    @State private var ripple  = false
     
     var body: some View {
         Button {
-            router.navigateTo(.premiumGame(word: vm.word.value,
-                                           allowedLetters: String(hub.discoveredLetters).lowercased()))
+            UIImpactFeedbackGenerator(style: .soft).impactOccurred()
+            shimmer = true
+            ripple = true
+            Task(priority: .userInitiated) {
+                try? await Task.sleep(nanoseconds: 60_000_000)
+                shimmer = false
+                ripple = false
+                try? await Task.sleep(nanoseconds: 30_000_000)
+                await MainActor.run {
+                    router.navigateTo(.premiumGame(
+                        word: vm.wordValue,
+                        history: hub.gameHistory,
+                        allowedLetters: String(hub.discoveredLetters).lowercased()
+                    ))
+                }
+            }
         } label: {
             ZStack {
+                let word = vm.wordValue
+                let isReady = !word.isEmpty && word.lettersAreSubset(of: hub.discoveredLetters)
                 Circle()
-                    .fill(PremiumPalette.card)
-                    .overlay(Circle().stroke(PremiumPalette.stroke, lineWidth: 1))
-                    .shadow(color: PremiumPalette.glow, radius: 10, y: 6)
-                VStack(spacing: 8) {
-                    AppTitle().shadow(radius: 4).scaleEffect(.init(width: 0.7, height: 0.7)).padding(.all, -8)
+                    .fill(isReady ? LinearGradient.ready : LinearGradient.notReady)
+                    .overlay(
+                        Circle()
+                            .stroke(Color.white.opacity(0.5), lineWidth: 1.5)
+                            .blur(radius: 0.4)
+                    )
+                    .shadow(color: .black.opacity(0.25), radius: 10, x: 0, y: 6)
+                    .shadow(color: isReady ? Color.yellow.opacity(0.45) : Color.gray.opacity(0.45), radius: 16, x: 0, y: 10)
+                    .overlay(ShimmerSweep(trigger: $shimmer))
+                    .overlay(RippleRing(fire: $ripple).padding(6))
+                
+                VStack(spacing: 10) {
+                    AppTitle()
+                        .shadow(color: .black.opacity(0.25), radius: 4, y: 2)
+                        .scaleEffect(.init(width: 0.72, height: 0.72))
+                        .padding(.all, -8)
+                    
                     HStack(spacing: 6) {
                         ForEach(0..<5, id: \.self) { i in
                             let show = i < min(5, hub.discoveredLetters.count)
                             Circle()
                                 .fill(show ? .white : .white.opacity(0.25))
-                                .frame(width: 8, height: 8)
-                                .overlay(Circle().stroke(.white.opacity(0.35), lineWidth: 0.5))
+                                .frame(width: 9, height: 9)
+                                .overlay(Circle().stroke(.white.opacity(0.4), lineWidth: 0.6))
+                                .shadow(color: show ? .white.opacity(0.8) : .clear, radius: 2, y: 1)
                         }
-                    }.padding(.bottom, 4)
-                }.padding(10)
+                    }
+                    .padding(.bottom, 6)
+                }
+                .padding(12)
             }
         }
+        .buttonStyle(PressedBounceStyle())
         .tint(.black)
-        .onAppear { router.onForceEndPremium = reset }
-        .onDisappear { router.onForceEndPremium = {} }
+        .onAppear {
+            PremiumCoplitionHandler.shared.onForceEndPremium = { history, reset in
+                if reset { hub.resetAll() }
+                else if let history { hub.gameHistory = history }
+            }
+        }
     }
 }
+
 
 // MARK: - Tile
 
@@ -528,7 +775,6 @@ private struct MiniGameSlotView: View {
     var body: some View {
         VStack(spacing: 8) {
             ZStack {
-                // Show the fancy AI ring only when AI is enabled
                 if slot.kind == .aiMerchant, ai != nil {
                     Circle().stroke(
                         LinearGradient(colors: [.white.opacity(0.9), PremiumPalette.accent],
@@ -596,18 +842,18 @@ private struct MiniGameSheet: View {
             
             Group {
                 switch slot.kind {
-                case .sand:   SandDigMini(hasLetter: slot.containsLetter, letter: slot.seededLetter, onDone: onDone)
-                case .wax:    WaxPressMini(hasLetter: slot.containsLetter, letter: slot.seededLetter, onDone: onDone)
-                case .fog:    FogWipeMini(hasLetter: slot.containsLetter, letter: slot.seededLetter, onDone: onDone)
-                case .sonar:  SonarMini(letter: slot.seededLetter ?? PremiumHubModel.randomLetter(), onDone: onDone)
-                case .ripple: RippleMini(hasLetter: slot.containsLetter, letter: slot.seededLetter, onDone: onDone)
-                case .magnet: MagnetMini(hasLetter: slot.containsLetter, letter: slot.seededLetter, onDone: onDone)
-                case .frost:  FrostMini(hasLetter: slot.containsLetter, letter: slot.seededLetter, onDone: onDone)
-                case .gyro:   GyroMazeMini(letter: slot.seededLetter ?? PremiumHubModel.randomLetter(), onDone: onDone)
-                case .aiMerchant: AIMerchantMini(deadline: slot.expiresAt, ai: hub.aiDifficulty, onDone: onDone)
-                case .symbolPick: SymbolPickMini(deadline: slot.expiresAt, onDone: onDone)
-                case .symbolPuzzle: SymbolPuzzleMini(deadline: slot.expiresAt, onDone: onDone)
-                case .luckyWait: LuckyWaitMini(deadline: slot.expiresAt, onDone: onDone)
+                case .sand:         SandDigMini(hasLetter: slot.containsLetter, letter: slot.seededLetter, onDone: onDone)
+                case .wax:          WaxPressMini(hasLetter: slot.containsLetter, letter: slot.seededLetter, onDone: onDone)
+                case .fog:          FogWipeMini(hasLetter: slot.containsLetter, letter: slot.seededLetter, onDone: onDone)
+                case .sonar:        SonarMini(hasLetter: slot.containsLetter, seed: slot.seededLetter, onDone: onDone)
+                case .ripple:       RippleMini(hasLetter: slot.containsLetter, letter: slot.seededLetter, onDone: onDone)
+                case .magnet:       MagnetMini(hasLetter: slot.containsLetter, letter: slot.seededLetter, onDone: onDone)
+                case .frost:        FrostMini(hasLetter: slot.containsLetter, letter: slot.seededLetter, onDone: onDone)
+                case .gyro:         GyroMazeMini(hasLetter: slot.containsLetter, seed: slot.seededLetter, onDone: onDone)
+                case .aiMerchant:   AIMerchantMini(deadline: slot.expiresAt, ai: hub.aiDifficulty, hub: hub, onDone: onDone)
+                case .symbolPick:   SymbolPickMini(deadline: slot.expiresAt, hub: hub, onDone: onDone)
+                case .symbolPuzzle: SymbolPuzzleMini(deadline: slot.expiresAt, hub: hub, onDone: onDone)
+                case .luckyWait:    LuckyWaitMini(deadline: slot.expiresAt, hub: hub, onDone: onDone)
                 }
             }
             .padding(.horizontal)
@@ -618,6 +864,13 @@ private struct MiniGameSheet: View {
                            startPoint: .top, endPoint: .bottom)
             .ignoresSafeArea()
         )
+        .onChange(of: hub.mainSecondsLeft) { old, new in
+            if old <= 0 && new == hub.mainRoundLength {
+                guard !closed else { return }
+                closed = true
+                onDone(.nothing)
+            }
+        }
         // global auto-close on expiry
         .onReceive(Timer.publish(every: 0.25, on: .main, in: .common).autoconnect()) { _ in
             guard !closed else { return }
@@ -656,34 +909,114 @@ private struct DiscoveredBeltView: View {
 struct MainRoundTimerView: View {
     let secondsLeft: Int
     let total: Int
+    
+    @State private var pulse = false
+    @State private var flashOpacity: Double = 0
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    
     private var progress: Double {
         guard total > 0 else { return 0 }
         return max(0, min(1, Double(secondsLeft) / Double(total)))
     }
+    
+    private enum Phase { case high, mid, low }
+    private var phase: Phase {
+        switch progress {
+        case 0.66...1.0: return .high
+        case 0.33..<0.66: return .mid
+        default: return .low
+        }
+    }
+    
+    private var isCritical: Bool { secondsLeft <= 30 }
+    private var isFinal:    Bool { secondsLeft <= 10 }
+    
+    private var barGradient: LinearGradient {
+        // high: cyan→mint, mid: amber, low: red
+        let colors: [Color]
+        switch phase {
+        case .high:
+            colors = [PremiumPalette.accent, PremiumPalette.accent2]
+        case .mid:
+            colors = [Color(hue: 0.12, saturation: 0.95, brightness: 1.0), .orange]
+        case .low:
+            colors = [.red, Color(hue: 0.0, saturation: 0.75, brightness: 0.9)]
+        }
+        return LinearGradient(colors: colors, startPoint: .leading, endPoint: .trailing)
+    }
+    
     var body: some View {
         GeometryReader { geo in
             let w = geo.size.width * progress
             ZStack(alignment: .leading) {
+                // track
                 Capsule().fill(Color.white.opacity(0.15))
-                Capsule().fill(LinearGradient(colors: [PremiumPalette.accent, PremiumPalette.accent2],
-                                              startPoint: .leading, endPoint: .trailing))
-                .frame(width: w)
+                
+                // fill
+                Capsule()
+                    .fill(barGradient)
+                    .frame(width: w)
+                // urgent heartbeat (vertical breathe) + hue tick under 30s
+                    .scaleEffect(x: 1,
+                                 y: (isCritical && !reduceMotion && pulse) ? 1.06 : 1,
+                                 anchor: .center)
+                    .hueRotation(.degrees(isCritical && !reduceMotion && pulse ? 5 : 0))
+                // warm glow that intensifies as time runs out
+                    .shadow(color: isCritical
+                            ? .red.opacity(pulse ? 0.55 : 0.30)
+                            : .clear,
+                            radius: isCritical ? (isFinal ? 14 : 10) : 0,
+                            x: 0, y: isCritical ? 6 : 0)
+                    .animation(.easeInOut(duration: 0.25), value: pulse)
+                    .animation(.easeInOut(duration: 0.25), value: progress)
+                    .animation(.easeInOut(duration: 0.25), value: phase)
+                
+                // brief tick flash on the bar edge for last 10s
+                if isCritical {
+                    Capsule()
+                        .stroke(Color.white.opacity(flashOpacity), lineWidth: 3)
+                        .frame(width: w)
+                        .blendMode(.plusLighter)
+                }
             }
         }
+        // readout
         .overlay(
             HStack(spacing: 6) {
-                Text("\(secondsLeft)s").font(.caption2.monospacedDigit()).foregroundStyle(.white.opacity(0.9))
-                Text("round".localized).font(.caption2).foregroundStyle(.white.opacity(0.5))
+                Text("\(secondsLeft)s".localized)
+                    .font(.caption2.monospacedDigit())
+                    .foregroundStyle(isCritical ? .white : .white.opacity(0.9))
+                    .scaleEffect(isFinal && !reduceMotion && pulse ? 1.06 : 1.0)
+                    .animation(.easeOut(duration: 0.18), value: pulse)
+                Text("round".localized)
+                    .font(.caption2)
+                    .foregroundStyle(.white.opacity(0.5))
             }
                 .padding(.horizontal, 6),
             alignment: .trailing
         )
         .clipShape(Capsule())
         .frame(height: 18)
+        .task(id: isCritical) {
+            guard isCritical, !reduceMotion else { return }
+            withAnimation(.easeInOut(duration: 0.22)) { pulse.toggle() }
+            flashOpacity = isFinal ? 0.9 : 0.5
+            withAnimation(.easeOut(duration: 0.16)) { flashOpacity = 0 }
+        }
+        // drive urgency by second ticks (no shake)
+        .onChange(of: secondsLeft) { _, _ in
+            guard isCritical else { return }
+            withAnimation(.easeInOut(duration: 0.22)) { pulse.toggle() }
+            
+            // tiny flash on the stroke for last 30s
+            flashOpacity = isFinal ? 0.9 : 0.5
+            withAnimation(.easeOut(duration: 0.16)) { flashOpacity = 0 }
+        }
     }
 }
 
-// MARK: - Legacy Minis (unchanged behavior)
+
+// MARK: - Legacy Minis (unchanged behavior but seeded via rule)
 
 private struct SandDigMini: View {
     let hasLetter: Bool
@@ -757,53 +1090,124 @@ private struct WaxPressMini: View {
     @State private var letterPos: CGPoint = .zero
     @State private var seeded: Character = "A"
     
+    // finger feedback
+    @State private var ringPulse = false
+    
     var body: some View {
         GeometryReader { geo in
+            let shape  = RoundedRectangle(cornerRadius: 18, style: .continuous)
+            let bounds = CGRect(origin: .zero, size: geo.size)
+            
             ZStack {
-                RoundedRectangle(cornerRadius: 18).fill(PremiumPalette.wax)
+                // base
+                shape
+                    .fill(PremiumPalette.wax)
                     .overlay(
+                        // wax sheen that clears as you press
                         LinearGradient(colors: [.white.opacity(0.7), .white.opacity(0.15)],
                                        startPoint: .topLeading, endPoint: .bottomTrailing)
-                        .clipShape(RoundedRectangle(cornerRadius: 18))
+                        .clipShape(shape)
                         .opacity(0.7 - 0.6 * clarity)
                     )
-                    .overlay(RoundedRectangle(cornerRadius: 18).stroke(PremiumPalette.stroke, lineWidth: 1))
+                    .overlay(shape.stroke(PremiumPalette.stroke, lineWidth: 1))
+                
+                // letter (revealed by the press mask)
                 if hasLetter {
                     Text(String(seeded))
-                        .font(.system(size: min(geo.size.width, geo.size.height) * 0.42, weight: .heavy, design: .rounded))
+                        .font(.system(size: min(geo.size.width, geo.size.height) * 0.42,
+                                      weight: .heavy, design: .rounded))
                         .foregroundStyle(.black.opacity(0.9))
                         .position(letterPos)
-                        .mask(Group {
-                            if let p = pressPoint {
-                                Circle()
-                                    .size(CGSize(width: 40 + 140 * clarity, height: 40 + 140 * clarity))
-                                    .offset(x: p.x - (20 + 70 * clarity), y: p.y - (20 + 70 * clarity))
+                        .mask(
+                            Group {
+                                if let p = pressPoint {
+                                    Circle()
+                                        .size(CGSize(width: 40 + 140 * clarity, height: 40 + 140 * clarity))
+                                        .offset(x: p.x - (20 + 70 * clarity),
+                                                y: p.y - (20 + 70 * clarity))
+                                }
                             }
-                        })
+                        )
                         .animation(.easeInOut(duration: 0.15), value: clarity)
                 }
+                
+                // ===== Finger-move visual feedback (clipped to shape) =====
+                if let p = pressPoint {
+                    // soft warm glow
+                    Circle()
+                        .fill(
+                            RadialGradient(
+                                gradient: Gradient(colors: [
+                                    .white.opacity(0.28 * (0.4 + clarity * 0.6)),
+                                    .white.opacity(0.02)
+                                ]),
+                                center: .center,
+                                startRadius: 0,
+                                endRadius: 40 + 120 * clarity
+                            )
+                        )
+                        .frame(width: 80 + 220 * clarity, height: 80 + 220 * clarity)
+                        .position(p)
+                        .blendMode(.plusLighter)
+                        .allowsHitTesting(false)
+                    
+                    // subtle ring pulse
+                    Circle()
+                        .stroke(.white.opacity(0.45), lineWidth: 2)
+                        .frame(width: 38 + 140 * clarity, height: 38 + 140 * clarity)
+                        .position(p)
+                        .scaleEffect(ringPulse ? 1.06 : 0.96)
+                        .opacity(0.9)
+                        .shadow(color: .white.opacity(0.22), radius: 3, y: 1)
+                        .animation(.easeInOut(duration: 0.28).repeatForever(autoreverses: true),
+                                   value: ringPulse)
+                        .onAppear { ringPulse = true }
+                        .onDisappear { ringPulse = false }
+                        .allowsHitTesting(false)
+                }
             }
-            .contentShape(RoundedRectangle(cornerRadius: 18))
-            .gesture(DragGesture(minimumDistance: 0)
-                .onChanged { g in pressPoint = g.location; clarity = min(1, clarity + 0.02) }
-                .onEnded { _ in
-                    let success = hasLetter && overlap(pressPoint ?? .zero, letterPos, clarity: clarity)
-                    onDone(success ? .found(seeded) : .nothing)
-                    pressPoint = nil; clarity = 0
-                })
+            // clip everything to the rounded rect & use it as hit area
+            .clipShape(shape)
+            .contentShape(shape)
+            .gesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { g in
+                        // only react if finger is inside the shape
+                        let inside = shape.path(in: bounds).contains(g.location)
+                        if inside {
+                            pressPoint = g.location
+                            clarity = min(1, clarity + 0.02)
+                        } else {
+                            // outside → hide feedback, do not increase clarity
+                            pressPoint = nil
+                        }
+                    }
+                    .onEnded { _ in
+                        let success = hasLetter &&
+                        overlap(pressPoint ?? .zero, letterPos, clarity: clarity)
+                        onDone(success ? .found(seeded) : .nothing)
+                        pressPoint = nil
+                        clarity = 0
+                    }
+            )
             .onAppear {
                 seeded = letter ?? PremiumHubModel.randomLetter()
                 let inset: CGFloat = 70
-                letterPos = CGPoint(x: .random(in: inset...(geo.size.width - inset)),
-                                    y: .random(in: inset...(geo.size.height - inset)))
+                letterPos = CGPoint(
+                    x: .random(in: inset...(geo.size.width - inset)),
+                    y: .random(in: inset...(geo.size.height - inset))
+                )
             }
         }
         .frame(height: 300)
     }
+    
     private func overlap(_ a: CGPoint, _ b: CGPoint, clarity: CGFloat) -> Bool {
         hypot(a.x - b.x, a.y - b.y) < 80 * max(0.4, clarity)
     }
 }
+
+
 
 private struct FogWipeMini: View {
     let hasLetter: Bool
@@ -863,19 +1267,25 @@ private struct FogWipeMini: View {
 }
 
 private struct SonarMini: View {
-    let letter: Character
+    let hasLetter: Bool
+    let seed: Character?                // stable seed from slot
     let onDone: (MiniResult) -> Void
+    
     @State private var target: CGPoint = .zero
     @State private var pings: [Ping] = []
     @State private var solved = false
+    @State private var letterToShow: Character? = nil   // ← frozen once
     struct Ping: Identifiable { let id = UUID(); let center: CGPoint; let date: Date; let strength: Double }
+    
     var body: some View {
         GeometryReader { geo in
             ZStack {
                 RoundedRectangle(cornerRadius: 18).fill(Color.black.opacity(0.75))
                     .overlay(RoundedRectangle(cornerRadius: 18).stroke(PremiumPalette.stroke, lineWidth: 1))
+                
                 GridPattern().stroke(Color.white.opacity(0.15), lineWidth: 1)
                     .clipShape(RoundedRectangle(cornerRadius: 18))
+                
                 TimelineView(.animation) { timeline in
                     Canvas { ctx, _ in
                         for ping in pings {
@@ -888,8 +1298,9 @@ private struct SonarMini: View {
                         }
                     }
                 }
-                if solved {
-                    Text(String(letter))
+                
+                if solved, let ch = letterToShow {
+                    Text(String(ch))
                         .font(.system(size: min(geo.size.width, geo.size.height) * 0.40, weight: .heavy, design: .rounded))
                         .foregroundStyle(.white)
                         .position(target)
@@ -904,18 +1315,24 @@ private struct SonarMini: View {
                 pings.append(Ping(center: p, date: Date(), strength: norm))
                 if d < 36 {
                     withAnimation(.spring(response: 0.5, dampingFraction: 0.75)) { solved = true }
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { onDone(.found(letter)) }
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.55) {
+                        if let ch = letterToShow { onDone(.found(ch)) } else { onDone(.nothing) }
+                    }
                 }
             })
             .onAppear {
+                letterToShow = hasLetter ? seed : nil  // freeze once
                 let inset: CGFloat = 70
-                target = CGPoint(x: .random(in: inset...(geo.size.width - inset)),
-                                 y: .random(in: inset...(geo.size.height - inset)))
+                target = CGPoint(
+                    x: .random(in: inset...(geo.size.width - inset)),
+                    y: .random(in: inset...(geo.size.height - inset))
+                )
             }
         }
         .frame(height: 300)
     }
 }
+
 private struct GridPattern: Shape {
     func path(in rect: CGRect) -> Path {
         var p = Path()
@@ -1079,39 +1496,114 @@ private struct FrostMini: View {
     let hasLetter: Bool
     let letter: Character?
     let onDone: (MiniResult) -> Void
+    
     @State private var heatPoints: [CGPoint] = []
     @State private var letterPos: CGPoint = .zero
     @State private var seeded: Character = "A"
+    
+    // finger feedback
+    @State private var touchPoint: CGPoint?
+    @State private var heatLevel: CGFloat = 0
+    @State private var ringPulse = false
+    
     var body: some View {
         GeometryReader { geo in
+            let shape = RoundedRectangle(cornerRadius: 18, style: .continuous)
+            let bounds = CGRect(origin: .zero, size: geo.size)
+            
             ZStack {
-                RoundedRectangle(cornerRadius: 18).fill(Color.black.opacity(0.88))
-                    .overlay(RoundedRectangle(cornerRadius: 18).stroke(PremiumPalette.stroke, lineWidth: 1))
+                // background + stroke
+                shape
+                    .fill(Color.black.opacity(0.88))
+                    .overlay(shape.stroke(PremiumPalette.stroke, lineWidth: 1))
+                
+                // letter reveal
                 if hasLetter {
                     Text(String(seeded))
-                        .font(.system(size: min(geo.size.width, geo.size.height) * 0.42, weight: .heavy, design: .rounded))
+                        .font(.system(size: min(geo.size.width, geo.size.height) * 0.42,
+                                      weight: .heavy, design: .rounded))
                         .foregroundStyle(.white)
                         .position(letterPos)
                         .mask(HeatMask(points: heatPoints))
                 }
-                FrostOverlay().clipShape(RoundedRectangle(cornerRadius: 18)).opacity(0.9)
+                
+                // frost texture
+                FrostOverlay()
+                    .opacity(0.9)
+                
+                // ===== Finger-move visual feedback (clipped by shape) =====
+                if let p = touchPoint {
+                    // warm glow
+                    Circle()
+                        .fill(
+                            RadialGradient(
+                                gradient: Gradient(colors: [
+                                    .white.opacity(0.28 * (0.4 + heatLevel * 0.6)),
+                                    .white.opacity(0.02)
+                                ]),
+                                center: .center,
+                                startRadius: 0,
+                                endRadius: 40 + 120 * heatLevel
+                            )
+                        )
+                        .frame(width: 80 + 220 * heatLevel, height: 80 + 220 * heatLevel)
+                        .position(p)
+                        .blendMode(.plusLighter)
+                        .allowsHitTesting(false)
+                    
+                    // breathing ring
+                    Circle()
+                        .stroke(.white.opacity(0.45), lineWidth: 2)
+                        .frame(width: 38 + 140 * heatLevel, height: 38 + 140 * heatLevel)
+                        .position(p)
+                        .scaleEffect(ringPulse ? 1.06 : 0.96)
+                        .opacity(0.9)
+                        .shadow(color: .white.opacity(0.22), radius: 3, y: 1)
+                        .animation(.easeInOut(duration: 0.28).repeatForever(autoreverses: true),
+                                   value: ringPulse)
+                        .onAppear { ringPulse = true }
+                        .onDisappear { ringPulse = false }
+                        .allowsHitTesting(false)
+                }
             }
-            .gesture(DragGesture(minimumDistance: 0)
-                .onChanged { g in heatPoints.append(g.location) }
-                .onEnded { _ in
-                    let success = hasLetter && heatPoints.contains { hypot($0.x - letterPos.x, $0.y - letterPos.y) < 42 }
-                    onDone(success ? .found(seeded) : .nothing)
-                })
+            // ensure NOTHING renders outside the rounded rect
+            .clipShape(shape)
+            .contentShape(shape)
+            .gesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { g in
+                        let inside = shape.path(in: bounds).contains(g.location)
+                        if inside {
+                            touchPoint = g.location
+                            heatPoints.append(g.location)
+                            heatLevel = min(1, heatLevel + 0.04)
+                        } else {
+                            // outside → hide the indicators and do not add heat
+                            touchPoint = nil
+                        }
+                    }
+                    .onEnded { _ in
+                        let success = hasLetter &&
+                        heatPoints.contains { hypot($0.x - letterPos.x, $0.y - letterPos.y) < 42 }
+                        onDone(success ? .found(seeded) : .nothing)
+                        touchPoint = nil
+                        heatLevel = 0
+                    }
+            )
             .onAppear {
                 seeded = letter ?? PremiumHubModel.randomLetter()
                 let inset: CGFloat = 70
-                letterPos = CGPoint(x: .random(in: inset...(geo.size.width - inset)),
-                                    y: .random(in: inset...(geo.size.height - inset)))
+                letterPos = CGPoint(
+                    x: .random(in: inset...(geo.size.width - inset)),
+                    y: .random(in: inset...(geo.size.height - inset))
+                )
             }
         }
         .frame(height: 280)
     }
 }
+
+
 private struct HeatMask: Shape {
     let points: [CGPoint]
     func path(in rect: CGRect) -> Path {
@@ -1135,49 +1627,320 @@ private struct FrostOverlay: View {
 }
 
 private struct GyroMazeMini: View {
-    let letter: Character
+    let hasLetter: Bool
+    let seed: Character?
     let onDone: (MiniResult) -> Void
+
+    // Frozen once on appear (parity with Sonar)
+    @State private var letterChar: Character? = nil
+
+    // Entities
     @State private var ball = CGPoint(x: 40, y: 40)
     @State private var target = CGPoint(x: 260, y: 220)
-    @State private var vel = CGVector(dx: 0, dy: 0)
+    @State private var velBall = CGVector(dx: 0, dy: 0)
+    @State private var velTarget = CGVector(dx: 1.6, dy: -1.2)
+
+    // UX & capture
+    @State private var solved = false
+    @State private var captureAt: Date? = nil
+    @State private var letterScale: CGFloat = 1.0
+    @State private var letterOpacity: Double = 1.0
+    @State private var ballScale: CGFloat = 1.0
+
+    // Idle & smoothing
+    @State private var lastBallPos = CGPoint(x: 40, y: 40)
+    @State private var lastMoveAt = Date()
+    @State private var accLP = CGVector(dx: 0, dy: 0)
+
+    // Wander
+    @State private var wander = CGVector(dx: 0, dy: 0)
+    @State private var wanderTarget = CGVector(dx: 0, dy: 0)
+    @State private var lastWanderUpdate = Date()
+
+    // Edge dwell → escape / center cruise
+    @State private var lastTickAt = Date()
+    @State private var edgeDwell: Double = 0
+    @State private var escapeUntil: Date? = nil
+    @State private var centerCruiseUntil: Date? = nil
+    @State private var lastCenterCruise = Date(timeIntervalSince1970: 0)
+
     private let motion = CMMotionManager()
+    // keep your current tick
+    @State private var ticker = Timer.publish(every: 1/140, on: .main, in: .common).autoconnect()
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     var body: some View {
         GeometryReader { geo in
             ZStack {
-                RoundedRectangle(cornerRadius: 18).fill(Color.black.opacity(0.88))
+                RoundedRectangle(cornerRadius: 18)
+                    .fill(Color.black.opacity(0.88))
                     .overlay(RoundedRectangle(cornerRadius: 18).stroke(PremiumPalette.stroke, lineWidth: 1))
-                Text(String(letter))
-                    .font(.system(size: 42, weight: .heavy, design: .rounded))
-                    .foregroundStyle(.white)
-                    .frame(width: 56, height: 56)
-                    .background(Circle().fill(PremiumPalette.accent.opacity(0.25)))
-                    .position(target)
+
+                Group {
+                    if let ch = letterChar {
+                        Text(String(ch))
+                            .font(.system(size: 42, weight: .heavy, design: .rounded))
+                            .foregroundStyle(.white)
+                            .frame(width: 56, height: 56)
+                            .background(Circle().fill(PremiumPalette.accent.opacity(0.25)))
+                    } else {
+                        Circle().fill(.white.opacity(0.25)).frame(width: 20, height: 20)
+                    }
+                }
+                .scaleEffect(letterScale)
+                .opacity(letterOpacity)
+                .position(target)
+
                 Circle()
                     .fill(.white)
                     .frame(width: 22, height: 22)
                     .shadow(radius: 2, y: 1)
+                    .scaleEffect(ballScale)
                     .position(ball)
-                    .gesture(DragGesture(minimumDistance: 0)
-                        .onChanged { g in ball = g.location }
-                        .onEnded { _ in checkSuccess() })
+                    .gesture(
+                        DragGesture(minimumDistance: 0)
+                            .onChanged { g in
+                                guard !solved else { return }
+                                ball = clamp(point: g.location, in: geo.size)
+                                lastMoveAt = Date()
+                                lastBallPos = ball
+                            }
+                            .onEnded { _ in checkCatch(in: geo.size) }
+                    )
+
                 RoundedRectangle(cornerRadius: 18).stroke(.white.opacity(0.1), lineWidth: 8)
+
+                TimelineView(.animation) { tl in
+                    if let start = captureAt {
+                        let dt = tl.date.timeIntervalSince(start)
+                        Canvas { ctx, _ in
+                            let c = target
+                            for i in 0..<3 {
+                                let t = dt - Double(i) * 0.06
+                                guard t >= 0 else { continue }
+                                let dur: Double = reduceMotion ? 0.25 : 0.6
+                                guard t <= dur else { continue }
+                                let p = t / dur
+                                let r = CGFloat(10 + p * 120)
+                                let a = 1.0 - p
+                                let rect = CGRect(x: c.x - r, y: c.y - r, width: r*2, height: r*2)
+                                ctx.stroke(Circle().path(in: rect),
+                                           with: .color(.white.opacity(0.35 * a)),
+                                           lineWidth: 2)
+                            }
+                        }
+                    }
+                }
+            }
+            .onReceive(ticker) { _ in
+                guard !solved else { return }
+
+                // --- timing / dt ---
+                let now = Date()
+                let dt = max(0.0, now.timeIntervalSince(lastTickAt))
+                lastTickAt = now
+
+                // --- idle detection ---
+                let moveDist = hypot(ball.x - lastBallPos.x, ball.y - lastBallPos.y)
+                if moveDist > 0.4 { lastMoveAt = now }
+                lastBallPos = ball
+                let isIdle = now.timeIntervalSince(lastMoveAt) > 0.45
+
+                // --- wander update (idle = slower, smaller) ---
+                let wanderPeriod = isIdle ? 1.2 : 0.7
+                if now.timeIntervalSince(lastWanderUpdate) > wanderPeriod {
+                    let a = Double.random(in: 0..<(2 * .pi))
+                    let m = Double.random(in: (isIdle ? 0.05...0.22 : 0.20...0.55))
+                    wanderTarget = CGVector(dx: CGFloat(cos(a) * m), dy: CGFloat(sin(a) * m))
+                    lastWanderUpdate = now
+                }
+                // ease toward wander target
+                let wanderEase: CGFloat = isIdle ? 0.03 : 0.05
+                wander.dx += (wanderTarget.dx - wander.dx) * wanderEase
+                wander.dy += (wanderTarget.dy - wander.dy) * wanderEase
+
+                // --- geometry ---
+                var p = target
+                var acc = CGVector(dx: 0, dy: 0)
+
+                let inset: CGFloat = 36
+                let minX = inset, maxX = geo.size.width - inset
+                let minY = inset, maxY = geo.size.height - inset
+                let center = CGPoint(x: (minX + maxX) * 0.5, y: (minY + maxY) * 0.5)
+
+                let toBall = CGVector(dx: ball.x - p.x, dy: ball.y - p.y)
+                let dist = max(0.001, hypot(toBall.dx, toBall.dy))
+                let dirToBall = CGVector(dx: toBall.dx / dist, dy: toBall.dy / dist)
+                let toCenter = CGVector(dx: center.x - p.x, dy: center.y - p.y)
+                let lenC = max(0.001, hypot(toCenter.dx, toCenter.dy))
+                let dirToCenter = CGVector(dx: toCenter.dx/lenC, dy: toCenter.dy/lenC)
+                let perpToBall = CGVector(dx: -dirToBall.dy, dy: dirToBall.dx)
+                let tangentSign: CGFloat = (perpToBall.dx * dirToCenter.dx + perpToBall.dy * dirToCenter.dy) >= 0 ? 1 : -1
+
+                // --- wall distances / dwell ---
+                let wallRange: CGFloat = 70
+                let dxL = p.x - minX, dxR = maxX - p.x
+                let dyT = p.y - minY, dyB = maxY - p.y
+                let nearEdgeDist = min(min(dxL, dxR), min(dyT, dyB))
+                let nearEdge = nearEdgeDist < 34
+
+                // Accumulate edge dwell time and trigger escape
+                if nearEdge { edgeDwell += dt } else { edgeDwell = max(0, edgeDwell - dt * 1.5) }
+                if edgeDwell > 0.85, escapeUntil == nil {
+                    escapeUntil = now.addingTimeInterval(0.7)
+                    edgeDwell = 0.25
+                }
+
+                // Periodic short center cruises if hanging around borders a lot
+                let needCruise = (nearEdge && now.timeIntervalSince(lastCenterCruise) > 2.6)
+                if needCruise {
+                    centerCruiseUntil = now.addingTimeInterval(0.5)
+                    lastCenterCruise = now
+                }
+
+                let inEscape = (escapeUntil.map { now < $0 } ?? false)
+                let inCruise  = (centerCruiseUntil.map { now < $0 } ?? false)
+
+                // 1) Flee player (so it doesn’t run *toward* you)
+                let safeRadius: CGFloat  = 180
+                let panicRadius: CGFloat = 80
+                let tClose = max(0, min(1, (safeRadius - dist) / (safeRadius - panicRadius)))
+                let fleeBase: CGFloat  = isIdle ? 0.15 : 0.50
+                let fleeScale: CGFloat = isIdle ? 1.20 : 2.00
+                let fleeMag = (inEscape || inCruise) ? (fleeBase * 0.65) : (fleeBase + fleeScale * tClose)
+                acc.dx += -dirToBall.dx * fleeMag
+                acc.dy += -dirToBall.dy * fleeMag
+
+                // 2) Side-step around player (reduced when idle; curved when cruising)
+                let slipMag = (isIdle ? 0.10 : 0.25) + (isIdle ? 0.30 : 0.80) * tClose
+                let curveBoost: CGFloat = inCruise ? 0.35 : 0
+                acc.dx += perpToBall.dx * (tangentSign * (slipMag + curveBoost))
+                acc.dy += perpToBall.dy * (tangentSign * (slipMag + curveBoost))
+
+                // 3) Wall & corner repulsion (softer when idle/escaping)
+                func push(_ d: CGFloat, scale: CGFloat) -> CGFloat {
+                    guard d < wallRange else { return 0 }
+                    let x = max(0, (wallRange - d) / wallRange) // 0..1
+                    return scale * x * x
+                }
+                let wallScale: CGFloat = (isIdle || inEscape || inCruise) ? 1.0 : 2.1
+                acc.dx += push(dxL, scale: wallScale) - push(dxR, scale: wallScale)
+                acc.dy += push(dyT, scale: wallScale) - push(dyB, scale: wallScale)
+
+                // Corner escape (extra nudge when stuck in the L of a corner)
+                let cornerRange: CGFloat = 44
+                if min(dxL, dxR) < cornerRange && min(dyT, dyB) < cornerRange {
+                    let nx: CGFloat = (dxL < dxR) ? 1 : -1
+                    let ny: CGFloat = (dyT < dyB) ? 1 : -1
+                    let norm = 1 / max(0.001, hypot(nx, ny))
+                    let boost: CGFloat = (isIdle || inEscape || inCruise) ? 1.4 : 2.2
+                    acc.dx += nx * norm * boost
+                    acc.dy += ny * norm * boost
+                }
+
+                // 4) Escape/Cruise: strong gentle pull to center + orbit, to break wall-hugging
+                if inEscape || inCruise {
+                    acc.dx += dirToCenter.dx * (inEscape ? 0.70 : 0.55)
+                    acc.dy += dirToCenter.dy * (inEscape ? 0.70 : 0.55)
+                    // small center orbit for natural curve inward
+                    let perpC = CGVector(dx: -dirToCenter.dy, dy: dirToCenter.dx)
+                    acc.dx += perpC.dx * 0.25 * (tangentSign)
+                    acc.dy += perpC.dy * 0.25 * (tangentSign)
+                } else if isIdle {
+                    // idle: faint center pull to avoid camping near borders
+                    acc.dx += dirToCenter.dx * 0.25
+                    acc.dy += dirToCenter.dy * 0.25
+                } else {
+                    // active & free: tiny orbit around center for nicer trajectories
+                    let perpC = CGVector(dx: -dirToCenter.dy, dy: dirToCenter.dx)
+                    acc.dx += perpC.dx * 0.10 * tangentSign
+                    acc.dy += perpC.dy * 0.10 * tangentSign
+                }
+
+                // 5) Add low-frequency wander
+                acc.dx += wander.dx
+                acc.dy += wander.dy
+
+                // ---- Low-pass smoothing of steering ----
+                accLP.dx = accLP.dx * 0.90 + acc.dx * 0.10
+                accLP.dy = accLP.dy * 0.90 + acc.dy * 0.10
+
+                let desiredDX = velTarget.dx + accLP.dx
+                let desiredDY = velTarget.dy + accLP.dy
+
+                velTarget.dx += (desiredDX - velTarget.dx) * 0.12
+                velTarget.dy += (desiredDY - velTarget.dy) * 0.12
+
+                // Never steer toward the ball (project out "toward" component)
+                let towardDot = velTarget.dx * dirToBall.dx + velTarget.dy * dirToBall.dy
+                if towardDot > 0 {
+                    velTarget.dx -= dirToBall.dx * towardDot * 1.05
+                    velTarget.dy -= dirToBall.dy * towardDot * 1.05
+                }
+
+                // Idle damping & dead-zone to kill micro-jitter
+                if isIdle {
+                    velTarget.dx *= 0.97
+                    velTarget.dy *= 0.97
+                    let dz: CGFloat = 0.08
+                    if abs(velTarget.dx) < dz { velTarget.dx = 0 }
+                    if abs(velTarget.dy) < dz { velTarget.dy = 0 }
+                }
+
+                // Keep your per-axis clamp
+                velTarget.dx = clampMag(velTarget.dx, maxValue: 2.6)
+                velTarget.dy = clampMag(velTarget.dy, maxValue: 2.6)
+
+                // Integrate + soft bounce
+                p.x += velTarget.dx
+                p.y += velTarget.dy
+
+                let hitLeft  = p.x < minX
+                let hitRight = p.x > maxX
+                let hitTop   = p.y < minY
+                let hitBot   = p.y > maxY
+
+                if hitLeft  { p.x = minX; velTarget.dx *= -0.95 }
+                if hitRight { p.x = maxX; velTarget.dx *= -0.95 }
+                if hitTop   { p.y = minY; velTarget.dy *= -0.95 }
+                if hitBot   { p.y = maxY; velTarget.dy *= -0.95 }
+
+                // Flush from exact wall so it doesn’t skate along the border pixels
+                if hitLeft  { p.x += 0.8 }
+                if hitRight { p.x -= 0.8 }
+                if hitTop   { p.y += 0.8 }
+                if hitBot   { p.y -= 0.8 }
+
+                target = p
+                checkCatch(in: geo.size)
             }
             .onAppear {
+                // Freeze letter once
+                letterChar = hasLetter ? (seed ?? PremiumHubModel.randomLetter()) : nil
+
+                // Safe spawn
                 let inset: CGFloat = 36
                 ball = CGPoint(x: .random(in: inset...(geo.size.width - inset)),
                                y: .random(in: inset...(geo.size.height - inset)))
                 target = CGPoint(x: .random(in: inset...(geo.size.width - inset)),
                                  y: .random(in: inset...(geo.size.height - inset)))
+                lastBallPos = ball
+                lastMoveAt = Date()
+                lastTickAt = Date()
+
+                // Motion for the ball
                 if motion.isDeviceMotionAvailable {
                     motion.deviceMotionUpdateInterval = 1/60
                     motion.startDeviceMotionUpdates(to: .main) { data, _ in
-                        guard let a = data?.gravity else { return }
-                        vel.dx += CGFloat(a.x) * 1.6
-                        vel.dy -= CGFloat(a.y) * 1.6
-                        vel.dx *= 0.98; vel.dy *= 0.98
-                        ball.x = max(20, min(geo.size.width-20, ball.x + vel.dx))
-                        ball.y = max(20, min(geo.size.height-20, ball.y + vel.dy))
-                        checkSuccess()
+                        guard !solved, let g = data?.gravity else { return }
+                        velBall.dx += CGFloat(g.x) * 1.6
+                        velBall.dy -= CGFloat(g.y) * 1.6
+                        velBall.dx *= 0.98; velBall.dy *= 0.98
+                        var next = CGPoint(x: ball.x + velBall.dx, y: ball.y + velBall.dy)
+                        next = clamp(point: next, in: geo.size)
+                        if hypot(next.x - ball.x, next.y - ball.y) > 0.2 { lastMoveAt = Date() }
+                        ball = next
+                        checkCatch(in: geo.size)
                     }
                 }
             }
@@ -1185,16 +1948,59 @@ private struct GyroMazeMini: View {
         }
         .frame(height: 280)
     }
-    private func checkSuccess() {
-        if hypot(ball.x - target.x, ball.y - target.y) < 28 { onDone(.found(letter)) }
+
+    // MARK: - Helpers
+
+    private func clamp(point: CGPoint, in size: CGSize) -> CGPoint {
+        CGPoint(x: max(20, min(size.width - 20, point.x)),
+                y: max(20, min(size.height - 20, point.y)))
+    }
+
+    private func clampMag(_ v: CGFloat, maxValue: CGFloat) -> CGFloat {
+        min(maxValue, max(-maxValue, v))
+    }
+
+    private func checkCatch(in size: CGSize, threshold: CGFloat = 18) {
+        guard !solved else { return }
+        if hypot(ball.x - target.x, ball.y - target.y) <= threshold {
+            solved = true
+            captureAt = Date()
+
+            UIImpactFeedbackGenerator(style: .soft).impactOccurred()
+            motion.stopDeviceMotionUpdates()
+
+            let snapDur = reduceMotion ? 0.15 : 0.28
+            let popDur  = reduceMotion ? 0.15 : 0.28
+
+            withAnimation(.spring(response: snapDur, dampingFraction: 0.75)) {
+                ball = target
+                ballScale = 1.15
+            }
+            withAnimation(.spring(response: popDur, dampingFraction: 0.7)) {
+                letterScale = 1.18
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + (reduceMotion ? 0.10 : 0.18)) {
+                withAnimation(.easeOut(duration: reduceMotion ? 0.12 : 0.22)) {
+                    letterScale = 0.82
+                    letterOpacity = 0.0
+                    ballScale = 1.0
+                }
+            }
+
+            let resolveDelay = reduceMotion ? 0.35 : 0.65
+            DispatchQueue.main.asyncAfter(deadline: .now() + resolveDelay) {
+                if let ch = letterChar { onDone(.found(ch)) } else { onDone(.nothing) }
+            }
+        }
     }
 }
 
-// MARK: - NEW: AI Merchant
+// MARK: - NEW: AI Merchant (now uses hub to offer undiscovered letters and window preference)
 
 private struct AIMerchantMini: View {
     let deadline: Date
     let ai: AIDifficulty?
+    let hub: PremiumHubModel
     var onDone: (MiniResult) -> Void
     
     @State private var offered: [Character] = []
@@ -1204,7 +2010,7 @@ private struct AIMerchantMini: View {
         VStack(spacing: 12) {
             HStack(spacing: 10) {
                 if let ai {
-                    Image(ai.rawValue.image) // assets: easyAI / mediumAI / hardAI / bossAI
+                    Image(ai.rawValue.image)
                         .resizable().scaledToFill()
                         .frame(width: 40, height: 40)
                         .clipShape(Circle())
@@ -1229,9 +2035,7 @@ private struct AIMerchantMini: View {
         }
         .onAppear {
             let count = ai?.premiumLetterCount ?? 0
-            var set: Set<Character> = []
-            while set.count < count { set.insert(PremiumHubModel.randomLetter()) }
-            offered = Array(set).shuffled()
+            offered = hub.pickLettersForOffer(count: count).shuffled()
         }
     }
 }
@@ -1313,19 +2117,14 @@ private struct ThickGlassCell: View {
     
     var body: some View {
         ZStack {
-            // faint base so background shines through
             RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .fill(Color.white.opacity(0.04))
-            
-            // content behind the glass
             Text(String(character))
                 .font(.system(size: 28, weight: .bold, design: .rounded))
                 .foregroundStyle(.white)
                 .scaleEffect(1.06)
                 .opacity(0.85)
                 .blur(radius: 1.2)
-            
-            // the glass itself – translucent
             RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .fill(.thickMaterial)
                 .overlay(
@@ -1338,7 +2137,7 @@ private struct ThickGlassCell: View {
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .stroke(.white.opacity(0.16), lineWidth: 1)  // crisp rim
+                        .stroke(.white.opacity(0.16), lineWidth: 1)
                 )
                 .overlay(GlassSpeckle().opacity(0.05)
                     .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous)))
@@ -1374,7 +2173,6 @@ fileprivate struct WrapLetters: View {
     let tap: (Character) -> Void
     
     var body: some View {
-        // Adaptive grid guarantees spacing & line breaks
         LazyVGrid(columns: [GridItem(.adaptive(minimum: 46), spacing: spacing)],
                   spacing: runSpacing) {
             ForEach(letters, id: \.self) { ch in
@@ -1397,56 +2195,150 @@ fileprivate struct WrapLetters: View {
     }
 }
 
-// MARK: - NEW: Symbol Pick (blurred grid)
+// MARK: - NEW: Symbol Pick (blurred grid) – uses hub for letter supply
 
 private struct SymbolPickMini: View {
     let deadline: Date
+    let hub: PremiumHubModel
     var onDone: (MiniResult) -> Void
     
-    @State private var grid: [(Character, Bool)] = [] // (char, isLetter)
+    @State private var grid: [(Character, Bool)] = []   // (char, isLetter)
+    @State private var attemptsLeft: Int = 3
+    @State private var tried: Set<Int> = []             // wrong picks
+    @State private var fired: Set<Int> = []             // pressed this finger already
+    @State private var revealed: Set<Int> = []          // for pop/reveal
+    @State private var successIndex: Int? = nil
+    
+    private let animDuration: Double = 0.30
     
     var body: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: 10) {
             HStack {
                 Text("Tap a letter".localized).font(.subheadline.weight(.semibold))
                 Spacer()
-                CountdownPill(deadline: deadline)
+                HStack(spacing: 8) {
+                    // ••• + x/3
+                    HStack(spacing: 4) {
+                        ForEach(0..<3, id: \.self) { i in
+                            Circle()
+                                .fill(i < attemptsLeft ? .white.opacity(0.9) : .white.opacity(0.25))
+                                .frame(width: 6, height: 6)
+                        }
+                    }
+                    Text("\(attemptsLeft)/3")
+                        .font(.caption2.monospacedDigit())
+                        .foregroundStyle(.white.opacity(0.8))
+                        .padding(.vertical, 3).padding(.horizontal, 6)
+                        .background(Capsule().fill(.white.opacity(0.12)))
+                    CountdownPill(deadline: deadline)
+                }
             }
+            
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 4), spacing: 8) {
                 ForEach(0..<grid.count, id: \.self) { i in
                     let (ch, isL) = grid[i]
-                    Button {
-                        onDone(isL ? .found(ch) : .nothing)
-                    } label: {
+                    let isWrong = tried.contains(i)
+                    let isRevealed = revealed.contains(i)
+                    let isWin = (successIndex == i)
+                    
+                    ZStack {
+                        // base glass tile
                         ThickGlassCell(character: ch)
+                            .opacity(isWrong ? 0.95 : 1.0)
+                        
+                        // REVEAL glyph ABOVE the glass when revealed (and not wrong)
+                        if isRevealed && !isWrong {
+                            Text(String(ch))
+                                .font(.system(.title, design: .rounded).weight(.heavy))
+                                .foregroundStyle(.white)
+                                .shadow(radius: 3, y: 1)
+                                .transition(.scale.combined(with: .opacity))
+                                .scaleEffect(isWin ? 1.08 : 1.02)
+                                .animation(.spring(response: 0.35, dampingFraction: 0.85), value: isRevealed)
+                        }
+                        
+                        // wrong mark
+                        if isWrong {
+                            Image(systemName: "slash.circle")
+                                .font(.system(size: 40, weight: .semibold))
+                                .foregroundStyle(.white.opacity(0.85))
+                                .transition(.opacity)
+                        }
+                        
+                        if isWin {
+                            RoundedRectangle(cornerRadius: 12).stroke(.white, lineWidth: 3)
+                                .shadow(radius: 6)
+                                .transition(.scale.combined(with: .opacity))
+                        }
                     }
+                    .scaleEffect(isRevealed ? 1.05 : 1.0)
+                    .animation(.spring(response: 0.35, dampingFraction: 0.85), value: isRevealed)
+                    .contentShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    // commit on touch-down; can’t cancel by dragging out
+                    .highPriorityGesture(
+                        DragGesture(minimumDistance: 0)
+                            .onChanged { _ in
+                                guard !fired.contains(i),
+                                      successIndex == nil,
+                                      !isWrong,
+                                      attemptsLeft > 0 else { return }
+                                fired.insert(i)
+                                select(i: i, isLetter: isL, ch: ch)
+                            }
+                    )
+                    .allowsHitTesting(!isWrong && successIndex == nil && attemptsLeft > 0)
                 }
             }
         }
         .onAppear {
-            var items: [(Character, Bool)] = []
-            var letters: [Character] = []
-            for _ in 0..<16 {
-                if Bool.random() {
-                    let l = PremiumHubModel.randomLetter()
-                    items.append((l, true)); letters.append(l)
-                } else {
-                    items.append((PremiumHubModel.randomNonLetter(), false))
-                }
+            fired.removeAll()
+            var items: [(Character, Bool)] = (0..<16).map { _ in
+                Bool.random()
+                ? (hub.pickLetterForOffer(), true)
+                : (PremiumHubModel.randomNonLetter(), false)
             }
-            if letters.isEmpty {
-                let l = PremiumHubModel.randomLetter()
-                items[Int.random(in: 0..<items.count)] = (l, true)
+            if !items.contains(where: { $0.1 }) {
+                items[Int.random(in: 0..<items.count)] = (hub.pickLetterForOffer(), true)
             }
             grid = items.shuffled()
         }
     }
+    
+    @MainActor
+    private func select(i: Int, isLetter: Bool, ch: Character) {
+        withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+            _ = revealed.insert(i)
+        }
+        attemptsLeft -= 1
+        
+        if isLetter {
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                successIndex = i
+            }
+            // close AFTER the reveal plays
+            Task {
+                try? await Task.sleep(nanoseconds: UInt64(animDuration * 2_000_000_000))
+                onDone(.found(ch))
+            }
+        } else {
+            tried.insert(i)
+            if attemptsLeft == 0 {
+                Task {
+                    try? await Task.sleep(nanoseconds: UInt64(animDuration * 1_000_000_000))
+                    onDone(.nothing)
+                }
+            }
+        }
+    }
 }
 
-// MARK: - NEW: Symbol Puzzle (rotate & decide)
+
+
+// MARK: - NEW: Symbol Puzzle (rotate & decide) – uses hub for letter
 
 private struct SymbolPuzzleMini: View {
     let deadline: Date
+    let hub: PremiumHubModel
     var onDone: (MiniResult) -> Void
     
     @State private var symbol: Character = "?"
@@ -1498,7 +2390,7 @@ private struct SymbolPuzzleMini: View {
         }
         .onAppear {
             if Bool.random() {
-                symbol = PremiumHubModel.randomLetter()
+                symbol = hub.pickLetterForOffer()
                 isLetter = true
             } else {
                 symbol = PremiumHubModel.randomNonLetter()
@@ -1508,9 +2400,11 @@ private struct SymbolPuzzleMini: View {
     }
 }
 
-// MARK: - NEW: Lucky Wait
+// MARK: - NEW: Lucky Wait – uses hub for letter
+
 private struct LuckyWaitMini: View {
     let deadline: Date
+    let hub: PremiumHubModel
     var onDone: (MiniResult) -> Void
     
     @State private var started = Date()
@@ -1552,7 +2446,7 @@ private struct LuckyWaitMini: View {
             if now.timeIntervalSince(started) >= 5 {
                 resolved = true
                 if Bool.random() {
-                    let ch = PremiumHubModel.randomLetter()
+                    let ch = hub.pickLetterForOffer()
                     withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
                         showLetter = ch
                     }
@@ -1622,5 +2516,35 @@ private extension Binding where Value == String {
                 self.wrappedValue = String(filtered.prefix(10))
             }
         )
+    }
+}
+
+extension String {
+    /// True if every *letter* in the string appears in `allowed`, ignoring case.
+    func lettersAreSubset(of allowed: Set<Character>, locale: Locale = .current) -> Bool {
+        let allowedLower: Set<Character> = Set(
+            allowed.compactMap { ch in
+                let s = String(ch).lowercased(with: locale)
+                return s.count == 1 ? s.first : nil
+            }
+        )
+        let allowedStrings = allowed.map(String.init)
+        
+        for ch in self {
+            let isLetter = ch.unicodeScalars.contains { CharacterSet.letters.contains($0) }
+            guard isLetter else { continue }
+            
+            let s = String(ch).lowercased(with: locale)
+            if s.count == 1, let c = s.first {
+                if !allowedLower.contains(c) { return false }
+            } else {
+                if !allowedStrings.contains(where: {
+                    $0.compare(String(ch), options: [.caseInsensitive], range: nil, locale: locale) == .orderedSame
+                }) {
+                    return false
+                }
+            }
+        }
+        return true
     }
 }

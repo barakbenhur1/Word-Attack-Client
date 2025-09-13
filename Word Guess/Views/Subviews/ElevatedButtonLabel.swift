@@ -42,6 +42,16 @@ public struct ElevatedButtonStyle: ButtonStyle {
                 startPoint: .topLeading, endPoint: .bottomTrailing)
         )
         
+        public static let clear  = Palette(
+            gradient: LinearGradient(
+                colors: [
+                    .clear,
+                    .clear
+                ],
+                startPoint: .topLeading, endPoint: .bottomTrailing
+            )
+        )
+        
         
         public static let teal  = Palette(
             gradient: LinearGradient(
@@ -98,7 +108,7 @@ public struct ElevatedButtonStyle: ButtonStyle {
     public var compressScale: CGFloat = 0.985   // press scale
     public var depth: CGFloat = 10              // shadow y-offset
     
-    public init(palette: Palette = .teal, height: CGFloat = 92, corner: CGFloat = 34) {
+    public init(palette: Palette = .clear, height: CGFloat = 92, corner: CGFloat = 34) {
         self.palette = palette
         self.height = height
         self.corner = corner

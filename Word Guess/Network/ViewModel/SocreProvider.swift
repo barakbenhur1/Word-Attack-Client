@@ -5,7 +5,9 @@
 //  Created by Barak Ben Hur on 01/09/2025.
 //
 
-struct ScorePlaceProvider {
+import Foundation
+
+struct ScoreProvider {
     let network: Network
     
     init() {

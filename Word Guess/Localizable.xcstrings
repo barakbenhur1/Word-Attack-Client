@@ -81,8 +81,18 @@
         }
       }
     },
-    "%llds" : {
+    "%lld/3" : {
       "shouldTranslate" : false
+    },
+    "%llds" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lldשנ׳"
+          }
+        }
+      }
     },
     "•" : {
       "shouldTranslate" : false
@@ -96,6 +106,9 @@
           }
         }
       }
+    },
+    "×" : {
+      "shouldTranslate" : false
     },
     "⚔️ AI" : {
       "extractionState" : "manual",
@@ -806,7 +819,14 @@
       "shouldTranslate" : false
     },
     "Daily stats and AI at a glance." : {
-      "shouldTranslate" : false
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "נתונים יומיים וAI במבט מהיר"
+          }
+        }
+      }
     },
     "Damage -12" : {
       "shouldTranslate" : false
@@ -978,6 +998,17 @@
     },
     "Direction" : {
       "shouldTranslate" : false
+    },
+    "Discover letters in tactile mini-games. Use them to solve the word." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אסוף אותיות במיני משחקים והשתמש בהם למצוא את המילה"
+          }
+        }
+      }
     },
     "Dominated" : {
       "extractionState" : "manual",
@@ -1491,17 +1522,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "הימור גרוע"
-          }
-        }
-      }
-    },
-    "Gyro Maze" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "מבוך"
           }
         }
       }
@@ -2342,6 +2362,17 @@
         }
       }
     },
+    "No letters yet" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אין אותיות עדיין"
+          }
+        }
+      }
+    },
     "No letters yet — play minis to collect" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2705,6 +2736,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "שחק סיבוב\nבשביל לראות\nאת הדירוג שלך"
+          }
+        }
+      }
+    },
+    "Playing Tag" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "תופסת"
           }
         }
       }

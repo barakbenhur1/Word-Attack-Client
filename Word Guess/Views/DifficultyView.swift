@@ -75,7 +75,6 @@ struct DifficultyView: View {
     }
     
     private func task() async {
-        await premium.loadProducts()
         guard tutorialItem == nil else { return}
         router.navigateTo(.game(diffculty: .tutorial))
     }
@@ -172,10 +171,12 @@ struct DifficultyView: View {
             
             Button {
                 if premium.isPremium {
-                    Task.detached {
+                    Task.detached(priority: .high) {
                         await MainActor.run { router.navigateTo(.premium(email: loginHandeler.model?.email)) }
                     }
-                } else { showPaywall = true }
+                } else {
+                    showPaywall = true
+                }
             } label: {
                 VStack {
                     PremiumBadge()
@@ -186,7 +187,7 @@ struct DifficultyView: View {
                         .foregroundStyle(premium.isPremium ? .black : .gray)
                 }
             }
-            .shadow(radius: 4)
+            .shadow(radius: premium.isPremium ? 4 : 0)
         }
     }
     

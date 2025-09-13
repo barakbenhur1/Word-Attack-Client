@@ -67,6 +67,7 @@ struct WordGuessApp: App {
             .task {
                 SharedStore.wipeGroupOnFreshInstall()
                 await vm.bootstrap()
+                await premium.loadProducts()
             }
             .onOpenURL { url in
                 deepLinker.set(url: url)
