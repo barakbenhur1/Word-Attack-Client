@@ -468,7 +468,7 @@
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
 				CODE_SIGN_ENTITLEMENTS = WordZapWidgetExtensionExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 6;
+				CURRENT_PROJECT_VERSION = 6.2;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = WordZapWidgetExtension/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = WordZapWidgetExtension;
@@ -496,7 +496,7 @@
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
 				CODE_SIGN_ENTITLEMENTS = WordZapWidgetExtensionExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 6;
+				CURRENT_PROJECT_VERSION = 6.2;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = WordZapWidgetExtension/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = WordZapWidgetExtension;
@@ -654,7 +654,7 @@
 				CODE_SIGN_ENTITLEMENTS = "Word Guess/Word Guess.entitlements";
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 6;
+				CURRENT_PROJECT_VERSION = 6.2;
 				DEVELOPMENT_ASSET_PATHS = "\"Word Guess/Preview Content\"";
 				DEVELOPMENT_TEAM = D6DN86P8S8;
 				EMBED_ASSET_PACKS_IN_PRODUCT_BUNDLE = YES;
@@ -698,7 +698,7 @@
 				CODE_SIGN_ENTITLEMENTS = "Word Guess/Word Guess.entitlements";
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 6;
+				CURRENT_PROJECT_VERSION = 6.2;
 				DEVELOPMENT_ASSET_PATHS = "\"Word Guess/Preview Content\"";
 				DEVELOPMENT_TEAM = D6DN86P8S8;
 				EMBED_ASSET_PACKS_IN_PRODUCT_BUNDLE = NO;

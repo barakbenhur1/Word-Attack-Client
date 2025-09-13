@@ -110,6 +110,7 @@ public struct PremiumHubView: View {
                 }
                 Spacer()
                 SolvedCounterPill(count: hub.solvedWords,
+                                  rank: hub.rank,
                                   onTap: { router.navigateTo(.premiumScore) } )
                 MainRoundTimerView(secondsLeft: hub.mainSecondsLeft,
                                    total: hub.mainRoundLength)
@@ -183,19 +184,107 @@ private struct BackPill: View {
 // 🏆 Pill showing solved words count
 private struct SolvedCounterPill: View {
     let count: Int
+    let rank: Int?                 // ← add this
     let onTap: () -> Void
+
+    private enum Tier { case regular, bronze, silver, gold }
+    private var tier: Tier {
+        guard let r = rank else { return .regular }
+        if r <= 10 { return .gold }
+        if r <= 50 { return .silver }
+        if r <= 100 { return .bronze }
+        return .regular
+    }
+
     var body: some View {
         HStack(spacing: 6) {
-            Image(systemName: "trophy.fill").font(.system(size: 12, weight: .bold))
-            Text("\(count)").font(.caption.weight(.bold)).monospacedDigit()
+            Image(systemName: "trophy.fill")
+                .font(.system(size: 12, weight: .bold))
+                .symbolRenderingMode(.hierarchical)
+            Text("\(count)")
+                .font(.caption.weight(.bold))
+                .monospacedDigit()
         }
-        .padding(.horizontal, 10).padding(.vertical, 6)
         .foregroundStyle(.white)
-        .background(.ultraThinMaterial, in: Capsule())
-        .overlay(Capsule().stroke(.white.opacity(0.15)))
-        .shadow(color: .black.opacity(0.25), radius: 4, y: 1)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(background)                                    // ← tiered bg
+        .overlay(Capsule().stroke(strokeColor.opacity(overlayA),   // ← subtle stroke
+                                  lineWidth: 1))
+        .shadow(color: shadowColor.opacity(0.35), radius: 6, y: 2) // ← gentle glow
         .accessibilityLabel("Solved words \(count)".localized)
         .onTapGesture { onTap() }
+        .opacity(rank == nil ? 0 : 1)
+    }
+
+    // MARK: - Styling by tier
+
+    @ViewBuilder private var background: some View {
+        switch tier {
+        case .regular:
+            Capsule().fill(LinearGradient(
+                colors: [
+                    .gray.opacity(0.5),
+                    .gray.opacity(0.3),
+                    .gray.opacity(0.1)
+                ],
+                startPoint: .topLeading, endPoint: .bottomTrailing
+            ))
+        case .gold:
+            Capsule().fill(LinearGradient(
+                colors: [
+                    Color(red: 1.00, green: 0.95, blue: 0.70),
+                    Color(red: 1.00, green: 0.84, blue: 0.00),
+                    Color(red: 0.80, green: 0.50, blue: 0.00)
+                ],
+                startPoint: .topLeading, endPoint: .bottomTrailing
+            ))
+        case .silver:
+            Capsule().fill(LinearGradient(
+                colors: [
+                    Color(red: 0.90, green: 0.92, blue: 0.95),
+                    Color(red: 0.66, green: 0.71, blue: 0.76),
+                    Color(red: 0.42, green: 0.47, blue: 0.52)
+                ],
+                startPoint: .topLeading, endPoint: .bottomTrailing
+            ))
+        case .bronze:
+            Capsule().fill(LinearGradient(
+                colors: [
+                    Color(hue: 0.08, saturation: 0.65, brightness: 0.85),
+                    Color(hue: 0.08, saturation: 0.55, brightness: 0.70),
+                    Color(hue: 0.08, saturation: 0.50, brightness: 0.55)
+                ],
+                startPoint: .topLeading, endPoint: .bottomTrailing
+            ))
+        }
+    }
+
+    private var strokeColor: Color {
+        switch tier {
+        case .regular: return .white
+        case .gold:    return .yellow
+        case .silver:  return .white
+        case .bronze:  return .orange
+        }
+    }
+
+    private var shadowColor: Color {
+        switch tier {
+        case .regular: return .black
+        case .gold:    return Color.yellow
+        case .silver:  return Color.white
+        case .bronze:  return Color.orange
+        }
+    }
+
+    private var overlayA: CGFloat {
+        switch tier {
+        case .regular: return 0.15
+        case .gold:    return 0.45
+        case .silver:  return 0.35
+        case .bronze:  return 0.35
+        }
     }
 }
 
@@ -311,6 +400,7 @@ private final class PremiumHubModel: ObservableObject {
     @Published var canInteract: Bool = true
     @Published var aiDifficulty: AIDifficulty? = nil
     @Published var solvedWords: Int = 0
+    @Published var rank: Int?
     
     /// last time a **current word** letter was discovered
     private var lastWordLetterFoundAt: Date = Date()
@@ -374,12 +464,17 @@ private final class PremiumHubModel: ObservableObject {
         self.gameHistory = []
         self.lastWordLetterFoundAt = Date() // start window from "now"
         if let email {
-            Task(priority: .userInitiated) {
+            Task(priority: .userInitiated) { [weak self] in
+                guard let self else { return }
                 await vm.word(email: email)
-                let solved = await vm.getScore(email: email)
-                UserDefaults.standard.set(solved, forKey: "wins_count")
-                await MainActor.run {
-                    solvedWords = solved
+                guard let solved = await vm.getScore(email: email) else { return }
+                UserDefaults.standard.set(solved.value, forKey: "wins_count")
+                await MainActor.run { [weak self] in
+                    guard let self else { return }
+                    solvedWords = solved.value
+                    withAnimation {
+                        self.rank = solved.rank
+                    }
                 }
             }
         }

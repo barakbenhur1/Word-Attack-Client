@@ -27,9 +27,9 @@ struct PremiumLeaderboardView<VM: PremiumScoreboardViewModel>: View {
                            startPoint: .topLeading, endPoint: .bottomTrailing)
             .ignoresSafeArea()
             
-            VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: 26) {
                 header
-                
+            
                 Group {
                     if vm.data == nil {
                         skeletonList

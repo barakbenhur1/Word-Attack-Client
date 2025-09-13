@@ -43,8 +43,8 @@ class PremiumHubViewModel: ViewModel {
         }
     }
     
-    func getScore(email: String) async -> Int {
-        let score = await scoreProvider.getPremium(email: email)?.value ?? 0
+    func getScore(email: String) async -> PremiumScoreData? {
+        let score = await scoreProvider.getPremium(email: email)
         return score
     }
 }
