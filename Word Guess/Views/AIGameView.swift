@@ -72,13 +72,14 @@ struct AIGameView<VM: WordViewModelForAI>: View {
     @State private var aiDifficulty: AIDifficulty {
         didSet {
             ai?.hidePhrase()
-            UserDefaults.standard.set(aiDifficulty.rawValue.name, forKey: "aiDifficulty")
+            UserDefaults.standard.set(aiDifficulty.name, forKey: "aiDifficulty")
             UserDefaults.standard.set(playerHP, forKey: "playerHP")
-            Task(priority: .utility) { await SharedStore.writeAIStatsAsync(.init(name: aiDifficulty.rawValue.name, imageName:  aiDifficulty.rawValue.image)) }
+            Task(priority: .utility) { await SharedStore.writeAIStatsAsync(.init(name: aiDifficulty.name, imageName:  aiDifficulty.image)) }
         }
     }
     
     @State private var cleanCells = false
+    @State private var aiIntroDone = false
     
     @State private var gameState: GameState {
         didSet {
@@ -198,7 +199,7 @@ struct AIGameView<VM: WordViewModelForAI>: View {
     private func clearSaved() {
         UserDefaults.standard.set(nil, forKey: "playerHP")
         UserDefaults.standard.set(nil, forKey: "aiDifficulty")
-        Task(priority: .utility) { await SharedStore.writeAIStatsAsync(.init(name: AIDifficulty.easy.rawValue.name, imageName: AIDifficulty.easy.rawValue.image)) }
+        Task(priority: .utility) { await SharedStore.writeAIStatsAsync(.init(name: AIDifficulty.easy.name, imageName: AIDifficulty.easy.image)) }
     }
     
     private func closeView() {
@@ -206,7 +207,12 @@ struct AIGameView<VM: WordViewModelForAI>: View {
         ai?.hidePhrase()
         ai?.deassign()
         audio.stop()
-        router.navigateBack()
+        Task(priority: .userInitiated) {
+            try? await Task.sleep(nanoseconds: 100_000_000)
+            await MainActor.run {
+                router.navigateBack()
+            }
+        }
     }
     
     private func closeViewAfterErorr() {
@@ -332,6 +338,8 @@ struct AIGameView<VM: WordViewModelForAI>: View {
         
         self.showAiIntro = false
         
+        self.aiIntroDone = false
+        
         self.showCelebrate = false
         
         self.showMourn = false
@@ -351,11 +359,11 @@ struct AIGameView<VM: WordViewModelForAI>: View {
         
         let difficulty = UserDefaults.standard.string(forKey: "aiDifficulty")
         
-        switch difficulty ?? AIDifficulty.easy.rawValue.name {
-        case AIDifficulty.easy.rawValue.name: self.aiDifficulty = .easy
-        case AIDifficulty.medium.rawValue.name: self.aiDifficulty = .medium
-        case AIDifficulty.hard.rawValue.name: self.aiDifficulty = .hard
-        case AIDifficulty.boss.rawValue.name: self.aiDifficulty = .boss
+        switch difficulty ?? AIDifficulty.easy.name {
+        case AIDifficulty.easy.name: self.aiDifficulty = .easy
+        case AIDifficulty.medium.name: self.aiDifficulty = .medium
+        case AIDifficulty.hard.name: self.aiDifficulty = .hard
+        case AIDifficulty.boss.name: self.aiDifficulty = .boss
         default: fatalError()
         }
     }
@@ -365,6 +373,9 @@ struct AIGameView<VM: WordViewModelForAI>: View {
             await MainActor.run { withAnimation(.easeInOut(duration: 2.5)) { showAiIntro = true } }
             try? await Task.sleep(nanoseconds: 3_000_000_000)
             await MainActor.run { withAnimation(.easeInOut(duration: 1.5)) { showAiIntro = false } }
+            await MainActor.run {
+                aiIntroDone = true
+            }
         }
     }
     
@@ -406,10 +417,10 @@ struct AIGameView<VM: WordViewModelForAI>: View {
         guard let lang = language,
               let language = Language(rawValue: lang) else { return }
         ai = .init(language: language)
-        UserDefaults.standard.set(aiDifficulty.rawValue.name, forKey: "aiDifficulty")
+        UserDefaults.standard.set(aiDifficulty.name, forKey: "aiDifficulty")
         UserDefaults.standard.set(playerHP, forKey: "playerHP")
         let aiDifficulty = aiDifficulty
-        Task(priority: .utility) { await SharedStore.writeAIStatsAsync(.init(name: aiDifficulty.rawValue.name, imageName: aiDifficulty.rawValue.image)) }
+        Task(priority: .utility) { await SharedStore.writeAIStatsAsync(.init(name: aiDifficulty.name, imageName: aiDifficulty.image)) }
     }
     
     private func handlePhrase() { showPhrase = ai?.showPhraseValue ?? false }
@@ -559,11 +570,11 @@ struct AIGameView<VM: WordViewModelForAI>: View {
                 .ignoresSafeArea()
             
             VStack {
-                Text(aiDifficulty.rawValue.name.localized)
+                Text(aiDifficulty.name.localized)
                     .font(.largeTitle)
-                    .foregroundStyle(aiDifficulty.rawValue.color)
+                    .foregroundStyle(aiDifficulty.color)
                 
-                Image(aiDifficulty.rawValue.image)
+                Image(aiDifficulty.image)
                     .resizable()
                     .scaledToFill()
                     .shadow(radius: 4)
@@ -616,7 +627,7 @@ struct AIGameView<VM: WordViewModelForAI>: View {
                                 Spacer()
                                 
                                 VStack {
-                                    Image(aiDifficulty.rawValue.image)
+                                    Image(aiDifficulty.image)
                                         .resizable()
                                         .scaledToFill()
                                         .shadow(radius: 4)
@@ -664,7 +675,7 @@ struct AIGameView<VM: WordViewModelForAI>: View {
                         case .player:
                             let hasPrevAIGuess = i > 0 && current == i && aiMatrix[current - 1].contains { !$0.isEmpty }
                             let placeHolderData = hasPrevAIGuess ? allBestGuesses : nil
-                            let gainFocus = Binding(get: { !showAiIntro && current == i }, set: { _ in })
+                            let gainFocus = Binding(get: { !showAiIntro && aiIntroDone && current == i }, set: { _ in })
                             WordView(
                                 cleanCells: $cleanCells,
                                 current: $current,

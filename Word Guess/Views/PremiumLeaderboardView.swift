@@ -66,11 +66,13 @@ struct PremiumLeaderboardView<VM: PremiumScoreboardViewModel>: View {
             HStack(spacing: 4) {
                 Spacer()
                 Image(systemName: "trophy.fill")
-                    .font(.system(size: isPadLike ? 23 : 18, weight: .bold, design: .rounded))
+                    .font(.system(size: isPadLike ? 28 : 23, weight: .bold, design: .rounded))
+                    .multilineTextAlignment(.center)
                     .foregroundStyle(.yellow)
                     .shadow(color: .yellow.opacity(0.5), radius: 8, y: 2)
-                Text("Premium Leaderboard".localized)
-                    .font(.system(size: isPadLike ? 23 : 18, weight: .bold, design: .rounded))
+                Text("Premium Leaderboard")
+                    .font(.system(size: isPadLike ? 28 : 23, weight: .bold, design: .rounded))
+                    .multilineTextAlignment(.center)
                     .foregroundStyle(.white.opacity(0.92))
                 Spacer()
             }

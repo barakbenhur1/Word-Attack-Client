@@ -93,6 +93,7 @@ struct CustomAlertView<T: Any, M: View>: View {
             VStack {
                 // Title
                 Text(titleKey)
+                    .multilineTextAlignment(.center)
                     .font(.title2).bold()
                     .foregroundStyle(foregroundStyle)
                     .padding(8)

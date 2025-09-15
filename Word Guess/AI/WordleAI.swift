@@ -18,6 +18,10 @@ public typealias AIDifficultyItem = (image: String, name: String, color: Color)
 public enum AIDifficulty {
     case easy, medium, hard, boss
     typealias RawValue = AIDifficultyItem
+    var name: String { rawValue.name }
+    var image: String { rawValue.image }
+    var color: Color { rawValue.color }
+    
     public init?(rawValue: AIDifficultyItem) {
         switch rawValue {
         case ("easyAI", "Chad GPT", .green): self = .easy

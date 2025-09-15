@@ -47,10 +47,6 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
             "bb89a5de06dcfb7fad22837648455185",
             "c76030813578328369b797a6939baf04"
         ]
-
-        // Audio session
-        try? AVAudioSession.sharedInstance().setCategory(.ambient, mode: .default, options: [])
-        try? AVAudioSession.sharedInstance().setActive(true)
         
         dumpBGConfig()
         

@@ -20,19 +20,9 @@ final class PremiumHubGameVM: ViewModel {
     
     func score(email: String) async -> Bool {
         let value: EmptyModel? = await network.send(route: "premiumScore",
-                                                       parameters: ["email": email])
-        
+                                                    parameters: ["email": email])
         return value != nil
     }
-}
-
-// MARK: - Hub-like palette (local to this file)
-private enum HubGamePalette {
-    static let card   = Color.white.opacity(0.06)
-    static let stroke = Color.white.opacity(0.09)
-    static let glow   = Color.white.opacity(0.22)
-    static let accent = Color.cyan
-    static let accent2 = Color.mint
 }
 
 // EN + HE alphabets (non-generic container)
@@ -76,12 +66,12 @@ struct PremiumHubGameView<VM: PremiumHubGameVM>: View {
     @State private var localTicker = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
     
     // “Allowed letters” belt feedback
-    @State private var invalidShakeTick: CGFloat = 0
     @State private var invalidPulse = false
     @State private var toastVisible = false
     
     // Win / Lose banners
     @State private var wins: Int = UserDefaults.standard.integer(forKey: "wins_count")
+    @State private var rank: Int = UserDefaults.standard.integer(forKey: "wins_rank")
     @State private var showWinBanner = false
     @State private var showLoseBanner = false
     @State private var loseResetFlag = true  // true: reset board on close; false: keep (timeout)
@@ -105,17 +95,24 @@ struct PremiumHubGameView<VM: PremiumHubGameVM>: View {
         self.onForceEnd = onForceEnd
         self.length = vm.wordValue.count
         self.initilizeHistory = history
-        _matrix = State(initialValue: Array(repeating: Array(repeating: "", count: vm.wordValue.count), count: rows))
-        _colors = State(initialValue: Array(repeating: Array(repeating: .noGuess, count: vm.wordValue.count), count: rows))
         
-        // Use device locale here (Environment isn’t available in init)
+        // Seed matrix/colors BEFORE first frame (prevents onAppear layout jump)
+        var seedMatrix = Array(repeating: Array(repeating: "", count: vm.wordValue.count), count: rows)
+        var seedColors = Array(repeating: Array(repeating: CharColor.noGuess, count: vm.wordValue.count), count: rows)
+        for (rowIdx, guess) in history.enumerated() {
+            seedMatrix[rowIdx] = guess
+            seedColors[rowIdx] = vm.calculateColors(with: guess)
+        }
+        _matrix = State(initialValue: seedMatrix)
+        _colors = State(initialValue: seedColors)
+        _current = State(initialValue: history.count)
+        
+        // Normalize allowed letters to current script set
         let he = Locale.current.identifier.lowercased().hasPrefix("he")
         let alphaSet = he ? Alpha.heSet : Alpha.enSet
-        
-        let normalized = allowedLetters.map { ch in
-            he ? ch : Character(String(ch).lowercased())
-        }.filter { alphaSet.contains($0) }
-        
+        let normalized = allowedLetters
+            .map { he ? $0 : Character(String($0).lowercased()) }
+            .filter { alphaSet.contains($0) }
         self.allowedUpper = Set(normalized)
     }
     
@@ -126,43 +123,13 @@ struct PremiumHubGameView<VM: PremiumHubGameVM>: View {
             background()
             
             VStack(spacing: 10) {
-                topBar()
-                
-                // Compact, hub-like timer container
-                ZStack {
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .fill(HubGamePalette.card)
-                        .overlay(RoundedRectangle(cornerRadius: 14).stroke(HubGamePalette.stroke, lineWidth: 1))
-                        .shadow(color: HubGamePalette.glow, radius: 7, y: 3)
-                    
-                    MainRoundTimerView(secondsLeft: secondsLeftLocal, total: timer.total)
-                        .frame(height: 14)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 6)
-                }
-                .frame(height: 32)
-                .padding(.horizontal, 16)
-                
-                // Allowed letters belt (directly under timer)
-                AllowedBeltView(letters: beltLetters(),
-                                shakeTick: invalidShakeTick,
-                                pulse: invalidPulse)
-                .padding(.horizontal, 16)
-                .overlay(alignment: .top) {
-                    if toastVisible {
-                        CapsuleToast(text: toastText)
-                            .transition(.move(edge: .top).combined(with: .opacity))
-                            .padding(.top, -6)
-                    }
-                }
-                
                 gameArea()
-                    .padding(.horizontal, 12)
                     .opacity(endBannerUp ? 0.25 : 1)
+                    .padding(.horizontal, 10)
                 
                 AppTitle(size: 50)
-                    .padding(.top, UIDevice.isPad ? 100 : 80)
-                    .padding(.bottom, UIDevice.isPad ? 175 : 135)
+                    .padding(.top, UIDevice.isPad ? 140 : 100)
+                    .padding(.bottom, UIDevice.isPad ? 210 : 170)
                     .shadow(radius: 4)
             }
             .frame(maxHeight: .infinity)
@@ -180,37 +147,39 @@ struct PremiumHubGameView<VM: PremiumHubGameVM>: View {
                     .zIndex(2)
             }
         }
+        .ignoresSafeArea(.keyboard)
+        .safeAreaInset(edge: .top) {
+            topBar()
+                .padding(.bottom, 10)
+        }
         .onAppear {
             isVisible = true
-            fillHistory()
-            secondsLeftLocal = timer.secondsLeft
+            // Seed the timer progress with NO animation so bar doesn't "grow" on first frame.
+            withTransaction(Transaction(animation: nil)) {
+                secondsLeftLocal = timer.secondsLeft
+            }
             startAmbient()
         }
         .onDisappear { isVisible = false }
         
-        // Keep in sync with hub if it IS publishing (mirror wins over our local drive)
+        // Mirror hub timer while it's publishing
         .onReceive(timer.$secondsLeft.removeDuplicates()) { new in
-            // If hub still drives, trust it.
             secondsLeftLocal = new
             guard isVisible, !endBannerUp else { return }
-            // If the hub reset while we’re here, end the game as a fail.
+            // If hub reset while we're here, end as fail (keep board if not reset)
             if new == timer.total && new > 0 { forceEnd(asFail: true, reset: false) }
         }
         .onReceive(timer.$total.removeDuplicates()) { _ in
             secondsLeftLocal = timer.secondsLeft
         }
         
-        // Local fallback ticker: if hub stopped (e.g., hub view disappeared), we drive time.
+        // Local fallback if hub stops
         .onReceive(localTicker) { _ in
             guard isVisible, !endBannerUp else { return }
-            
-            // If hub already advanced this tick, just mirror it and skip.
             if timer.secondsLeft != secondsLeftLocal {
                 secondsLeftLocal = timer.secondsLeft
                 return
             }
-            
-            // Drive our own countdown and write back to the bridge.
             if secondsLeftLocal > 0 {
                 secondsLeftLocal -= 1
                 timer.set(secondsLeftLocal, total: timer.total)
@@ -222,6 +191,23 @@ struct PremiumHubGameView<VM: PremiumHubGameVM>: View {
                 withAnimation(.spring(response: 0.55, dampingFraction: 0.75)) { showLoseBanner = true }
             }
         }
+        .toolbar {
+            ToolbarItem(placement: .keyboard) {
+                // Full-width accessory content
+                AllowedBeltView(
+                    letters: beltLetters(),
+                    pulse: invalidPulse
+                )
+                .overlay {
+                    if toastVisible {
+                        CapsuleToast(text: toastText)
+                            .transition(.move(edge: .top).combined(with: .opacity))
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .center)
+                .padding(.vertical, 6)
+            }
+        }
     }
     
     // MARK: UI parts
@@ -231,46 +217,61 @@ struct PremiumHubGameView<VM: PremiumHubGameVM>: View {
     }
     
     @ViewBuilder private func topBar() -> some View {
-        ZStack {
-            HStack {
-                BackButton(title: nil ,icon: "xmark",
-                           action: { forceEnd(asFail: false, reset: false, withHistory: true) })
-                .environment(\.colorScheme, .dark)
-                .padding(.vertical, 8)
-                Spacer()
-            }
+        HStack(spacing: 12) {
+            BackButton(title: "Close" ,
+                       icon: "xmark",
+                       action: { forceEnd(asFail: false, reset: false, withHistory: true) })
+            .environment(\.colorScheme, .dark)
+            .padding(.trailing, 11)
             
-            Text("WordZap")
-                .font(.title3.weight(.heavy))
-                .foregroundStyle(.white.opacity(0.95))
-                .shadow(radius: 4)
+            SolvedCounterPill(count: wins, rank: rank, onTap: {})
+            
+            timerView()
+                .padding(.trailing, 10)
         }
-        .padding(.horizontal, 16)
-        .padding(.top, 2)
+        .padding(.top, 4)
+    }
+    
+    @ViewBuilder private func timerView() -> some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(HubGamePalette.card)
+                .overlay(RoundedRectangle(cornerRadius: 14).stroke(HubGamePalette.stroke, lineWidth: 1))
+                .shadow(color: HubGamePalette.glow, radius: 7, y: 3)
+            
+            MainRoundTimerView(
+                secondsLeft: secondsLeftLocal,
+                total: timer.total,
+                identity: timer.identity,
+                skipProgressAnimation: true
+            )
+            .frame(height: 18)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+        }
+        .frame(height: 32)
     }
     
     @ViewBuilder private func gameArea() -> some View {
         VStack(spacing: 8) {
             ForEach(0..<rows, id: \.self) { i in
-                ZStack {
-                    WordView(
-                        cleanCells: .constant(false),
-                        allowed: (effectiveAllowedLetters, invalidInputFeedback),
-                        current: $current,
-                        length: length,
-                        word: $matrix[i],
-                        gainFocus: Binding(get: { current == i && !endBannerUp }, set: { _ in }),
-                        colors: $colors[i]
-                    ) {
-                        guard i == current, !endBannerUp else { return }
-                        nextLine(i: i)
-                    }
-                    .disabled(current != i || endBannerUp)
-                    .shadow(radius: 4)
+                WordView(
+                    cleanCells: .constant(false),
+                    allowed: (effectiveAllowedLetters, invalidInputFeedback),
+                    current: $current,
+                    length: length,
+                    word: $matrix[i],
+                    gainFocus: Binding(get: { current == i && !endBannerUp }, set: { _ in }),
+                    colors: $colors[i]
+                ) {
+                    guard i == current, !endBannerUp else { return }
+                    nextLine(i: i)
                 }
+                .disabled(current != i || endBannerUp)
+                .shadow(radius: 4)
             }
         }
-        .padding(.bottom, 12)
+        .ignoresSafeArea(.keyboard)
     }
     
     @ViewBuilder private func background() -> some View {
@@ -283,16 +284,6 @@ struct PremiumHubGameView<VM: PremiumHubGameVM>: View {
     }
     
     // MARK: - Logic
-    
-    private func fillHistory() {
-        for h in initilizeHistory {
-            guard let i = initilizeHistory.firstIndex(of: h) else { continue }
-            self.matrix[i] = h
-            self.colors[i] = vm.calculateColors(with: h)
-        }
-        
-        current = initilizeHistory.count
-    }
     
     private func startAmbient() {
         if difficulty != .tutorial {
@@ -347,12 +338,10 @@ struct PremiumHubGameView<VM: PremiumHubGameVM>: View {
     private func beltLetters() -> [Character] {
         let set = effectiveAllowedLetters
         if !set.isEmpty, set.allSatisfy({ Alpha.heSet.contains($0) }) {
-            // Sort by Hebrew alphabet order
             return set.sorted {
                 (Alpha.heOrder.firstIndex(of: $0) ?? .max) < (Alpha.heOrder.firstIndex(of: $1) ?? .max)
             }
         } else {
-            // Default to English order
             return set.sorted {
                 (Alpha.enOrder.firstIndex(of: $0) ?? .max) < (Alpha.enOrder.firstIndex(of: $1) ?? .max)
             }
@@ -361,13 +350,18 @@ struct PremiumHubGameView<VM: PremiumHubGameVM>: View {
     
     private func invalidInputFeedback() {
         UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
-        withAnimation(.spring(response: 0.28, dampingFraction: 0.45)) {
-            invalidShakeTick += 1
+        
+        withAnimation(.spring(response: 0.22, dampingFraction: 0.55)) {
             invalidPulse = true
             toastVisible = true
         }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
-            withAnimation(.easeOut(duration: 0.2)) { invalidPulse = false; toastVisible = false }
+        
+        // let the belt finish its pulse before we drop it
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+            withAnimation(.easeOut(duration: 0.25)) { invalidPulse = false }
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.9) {
+            withAnimation(.easeOut(duration: 0.20)) { toastVisible = false }
         }
     }
 }
@@ -375,15 +369,15 @@ struct PremiumHubGameView<VM: PremiumHubGameVM>: View {
 // MARK: - Allowed letters belt + feedback (hub-style)
 private struct AllowedBeltView: View {
     let letters: [Character]
-    var shakeTick: CGFloat
     var pulse: Bool
-    var placeholder: String = "No letters yet — play minis to collect".localized
+    var placeholder: String = "No letters yet — play minis to collect"
+    
+    @State private var sweepKey = UUID() // restart sweep per pulse
     
     var body: some View {
         Group {
             if letters.isEmpty {
-                HStack(spacing: 8) {
-                    // subtle placeholder chips
+                HStack(spacing: 10) {
                     ForEach(0..<5, id: \.self) { _ in
                         Text("?")
                             .font(.system(.callout, design: .rounded).weight(.bold))
@@ -393,9 +387,9 @@ private struct AllowedBeltView: View {
                             .overlay(Circle().stroke(.white.opacity(0.35), lineWidth: 1))
                             .shadow(color: .black.opacity(0.15), radius: 2, y: 1)
                     }
-                    Text(placeholder)
+                    Text(placeholder.localized)
                         .font(.caption.weight(.semibold))
-                        .foregroundStyle(.white.opacity(0.65))
+                        .foregroundStyle(.black.opacity(0.65))
                         .lineLimit(1)
                         .minimumScaleFactor(0.8)
                 }
@@ -403,7 +397,7 @@ private struct AllowedBeltView: View {
                 .padding(.horizontal, 10)
             } else {
                 ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
+                    HStack(spacing: 10) {
                         ForEach(letters, id: \.self) { ch in
                             Text(String(ch.uppercased()))
                                 .font(.system(.callout, design: .rounded).weight(.bold))
@@ -425,12 +419,58 @@ private struct AllowedBeltView: View {
                 .overlay(RoundedRectangle(cornerRadius: 12).stroke(HubGamePalette.stroke, lineWidth: 1))
                 .shadow(color: HubGamePalette.glow, radius: 6, y: 2)
         )
-        .modifier(Shake(animatableData: shakeTick))
+        // polished invalid feedback:
+        .overlay {
+            if pulse {
+                InvalidSweepOverlay().id(sweepKey)
+            }
+        }
         .overlay(
+            // soft inner glow instead of a harsh border
             RoundedRectangle(cornerRadius: 12)
-                .stroke(Color.red.opacity(pulse ? 0.85 : 0), lineWidth: 2)
-                .animation(.easeInOut(duration: 0.2), value: pulse)
+                .fill(Color.red.opacity(pulse ? 0.16 : 0))
+                .padding(1)
+                .animation(.easeInOut(duration: 0.22), value: pulse)
         )
+        .overlay(
+            // subtle outer rim when pulsing
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(Color.red.opacity(pulse ? 0.55 : 0), lineWidth: 1.5)
+                .blur(radius: pulse ? 0.5 : 0)
+                .animation(.easeInOut(duration: 0.22), value: pulse)
+        )
+        .scaleEffect(pulse ? 1.02 : 1.0)
+        .modifier(Shake(travel: 0.2, animatableData: pulse ? 1 : 0)) // you already have Shake in this file
+        .onChange(of: pulse) { old, new in
+            if new { sweepKey = UUID() } // restart sweep each time
+        }
+    }
+}
+
+// one-shot red sweep, runs once per pulse
+private struct InvalidSweepOverlay: View {
+    @State private var x: CGFloat = -1
+    var body: some View {
+        GeometryReader { geo in
+            Rectangle()
+                .fill(
+                    LinearGradient(gradient: Gradient(stops: [
+                        .init(color: .clear,                location: 0.00),
+                        .init(color: .red.opacity(0.22),    location: 0.42),
+                        .init(color: .red.opacity(0.55),    location: 0.50),
+                        .init(color: .red.opacity(0.22),    location: 0.58),
+                        .init(color: .clear,                location: 1.00),
+                    ]), startPoint: .top, endPoint: .bottom)
+                )
+                .frame(width: geo.size.width * 0.90)
+                .offset(x: x * geo.size.width)
+                .blendMode(.plusLighter)
+                .allowsHitTesting(false)
+                .onAppear {
+                    withAnimation(.easeOut(duration: 0.45)) { x = 1.2 }
+                }
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 }
 
@@ -558,7 +598,7 @@ private struct ConfettiPiece: View {
     }
 }
 
-// MARK: - Lose Celebration (new)
+// MARK: - Lose Celebration
 
 private struct LoseCelebrationView: View {
     var onDone: () -> Void

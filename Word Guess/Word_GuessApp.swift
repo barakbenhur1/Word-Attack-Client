@@ -40,6 +40,7 @@ struct WordGuessApp: App {
                 else if loginHaneler.hasGender { DifficultyView() }
                 else { ServerLoadingView() }
             }
+            .autoPauseAudio()
             .onAppear {
                 guard let currentUser = Auth.auth().currentUser,
                       let email = currentUser.email else { return }

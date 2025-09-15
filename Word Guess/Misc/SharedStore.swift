@@ -16,6 +16,8 @@ import SwiftUICore
 public enum Difficulty: String, Codable, CaseIterable {
     case easy, medium, hard
     
+    var stringValue: String { rawValue }
+    
     var color: Color {
         switch self {
         case .easy:   Color(hue: 0.33, saturation: 0.75, brightness: 0.32)

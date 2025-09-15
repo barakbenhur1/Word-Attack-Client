@@ -230,7 +230,7 @@ struct WordZapWidgetView: View {
         let answers   = entry.answers.map(String.init) ?? "—"
         let score     = entry.score.map { $0.formatted(.number.grouping(.automatic)) } ?? "—"
         let place     = entry.place.map { "#\($0)" } ?? "—"
-        let diff      = d.rawValue.localized.capitalized
+        let diff      = d.stringValue.localized.capitalized
         
         return VStack(spacing: 4) {
             AppTitle(isWidget: true)
@@ -279,7 +279,7 @@ struct WordZapWidgetView: View {
                     GridRow {
                         tapTarget("wordzap://play?difficulty=\(d.rawValue)") {
                             VStack(alignment: .leading, spacing: 12) {
-                                chip("\("Diff".localized): \(d.rawValue.localized.capitalized)", icon: "flag.checkered", color: d.color)
+                                chip("\("Diff".localized): \(d.stringValue.localized.capitalized)", icon: "flag.checkered", color: d.color)
                                 chip("\("Today".localized): \(shortDate)", icon: "calendar")
                                 
                                 if hasStats {
@@ -333,7 +333,7 @@ struct WordZapWidgetView: View {
                 
                 tapTarget("wordzap://play?difficulty=\(d.rawValue)") {
                     VStack(alignment: .leading, spacing: 12) {
-                        chip("\("Diff".localized): \(d.rawValue.localized.capitalized)", icon: "flag.checkered", color: d.color)
+                        chip("\("Diff".localized): \(d.stringValue.localized.capitalized)", icon: "flag.checkered", color: d.color)
                         chip("\("Today".localized): \(shortDate)", icon: "calendar")
                         
                         if hasStats {

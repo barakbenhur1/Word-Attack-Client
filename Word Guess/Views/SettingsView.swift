@@ -9,6 +9,8 @@ import SwiftUI
 
 enum SettingsOption: String {
     case language = "language", sound = "sound", ai = "ai", premium = "Premium"
+    
+    var stringValue: String { rawValue.localized }
 }
 
 struct SettingsOptionButton: Identifiable {
@@ -36,7 +38,7 @@ struct SettingsView: View {
     
     private var language: String? { return local.locale.identifier.components(separatedBy: "_").first }
     
-    var showBack = true
+    var fromSideMenu = false
     
     private func action(item: SettingsOptionButton) {
         switch item.type {
@@ -60,7 +62,7 @@ struct SettingsView: View {
     private func resetAI() {
         UserDefaults.standard.set(nil, forKey: "aiDifficulty")
         UserDefaults.standard.set(nil, forKey: "playerHP")
-        Task(priority: .utility) { await SharedStore.writeAIStatsAsync(.init(name: AIDifficulty.easy.rawValue.name, imageName: AIDifficulty.easy.rawValue.image)) }
+        Task(priority: .utility) { await SharedStore.writeAIStatsAsync(.init(name: AIDifficulty.easy.name, imageName: AIDifficulty.easy.image)) }
     }
     
     var body: some View {
@@ -111,7 +113,7 @@ struct SettingsView: View {
     
     @ViewBuilder private func topView() -> some View {
         ZStack {
-            if showBack {
+            if !fromSideMenu {
                 HStack {
                     BackButton()
                     Spacer()
@@ -131,7 +133,7 @@ struct SettingsView: View {
             switch item.type {
             case .premium:
                 HStack {
-                    Text(item.type.rawValue.localized)
+                    Text(item.type.stringValue.localized)
                         .font(.headline.bold().italic())
                         .foregroundStyle(.black)
                     
@@ -139,12 +141,12 @@ struct SettingsView: View {
                     
                     Text(premium.isPremium ? "Restore Purchases" : "Purchase")
                         .font(.headline.bold().italic())
-                        .foregroundStyle(Color(red: 0.30, green: 0.29, blue: 0.49))
+                        .foregroundStyle(Color.premiumPurple)
                 }
                 
             case .language:
                 HStack {
-                    Text(item.type.rawValue.localized)
+                    Text(item.type.stringValue.localized)
                         .font(.headline)
                         .foregroundStyle(.black)
                     
@@ -152,19 +154,19 @@ struct SettingsView: View {
                     
                     Text(language == "he" ? "Hebrew" : "English")
                         .font(.headline)
-                        .foregroundStyle(.cyan)
+                        .foregroundStyle(Color.darkTurquoise)
                 }
                 
             case .sound:
-                Toggle(item.type.rawValue.localized, isOn: $audio.isOn)
+                Toggle(item.type.stringValue.localized, isOn: $audio.isOn)
                     .font(.headline)
                     .foregroundStyle(.black)
-                    .tint(.cyan)
+                    .tint(.darkTurquoise)
                     .toggleStyle(.switch)
                 
             case .ai:
                 HStack {
-                    Text(item.type.rawValue.localized)
+                    Text(item.type.stringValue.localized)
                         .font(.headline)
                         .foregroundStyle(.black)
                     
@@ -176,10 +178,15 @@ struct SettingsView: View {
                     
                     Text("Reset Difficulty")
                         .font(.headline)
-                        .foregroundStyle(difficulty == nil ? .gray : .cyan)
+                        .foregroundStyle(difficulty == nil ? .gray : .darkTurquoise)
                 }
             }
         }
         .padding()
     }
+}
+
+extension Color {
+    static let darkTurquoise = Color(red: 0.0, green: 0.81, blue: 0.82) // HEX #00CED1
+    static let premiumPurple = Color(red: 0.30, green: 0.29, blue: 0.49)
 }

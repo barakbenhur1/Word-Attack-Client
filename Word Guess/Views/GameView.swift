@@ -54,7 +54,7 @@ struct GameView<VM: WordViewModel>: View {
         guard interstitialAdManager == nil || !keyboard.show || vm.word.number == 0 || vm.word.number % InterstitialAdInterval != 0 else { interstitialAdManager?.loadInterstitialAd(); return }
         initalConfigirationForWord()
         guard diffculty != .tutorial && diffculty != .ai else { return }
-        Task(priority: .utility) { await SharedStore.writeDifficultyStatsAsync(.init(answers: vm.word.number, score: vm.word.score), for: diffculty.liveValue) }
+        Task(priority: .utility) { await SharedStore.writeDifficultyStatsAsync(.init(answers: vm.word.number, score: vm.score), for: diffculty.liveValue) }
     }
     
     private func handleGuessworkChage() {
@@ -69,7 +69,9 @@ struct GameView<VM: WordViewModel>: View {
         current = guesswork.count
     }
     
-    private func handleStartup(email: String) async {
+    private func handleNewWord(email: String) async {
+        await vm.getScore(diffculty: diffculty,
+                          email: email)
         await vm.word(diffculty: diffculty,
                       email: email)
     }
@@ -170,7 +172,7 @@ struct GameView<VM: WordViewModel>: View {
                                 HStack {
                                     VStack {
                                         Spacer()
-                                        Text("\(diffculty.rawValue.localized)")
+                                        Text(diffculty.stringValue)
                                             .multilineTextAlignment(.center)
                                             .font(.title3.weight(.heavy))
                                             .shadow(radius: 4)
@@ -188,7 +190,7 @@ struct GameView<VM: WordViewModel>: View {
                                             .foregroundStyle(.black)
                                         
                                         ZStack(alignment: .top) {
-                                            Text("\(vm.word.score)")
+                                            Text("\(vm.score)")
                                                 .multilineTextAlignment(.center)
                                                 .font(.largeTitle.weight(.heavy))
                                                 .foregroundStyle(.angularGradient(colors: [.yellow,
@@ -287,12 +289,11 @@ struct GameView<VM: WordViewModel>: View {
         if let email {
             ZStack(alignment: .topLeading) {
                 ZStack(alignment: .topLeading) { gameBody(proxy: proxy) }
-                    .ignoresSafeArea(.keyboard)
                     .onChange(of: vm.isError, handleError)
                     .onChange(of: vm.word.word, handleWordChange)
                     .onChange(of: vm.word.word.guesswork, handleGuessworkChage)
                     .onChange(of: vm.word.isTimeAttack, handleTimeAttack)
-                    .task { await handleStartup(email: email) }
+                    .task { await handleNewWord(email: email) }
                     .ignoresSafeArea(.keyboard)
             }
             .padding(.top, 64)
@@ -417,7 +418,7 @@ struct GameView<VM: WordViewModel>: View {
             Task.detached(priority: .userInitiated) {
                 if !correct { await vm.addGuess(diffculty: diffculty, email: email, guess: guess) }
                 await vm.score(diffculty: diffculty, email: email)
-                await vm.word(diffculty: diffculty, email: email)
+                await handleNewWord(email: email)
                 await MainActor.run {
                     withAnimation(.easeOut(duration: 0.5)) {
                         scoreAnimation.opticity = 0
@@ -467,11 +468,11 @@ struct GameView<VM: WordViewModel>: View {
             withAnimation(.linear(duration: 0.2)) {
                 scoreAnimation.opticity = 0
                 scoreAnimation.scale = 0
-                vm.word.score += value
-                vm.word.number += 1
             }
             
             queue.asyncAfter(deadline: .now() + 0.2) {
+                vm.score += value
+                vm.word.number += 1
                 scoreAnimation.value = 0
                 scoreAnimation.offset = 30
             }

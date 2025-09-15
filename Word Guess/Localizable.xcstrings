@@ -35,16 +35,6 @@
         }
       }
     },
-    "%@" : {
-      "localizations" : {
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@"
-          }
-        }
-      }
-    },
     "%@ plan %@" : {
       "localizations" : {
         "en" : {
@@ -105,7 +95,7 @@
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lldשנ׳"
+            "value" : "%lld שנ׳"
           }
         }
       }
@@ -318,6 +308,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "בינה מלאכותית"
+          }
+        }
+      }
+    },
+    "Align" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "השווה"
           }
         }
       }
@@ -580,6 +581,17 @@
         }
       }
     },
+    "Card Shuffle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "קלפים"
+          }
+        }
+      }
+    },
     "Case closed" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -653,6 +665,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "קריסת פסוקית"
+          }
+        }
+      }
+    },
+    "Claw" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "זרוע"
           }
         }
       }
@@ -762,6 +785,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "נכבשת"
+          }
+        }
+      }
+    },
+    "Contains letter" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מכיל אותיות"
           }
         }
       }
@@ -1075,6 +1108,16 @@
         }
       }
     },
+    "Double tap to edit" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "לחיצה כפולה לערוך"
+          }
+        }
+      }
+    },
     "Downloading AI Pack" : {
       "localizations" : {
         "he" : {
@@ -1303,6 +1346,16 @@
         }
       }
     },
+    "Find the pair" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מצא את הזוג"
+          }
+        }
+      }
+    },
     "Flawless" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1419,6 +1472,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "לך לפרימיום"
+          }
+        }
+      }
+    },
+    "Got it" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הבנתי"
           }
         }
       }
@@ -1583,6 +1646,27 @@
     "Hello %@" : {
       "shouldTranslate" : false
     },
+    "Hold" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "החזק"
+          }
+        }
+      }
+    },
+    "Hold to Reveal" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "חשוף בלחיצה"
+          }
+        }
+      }
+    },
     "Hopeless" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1623,6 +1707,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "בן־תמותה חסר תקווה"
+          }
+        }
+      }
+    },
+    "How the Hub Works" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "איך ההיכל עובד"
           }
         }
       }
@@ -1920,6 +2014,26 @@
         }
       }
     },
+    "Letter cell %lld" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "תא אות %lld"
+          }
+        }
+      }
+    },
+    "Letter not found" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אות לא נמצאה"
+          }
+        }
+      }
+    },
     "Lexeme lost" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2151,6 +2265,16 @@
         }
       }
     },
+    "May be empty" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אולי ריק"
+          }
+        }
+      }
+    },
     "MB" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2180,6 +2304,27 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "בינוני"
+          }
+        }
+      }
+    },
+    "Memorize…" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "תשנן…"
+          }
+        }
+      }
+    },
+    "Memory" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "זיכרון"
           }
         }
       }
@@ -2324,6 +2469,16 @@
         }
       }
     },
+    "No" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "לא"
+          }
+        }
+      }
+    },
     "No brains" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2389,13 +2544,30 @@
         }
       }
     },
-    "No letters yet — play minis to collect" : {
+    "No letters yet — play mini games" : {
       "extractionState" : "manual",
       "localizations" : {
         "he" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "אין אותיות — שחק מיני-משחקים כדי לאסוף"
+          }
+        }
+      }
+    },
+    "No letters yet — play minis to collect" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No letters yet — play minis"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אין אותיות — שחק מיני משחקים"
           }
         }
       }
@@ -2752,7 +2924,7 @@
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "שחק במשחק בכדיי לראות את הדירוג שלך בלוח"
+            "value" : "שחק במשחק בכדיי לראות את הדירוג שלך בטבלה"
           }
         }
       }
@@ -2807,6 +2979,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "פאניקה רב־הברתית"
+          }
+        }
+      }
+    },
+    "Pop Balloon" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "פוצץ בלון"
           }
         }
       }
@@ -2874,10 +3057,16 @@
     "Premium Leaderboard" : {
       "extractionState" : "manual",
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "PREMIUM\nLEADERBOARD"
+          }
+        },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "לוח התוצאות פרימיום"
+            "value" : "טבלת דירוג\nפרימיום"
           }
         }
       }
@@ -2977,6 +3166,16 @@
         }
       }
     },
+    "Raise the line to catch the orb" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "התאם את הגובה"
+          }
+        }
+      }
+    },
     "Rare word, rarer win" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2995,6 +3194,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "תקרא ספר"
+          }
+        }
+      }
+    },
+    "refresh in %llds" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מתרענן בעוד %llds"
           }
         }
       }
@@ -3188,7 +3397,7 @@
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "לוח התוצאות"
+            "value" : "טבלת דירוג"
           }
         }
       }
@@ -3198,13 +3407,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Rank"
+            "value" : "LEADERBOARD"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "דירוג"
+            "value" : "טבלת דירוג"
           }
         }
       }
@@ -3287,6 +3496,37 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "הגדרות"
+          }
+        }
+      }
+    },
+    "Shake to reveal" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "נער בכדי לחשוף"
+          }
+        }
+      }
+    },
+    "Shake to Reveal" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "חשוף בניעור"
+          }
+        }
+      }
+    },
+    "Shake your device" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "נער את המכשיר"
           }
         }
       }
@@ -3494,6 +3734,16 @@
         }
       }
     },
+    "Strikes: %lld/3" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "נסיונות: %lld/3"
+          }
+        }
+      }
+    },
     "Subject–verb mismatch" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -3645,12 +3895,65 @@
         }
       }
     },
+    "Tap a tile to play a mini-game and collect letters." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "לחץ על התא לשחק במיני משחקים ולאסוף אותיות"
+          }
+        }
+      }
+    },
+    "Tap Target" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "לחץ על המטרה"
+          }
+        }
+      }
+    },
+    "Taps: %lld/%lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Taps: %1$lld/%2$lld"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "לחיצות: %1$lld/%2$lld"
+          }
+        }
+      }
+    },
     "Terms" : {
       "localizations" : {
         "he" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "תנאים"
+          }
+        }
+      }
+    },
+    "The center button starts the main game once you have the letters." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The center button starts the main game and turn gold once you have the letters needed to slove word."
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הכפתור האמצעי מתחיל את המשחק והופך לזהוב כשיש לך את כל האותיות בכדי לנחש את המילה."
           }
         }
       }
@@ -3706,6 +4009,16 @@
     },
     "Timer" : {
       "shouldTranslate" : false
+    },
+    "Timer at the top: swipe it to reset the round." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "סטופר בראש המסך: החלק בכדי לאתחל את הסיבוב"
+          }
+        }
+      }
     },
     "Timer is running" : {
       "shouldTranslate" : false
@@ -3796,6 +4109,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "ניחוש על הפנים"
+          }
+        }
+      }
+    },
+    "Tries: %lld/3" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ניסיונות: %lld/3"
           }
         }
       }
@@ -4184,6 +4507,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "טועה-לוג"
+          }
+        }
+      }
+    },
+    "Yes" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "כן"
           }
         }
       }

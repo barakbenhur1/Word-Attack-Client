@@ -7,6 +7,88 @@
 
 import SwiftUI
 
+// MARK: - Micro Styles
+
+private struct HairlineStroke: ViewModifier {
+    let cornerRadius: CGFloat
+    func body(content: Content) -> some View {
+        content.overlay(
+            RoundedRectangle(cornerRadius: cornerRadius)
+                .strokeBorder(.white.opacity(0.12), lineWidth: 1)
+        )
+    }
+}
+
+private struct InnerShadow: ViewModifier {
+    let cornerRadius: CGFloat
+    func body(content: Content) -> some View {
+        content.overlay(
+            RoundedRectangle(cornerRadius: cornerRadius)
+                .stroke(.black.opacity(0.12), lineWidth: 1)
+                .blur(radius: 1.5)
+                .mask(
+                    RoundedRectangle(cornerRadius: cornerRadius)
+                        .fill(LinearGradient(stops: [
+                            .init(color: .black, location: 0.0),
+                            .init(color: .clear, location: 0.55),
+                            .init(color: .black.opacity(0.6), location: 1.0),
+                        ], startPoint: .topLeading, endPoint: .bottomTrailing))
+                )
+        )
+    }
+}
+
+private struct SoftGloss: ViewModifier {
+    let cornerRadius: CGFloat
+    func body(content: Content) -> some View {
+        content.overlay(
+            RoundedRectangle(cornerRadius: cornerRadius)
+                .fill(
+                    LinearGradient(
+                        colors: [.white.opacity(0.20), .white.opacity(0.06), .clear],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .blendMode(.overlay)
+                .allowsHitTesting(false)
+        )
+    }
+}
+
+private struct FocusGlow: ViewModifier {
+    let isFocused: Bool
+    let cornerRadius: CGFloat
+    func body(content: Content) -> some View {
+        content
+            .overlay(
+                RoundedRectangle(cornerRadius: cornerRadius)
+                    .stroke(isFocused ? Color.white.opacity(0.70) : .clear, lineWidth: 1.0)
+                    .shadow(color: isFocused ? .white.opacity(0.55) : .clear, radius: 4)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: cornerRadius)
+                    .stroke(isFocused ? Color.white.opacity(0.10) : .clear, lineWidth: 6)
+                    .blur(radius: 6)
+            )
+            .animation(.easeOut(duration: 0.18), value: isFocused)
+    }
+}
+
+private extension View {
+    func premiumTile(cornerRadius: CGFloat = 4) -> some View {
+        self
+            .modifier(HairlineStroke(cornerRadius: cornerRadius))
+            .modifier(InnerShadow(cornerRadius: cornerRadius))
+            .modifier(SoftGloss(cornerRadius: cornerRadius))
+    }
+    func focusGlow(_ on: Bool, cornerRadius: CGFloat = 4) -> some View {
+        self.modifier(FocusGlow(isFocused: on, cornerRadius: cornerRadius))
+    }
+}
+
+// MARK: - Existing types
+
 enum FieldFocus: Int {
     case one
     case two
@@ -23,9 +105,11 @@ struct WordView<VM: ViewModel>: View {
     private let placeHolderData: [BestGuess]?
     private let done: () -> ()
     
-    private var placeHolderForCell: (_ index: Int) -> [Guess] { { i in return placeHolderData?.filter { $0.index == i }.first?.colordLetters ?? [] } }
+    private var placeHolderForCell: (_ index: Int) -> [Guess] { { i in
+        placeHolderData?.first { $0.index == i }?.colordLetters ?? []
+    } }
     
-    private var language: String? { return local.locale.identifier.components(separatedBy: "_").first }
+    private var language: String? { local.locale.identifier.components(separatedBy: "_").first }
     
     @Binding private var gainFocus: Bool
     @Binding private var word: [String]
@@ -40,7 +124,19 @@ struct WordView<VM: ViewModel>: View {
     
     @Binding private var cleanCells: Bool
     
-    init(cleanCells: Binding<Bool>, isAI: Bool = false, allowed: (set: Set<Character>, onInvalid: () -> Void)? = nil, current: Binding<Int>, length: Int, placeHolderData: [BestGuess]? = nil, isCurrentRow: Bool = false, word: Binding<[String]>, gainFocus: Binding<Bool>, colors: Binding<[CharColor]>, done: @escaping () -> ()) {
+    init(
+        cleanCells: Binding<Bool>,
+        isAI: Bool = false,
+        allowed: (set: Set<Character>, onInvalid: () -> Void)? = nil,
+        current: Binding<Int>,
+        length: Int,
+        placeHolderData: [BestGuess]? = nil,
+        isCurrentRow: Bool = false,
+        word: Binding<[String]>,
+        gainFocus: Binding<Bool>,
+        colors: Binding<[CharColor]>,
+        done: @escaping () -> ()
+    ) {
         self.isAI = isAI
         self.allowed = allowed
         self.length = length
@@ -55,11 +151,10 @@ struct WordView<VM: ViewModel>: View {
         _word = word
     }
     
+    // Allow typing in whichever cell is currently focused (or tapped) in the active row.
     private func onDidType(text: String, index: Int) {
         guard wordBakup[index] != text else { return }
-        if !isAI { guard fieldFocus?.rawValue == index else { return } }
-        handleWordWriting(value: text,
-                          current: index)
+        handleWordWriting(value: text, current: index)
         wordBakup[index] = word[index]
         guard word.joined().count == length else { return }
         done()
@@ -72,26 +167,22 @@ struct WordView<VM: ViewModel>: View {
                 
                 if isAI {
                     if isCurrentRow {
-                        let waiting = { GuessingGlyphView(index: i,
-                                                          outOf: length,
-                                                          language: language == "he" ? .he : .en) }
-                        
+                        let waiting = {
+                            GuessingGlyphView(index: i, outOf: length, language: language == "he" ? .he : .en)
+                        }
+                        view.placeHolder(when: word[i].isEmpty, placeholder: waiting)
+                    } else {
                         view
-                            .placeHolder(when: word[i].isEmpty,
-                                         placeholder: waiting)
-                    } else { view }
+                    }
                 } else  {
                     let placeHolderData: [BestGuess] = placeHolderData ?? []
-                    
                     let placeHolderForCell = placeHolderForCell(i)
-                    
-                    let usePlaceHolderData = word[i].isEmpty && !placeHolderData.isEmpty && !placeHolderForCell.filter { _, color in color != .noGuess && color != .noMatch }.isEmpty
+                    let usePlaceHolderData = word[i].isEmpty &&
+                    !placeHolderData.isEmpty &&
+                    !placeHolderForCell.filter { _, color in color != .noGuess && color != .noMatch }.isEmpty
                     
                     let placeholder = { placeHoldersView(placeHolderForCell: placeHolderForCell, i: i) }
-                    
-                    view
-                        .placeHolder(when: usePlaceHolderData,
-                                     placeholder: placeholder)
+                    view.placeHolder(when: usePlaceHolderData, placeholder: placeholder)
                 }
             }
         }
@@ -100,8 +191,7 @@ struct WordView<VM: ViewModel>: View {
             fieldFocus = .one
         }
         .onChange(of: gainFocus) {
-            if gainFocus { fieldFocus = .one }
-            else { fieldFocus = nil }
+            if gainFocus { fieldFocus = .one } else { fieldFocus = nil }
         }
         .onAppear {
             guard !isAI && gainFocus else { return }
@@ -110,40 +200,47 @@ struct WordView<VM: ViewModel>: View {
         .environment(\.layoutDirection, language == "he" ? .rightToLeft : .leftToRight)
     }
     
+    // MARK: - Placeholders
+    
     @ViewBuilder
     private func placeHoldersView(placeHolderForCell: [Guess], i: Int) -> some View {
-        HStack(alignment: .center,
-               spacing: 0) {
+        HStack(alignment: .center, spacing: 0) {
             ForEach(0..<placeHolderForCell.count, id: \.self) { j in
                 let char = placeHolderForCell[j]
                 if char.color != .noGuess && char.color != .noMatch {
-                    charViewPlaceHolder(guess: char,
-                                        isFirst: i == 0)
+                    charViewPlaceHolder(guess: char, isFirst: i == 0)
                 }
             }
         }
     }
+    
+    // MARK: - Cells
     
     @ViewBuilder
     private func charView(i: Int) -> some View {
         let placeHolderForCell = placeHolderForCell(i)
         let aiPlaceHolder = isAI && !isCurrentRow
         let playerPlaceHolder = !isAI && (placeHolderData == nil || placeHolderForCell.filter { _, color in color != .noGuess && color != .noMatch }.isEmpty)
-        
         let usePlaceHolderText = cleanCells || aiPlaceHolder || playerPlaceHolder
         
         CharView(
             text: cleanCells ? .constant("") : $word[i],
             usePlaceHolder: usePlaceHolderText,
-            didType: { text in onDidType(text: text,
-                                         index: i) }
+            didType: { text in onDidType(text: text, index: i) }
         )
         .frame(maxHeight: .infinity)
         .textInputAutocapitalization(i == 0 ? .sentences : .never)
         .autocorrectionDisabled()
         .focused($fieldFocus, equals: FieldFocus(rawValue: i)!)
-        .onSubmit { fieldFocus = FieldFocus(rawValue: i)! }
-        .onTapGesture { fieldFocus = FieldFocus(rawValue: i)! }
+        .onSubmit {
+            // Move focus to next tile (bounded); dimensions unchanged.
+            let next = min(i + 1, length - 1)
+            fieldFocus = FieldFocus(rawValue: next)!
+        }
+        .onTapGesture {
+            // Tap to focus any tile in the active row.
+            fieldFocus = FieldFocus(rawValue: i)!
+        }
         .clipShape(RoundedRectangle(cornerRadius: 4))
         .animation(.easeOut(duration: 0.8), value: cleanCells)
         .realisticCell(color: cleanCells ? .white.opacity(0.8) : colors[i].baseColor.opacity(0.8))
@@ -151,6 +248,10 @@ struct WordView<VM: ViewModel>: View {
         .realStone(cornerRadius: 4,
                    crackCount: Int.random(in: 3...6),
                    seed: UInt64.random(in: 1337...2337))
+        .premiumTile(cornerRadius: 4)
+        .focusGlow(fieldFocus?.rawValue == i, cornerRadius: 4)
+        .accessibilityLabel(Text("Letter cell \(i+1)"))
+        .accessibilityHint(Text("Double tap to edit"))
     }
     
     @ViewBuilder
@@ -161,12 +262,23 @@ struct WordView<VM: ViewModel>: View {
             .multilineTextAlignment(.center)
             .textInputAutocapitalization(isFirst ? .sentences : .never)
             .autocorrectionDisabled()
-            .background(guess.color.color.blur(radius: 4))
+            .background(
+                ZStack {
+                    guess.color.color.opacity(0.18)
+                    LinearGradient(
+                        colors: [Color.white.opacity(0.08), .clear],
+                        startPoint: .topLeading, endPoint: .bottomTrailing
+                    )
+                }
+            )
             .clipShape(RoundedRectangle(cornerRadius: 4))
             .hideSystemInputAssistant()
             .disabled(true)
-            .opacity(0.2)
+            .opacity(0.28)
+            .premiumTile(cornerRadius: 4)
     }
+    
+    // MARK: - Logic (unchanged)
     
     private func handleWordWriting(value: String, current: Int) {
         guard wordBakup[current] != word[current] else { return }

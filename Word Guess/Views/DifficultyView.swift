@@ -24,6 +24,8 @@ enum DifficultyType: String, Codable, CaseIterable {
         }
     }
     
+    var stringValue: String { rawValue.localized }
+    
     var liveValue: Difficulty {
         switch self {
         case .easy: return .easy
@@ -103,7 +105,7 @@ struct DifficultyView: View {
                 }
             
             SideMenu(isOpen: $isMenuOpen,
-                     content: { SettingsView(showBack: false) })
+                     content: { SettingsView(fromSideMenu: true) })
         }
     }
     
