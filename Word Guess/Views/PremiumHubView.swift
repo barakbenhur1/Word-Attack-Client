@@ -177,9 +177,13 @@ public struct PremiumHubView: View {
                     close()
                 }
             }
-            .presentationDetents([.medium])
-            .presentationDragIndicator(.visible)
-            .interactiveDismissDisabled(false)
+            // === SHEET BEHAVIOR FIX ===
+            .presentationDetents([.medium])          // single detent → no resizing/peeking
+            .presentationDragIndicator(.hidden)      // hide system grabber (we use our own)
+            .interactiveDismissDisabled(true)        // stop pull-to-dismiss & finger-follow
+            .ifAvailable_iOS17 {                     // iOS 17+: prevent background pans from jiggling the sheet
+                $0.presentationBackgroundInteraction(.disabled)
+            }
         }
         .onChange(of: hub.mainSecondsLeft) { old, new in
             // Only bump identity on a RESET (seconds increasing). Prevents bump every second.
@@ -395,7 +399,10 @@ final public class PremiumHubModel: ObservableObject {
                 guard let self else { return }
                 self.mainSecondsLeft -= 1
                 if self.mainSecondsLeft <= 0 {
-                    Task { @MainActor in self.resetAll() }
+                    Task.detached { @MainActor [weak self] in
+                        guard let self else { return }
+                        resetAll()
+                    }
                     return
                 }
                 // refresh expired, respecting cap
@@ -423,9 +430,10 @@ final public class PremiumHubModel: ObservableObject {
                 guard let solved = await vm.getScore(email: email) else { return }
                 UserDefaults.standard.set(solved.value, forKey: "wins_count")
                 UserDefaults.standard.set(solved.rank, forKey: "wins_rank")
-                await MainActor.run {
-                    self.solvedWords = solved.value
-                    withAnimation { self.rank = solved.rank }
+                await MainActor.run { [weak self] in
+                    guard let self else { return }
+                    solvedWords = solved.value
+                    withAnimation(.easeInOut(duration: 0.3)) { self.rank = solved.rank }
                 }
             }
         }
@@ -668,13 +676,28 @@ private struct MiniGameSheet: View {
     let slot: MiniSlot
     @ObservedObject var hub: PremiumHubModel
     var onDone: (MiniResult) -> Void
+
     @State private var closed = false
-    
+    @GestureState private var handlePressed = false
+
     private let catalog = MiniGameCatalog()
-    
+
     var body: some View {
         VStack(spacing: 16) {
-            Capsule().fill(.secondary.opacity(0.35)).frame(width: 38, height: 5).padding(.top, 8)
+            // === Grabber / indicator ===
+            Capsule()
+                .fill(.secondary.opacity(handlePressed ? 0.55 : 0.35))
+                .frame(width: 58, height: 24)
+                .padding(.top, 8)
+                .contentShape(Rectangle()) // bigger hit target
+                .gesture(handleGesture)    // tap or short down-drag to close
+                .overlay { Image(systemName: "xmark").padding(.top, 9).font(.callout.bold()) }
+                .accessibilityLabel(Text("Close"))
+                .accessibilityAddTraits(.isButton)
+
+            Spacer()
+            
+            // Header
             HStack {
                 Label(slot.kind.title, systemImage: slot.kind.icon)
                     .labelStyle(.titleAndIcon)
@@ -693,30 +716,51 @@ private struct MiniGameSheet: View {
                 }
             }
             .padding(.horizontal)
-            
+
+            // Mini content
             catalog.view(for: slot, hub: hub, onDone: onDone)
                 .padding(.horizontal)
-                .padding(.bottom, 14)
+            
+            Spacer()
         }
         .background(
             LinearGradient(colors: [Color.black.opacity(0.88), Color.black.opacity(0.94)],
                            startPoint: .top, endPoint: .bottom)
             .ignoresSafeArea()
         )
+        // This can stay; the presenter also disables interactive dismiss for hard-stop
+        .interactiveDismissDisabled(true)
+        // Keep timers / TTL
         .onChange(of: hub.mainSecondsLeft) { old, new in
             if old <= 0 && new == hub.mainRoundLength {
-                guard !closed else { return }
-                closed = true
-                onDone(.nothing)
+                close(.nothing)
             }
         }
         .onReceive(Timer.publish(every: 0.25, on: .main, in: .common).autoconnect()) { _ in
-            guard !closed else { return }
-            if Date() >= slot.expiresAt { closed = true; onDone(.nothing) }
+            if !closed, Date() >= slot.expiresAt { close(.nothing) }
         }
         .environment(\.layoutDirection, .leftToRight)
     }
+
+    // MARK: - Handle gesture: tap or short downward pull to close
+    private var handleGesture: some Gesture {
+        DragGesture(minimumDistance: 0)
+            .updating($handlePressed) { _, state, _ in state = true }
+            .onEnded { g in
+                // close if tapped (tiny movement) or pulled down a bit
+                let isTap = abs(g.translation.height) < 6 && abs(g.translation.width) < 6
+                let pulledDown = g.translation.height > 16 || g.predictedEndTranslation.height > 24
+                if isTap || pulledDown { close(.close) }
+            }
+    }
+
+    private func close(_ result: MiniResult) {
+        guard !closed else { return }
+        closed = true
+        onDone(result)
+    }
 }
+
 
 // MARK: - Timer view (professional reset animation inside the view, no layout change)
 
@@ -1037,5 +1081,12 @@ extension String {
             }
         }
         return true
+    }
+}
+
+// MARK: - iOS 17 conditional modifier
+private extension View {
+    @ViewBuilder func ifAvailable_iOS17<Content: View>(_ transform: (Self) -> Content) -> some View {
+        if #available(iOS 17, *) { transform(self) } else { self }
     }
 }

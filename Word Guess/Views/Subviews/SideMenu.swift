@@ -12,7 +12,7 @@ struct SideMenu<Content: View>: View {
     let width: CGFloat
     let content: Content
     
-    init(isOpen: Binding<Bool>, width: CGFloat = 280, @ViewBuilder content: () -> Content) {
+    init(isOpen: Binding<Bool>, width: CGFloat = 320, @ViewBuilder content: () -> Content) {
         self._isOpen = isOpen
         self.width = width
         self.content = content()

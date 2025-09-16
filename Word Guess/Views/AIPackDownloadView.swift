@@ -41,6 +41,16 @@ struct AIPackDownloadView: View {
     @State private var isLoadingModel = false
     @State private var finalizeError: String?
     
+    private var progressValue: Double { isLoadingModel ? 1.0 : mgr.progress }
+    
+    private var visibleError: String? { finalizeError ?? mgr.errorText }
+    
+    private var progressLabel: String {
+        isLoadingModel
+        ? "Finalizing…"
+        : "\(Int((max(0, min(1, mgr.progress))) * 100))% \("complete".localized)"
+    }
+    
     var body: some View {
         VStack {
             VStack(spacing: 24) {
@@ -50,7 +60,7 @@ struct AIPackDownloadView: View {
                     .symbolRenderingMode(.hierarchical)
                     .shadow(radius: 6, y: 2)
                 
-                Text(isLoadingModel ? "Preparing AI Model" : "Downloading AI Pack")
+                Text(isLoadingModel ? "Saving AI Model" : "Downloading AI Pack")
                     .font(.largeTitle.bold())
                     .multilineTextAlignment(.center)
                 
@@ -97,11 +107,8 @@ struct AIPackDownloadView: View {
         }
         .task {
             BackgroundDownloadCenter.shared.setMode(.foreground)
-            if ModelStorage.localHasUsableModels() {
-                downloaded = true
-            } else {
-                mgr.ensurePackReady()
-            }
+            if ModelStorage.localHasUsableModels() { downloaded = true }
+            else { mgr.ensurePackReady() }
         }
         .onAppear {
             screenManager.keepScreenOn = true
@@ -112,53 +119,42 @@ struct AIPackDownloadView: View {
             mgr.cancel()
         }
         .onChange(of: mgr.isReady) { _, ready in
-            if ready { validateThenPersistAll(forceReplaceFrom: nil) }
+            guard ready else { return }
+            validateThenPersistAll(forceReplaceFrom: nil)
         }
     }
-    
-    private var progressValue: Double { isLoadingModel ? 1.0 : mgr.progress }
-    
-    private var progressLabel: String {
-        isLoadingModel
-        ? "Finalizing…"
-        : "\(Int((max(0, min(1, mgr.progress))) * 100))% \("complete".localized)"
-    }
-    
-    private var visibleError: String? { finalizeError ?? mgr.errorText }
     
     /// Final check after downloader says ready; we only validate and set the install root.
     private func validateThenPersistAll(forceReplaceFrom stagingRoot: URL?) {
         guard !isLoadingModel else { return }
         isLoadingModel = true
         finalizeError = nil
-        defer { isLoadingModel = false }
         
-        let fm = FileManager.default
         guard let root = mgr.installRoot else {
             finalizeError = "Install folder not available yet."
             return
         }
+        
         ModelStorage.setInstallRoot(root)
         
+        let fm = FileManager.default
         // (If you purposely pass a staging folder, we can replace here too.)
         if let staging = stagingRoot, fm.fileExists(atPath: staging.path) {
             do {
-                try fm.ensureDirectory(at: root)
-                try fm.replaceDirectoryTree(from: staging, to: root)
-            } catch {
-                finalizeError = "Failed to finalize assets: \(error.localizedDescription)"
-                return
-            }
+                try ModelPostProcessor.hardenExtractedModelDir(root.appendingPathComponent("WordZapGPT_decode.mlmodelc"))
+                try ModelPostProcessor.hardenExtractedModelDir(root.appendingPathComponent("WordZapGPT_prefill.mlmodelc"))
+            } catch { finalizeError = "Failed to finalize assets: \(error.localizedDescription)"; return }
         }
         
-        let hasDecode  = fm.fileExists(atPath: root.appendingPathComponent("WordleGPT_decode.mlmodelc").path)
-        let hasPrefill = fm.fileExists(atPath: root.appendingPathComponent("WordleGPT_prefill.mlmodelc").path)
+        let hasDecode  = fm.fileExists(atPath: root.appendingPathComponent("WordZapGPT_decode.mlmodelc").path)
+        let hasPrefill = fm.fileExists(atPath: root.appendingPathComponent("WordZapGPT_prefill.mlmodelc").path)
         
         if hasDecode || hasPrefill {
-            withAnimation { downloaded = true }
-        } else {
-            finalizeError = "Downloaded assets are missing compiled model folders (.mlmodelc)."
-        }
+            Task.detached(priority: .high) {
+                try? await Task.sleep(nanoseconds: 3_500_000_000)
+                await MainActor.run { downloaded = true }
+            }
+        } else { finalizeError = "Downloaded assets are missing compiled model folders (.mlmodelc)." }
     }
     
     private func sizeString(done: Int64, total: Int64) -> String {

@@ -102,7 +102,9 @@ struct GameView<VM: WordViewModel>: View {
             background()
             ZStack(alignment: .top) {
                 topBar()
+                    .padding(.top, 4)
                 game(proxy: proxy)
+                    .padding(.top, 5)
                 overlayViews(proxy: proxy)
             }
         }
@@ -293,10 +295,10 @@ struct GameView<VM: WordViewModel>: View {
                     .onChange(of: vm.word.word, handleWordChange)
                     .onChange(of: vm.word.word.guesswork, handleGuessworkChage)
                     .onChange(of: vm.word.isTimeAttack, handleTimeAttack)
-                    .task { await handleNewWord(email: email) }
+                    .onAppear { Task.detached(priority: .userInitiated, operation: { await handleNewWord(email: email) } ) }
                     .ignoresSafeArea(.keyboard)
             }
-            .padding(.top, 64)
+            .padding(.top, 44)
         }
     }
     
@@ -329,7 +331,7 @@ struct GameView<VM: WordViewModel>: View {
     }
     
     @ViewBuilder private func overlayViews(proxy: GeometryProxy) -> some View {
-        if (!vm.isError && !endFetchAnimation && diffculty != .tutorial) || !keyboard.show { FetchingView(word: vm.wordValue) }
+        if diffculty != .tutorial && !vm.isError && !endFetchAnimation && !keyboard.show { FetchingView(word: vm.wordValue) }
         else if vm.word.isTimeAttack { timeAttackView(proxy: proxy) }
     }
     
@@ -363,10 +365,8 @@ struct GameView<VM: WordViewModel>: View {
         HStack {
             BackButton(title: diffculty == .tutorial ? "skip" : "back",
                        action: navBack)
-            .padding(.top, 20)
             Spacer()
         }
-        .padding(.bottom, 20)
     }
     
     private func navBack() {

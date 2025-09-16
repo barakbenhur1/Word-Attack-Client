@@ -1,6 +1,13 @@
+//
+//  SubscriptionPaywallView.swift
+//  Word Guess
+//
+//  Created by Barak Ben Hur on 14/09/2025.
+//
+
 import SwiftUI
 
-// MARK: - Paywall
+// MARK: - Paywall (Hub style)
 
 struct SubscriptionPaywallView: View {
     // Control presentation without closures
@@ -11,55 +18,75 @@ struct SubscriptionPaywallView: View {
     
     // Local UI state
     @State private var selected: PremiumPlan = .yearly
+    @State private var shimmer = false
     
     var body: some View {
-        ZStack {
-            // Background
-            LinearGradient(colors: [.black, .indigo.opacity(0.9), .purple.opacity(0.9)],
+        ZStack(alignment: .center) {
+            // Background – match Hub
+            LinearGradient(colors: [Color.black,
+                                    Color(hue: 0.64, saturation: 0.25, brightness: 0.18)],
                            startPoint: .topLeading, endPoint: .bottomTrailing)
             .ignoresSafeArea()
             
-            // Glow
-            Circle()
-                .stroke(lineWidth: 2)
-                .fill(RadialGradient(colors: [.purple.opacity(0.6), .clear],
-                                     center: .center, startRadius: 20, endRadius: 280))
-                .frame(width: 420, height: 420)
-                .blur(radius: 40)
-                .opacity(0.7)
-                .offset(y: -160)
-                .allowsHitTesting(false)
+            // Soft neon glow behind the card (no GeometryReader needed)
+            RadialGradient(
+                gradient: Gradient(colors: [HubPaywallPalette.accent.opacity(0.22), .clear]),
+                center: .center,
+                startRadius: 40,
+                endRadius: 520
+            )
+            .blur(radius: 80)
+            .allowsHitTesting(false)
             
             // Card
             VStack(spacing: 18) {
                 header
                 
-                FeatureRow(icon: "sparkles",   text: "AI Word Assistant & smart hints")
-                FeatureRow(icon: "crown.fill", text: "Pro challenges & exclusive modes")
-                FeatureRow(icon: "bolt.fill",  text: "Faster gameplay with no limits")
-                FeatureRow(icon: "umbrella",   text: "Ad-free, zen experience")
+                FeatureRow(icon: "sparkles",   text: "Exclusive Mini-Games – Access fun and challenging modes only in the Hub.")
+                FeatureRow(icon: "crown.fill", text: "Play unique twists that go beyond regular gameplay.")
+                FeatureRow(icon: "bolt.fill",  text: "Compete with other premium players for top ranks.")
+                FeatureRow(icon: "umbrella",   text: "Ad-Free Play – Smooth, uninterrupted gaming inside the Hub.")
                 
-                PlanPicker(selected: $selected,
-                           monthlyPrice: premium.monthlyPriceText,
-                           yearlyPrice: premium.yearlyPriceText,
-                           yearlyBadgeText: premium.yearlyBadgeText,
-                           trialText: premium.trialText)
+                PlanPickerHubStyle(
+                    selected: $selected,
+                    monthlyPrice: premium.monthlyPriceText,
+                    yearlyPrice: premium.yearlyPriceText,
+                    yearlyBadgeText: premium.yearlyBadgeText,
+                    trialText: premium.trialText
+                )
                 
                 ctaButton
-                
                 footerLinks
             }
-            .padding(20)
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
+            .padding(22)
+            .background(
+                // glassy card like hub tiles
+                RoundedRectangle(cornerRadius: 28, style: .continuous)
+                    .fill(HubPaywallPalette.card)
+            )
             .overlay(
                 RoundedRectangle(cornerRadius: 28, style: .continuous)
-                    .stroke(LinearGradient(colors: [.white.opacity(0.35), .white.opacity(0.05)],
-                                           startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 1)
+                    .stroke(HubPaywallPalette.stroke, lineWidth: 1)
             )
-            .shadow(color: .black.opacity(0.35), radius: 30, x: 0, y: 20)
-            .padding(.horizontal, 20)
+            .shadow(color: HubPaywallPalette.glow, radius: 26, y: 14)
             .overlay(alignment: .topTrailing) { closeButton }
+            .overlay(
+                ShimmerSweep(trigger: $shimmer)
+                    .clipShape(RoundedRectangle(cornerRadius: 28))
+                    .opacity(0.35)
+            )
+            .onAppear {
+                // little attention ping
+                withAnimation(.easeOut(duration: 0.08)) { shimmer = true }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.10) {
+                    withAnimation(.easeOut(duration: 0.08)) { shimmer = false }
+                }
+            }
+            // ⬇️ Constrain width, give safe margins, and center within screen
+            .frame(maxWidth: 560)
+            .padding(.horizontal, 18)
             .padding(.vertical, 18)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
         }
         .tint(.white)
         .disabled(premium.isPurchasing)
@@ -68,20 +95,20 @@ struct SubscriptionPaywallView: View {
     // MARK: Sections
     
     private var header: some View {
-        VStack(spacing: 8) {
-            PremiumCrown()
-                .frame(width: 56, height: 56)
-                .shadow(radius: 8, y: 6)
+        VStack(spacing: 10) {
+            PremiumCrownHub()
+                .frame(width: 64, height: 64)
+                .shadow(color: HubPaywallPalette.accent.opacity(0.6), radius: 14, y: 8)
             
             Text("Go Premium")
                 .font(.system(.largeTitle, design: .rounded).weight(.bold))
-                .foregroundStyle(.primary)
+                .foregroundStyle(.white)
                 .accessibilityAddTraits(.isHeader)
             
             Text("Unlock all features, no ads, daily challenges, and more.")
                 .font(.callout)
                 .multilineTextAlignment(.center)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.white.opacity(0.7))
                 .padding(.horizontal)
         }
     }
@@ -93,7 +120,7 @@ struct SubscriptionPaywallView: View {
             Task { @MainActor in
                 premium.isPurchasing = true
                 defer { premium.isPurchasing = false }
-                await premium.purchase(selected) // ← uses your manager (no closures)
+                await premium.purchase(selected)
                 isPresented = false
             }
         } label: {
@@ -101,14 +128,17 @@ struct SubscriptionPaywallView: View {
                 Image(systemName: "lock.open.fill")
                 Text(ctaText(for: selected, trialText: premium.trialText))
                     .fontWeight(.semibold)
+                    .monospacedDigit()
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 14)
             .contentShape(Rectangle())
         }
-        .buttonStyle(GlassyButtonStyle())
+        .buttonStyle(AccentGlassyButtonStyle())
         .overlay {
-            if premium.isPurchasing { ProgressView().progressViewStyle(.circular) }
+            if premium.isPurchasing {
+                ProgressView().progressViewStyle(.circular)
+            }
         }
         .disabled(premium.isPurchasing)
         .accessibilityLabel("Subscribe \(ctaText(for: selected, trialText: premium.trialText))")
@@ -118,23 +148,23 @@ struct SubscriptionPaywallView: View {
         HStack(spacing: 16) {
             Button("Restore Purchases") {
                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                Task { await premium.restore() } // ← uses your manager
+                Task { await premium.restore() }
             }
             .font(.footnote)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(.white.opacity(0.7))
             .buttonStyle(.plain)
             
-            Text("•").foregroundStyle(.tertiary)
+            Text("•").foregroundStyle(.white.opacity(0.35))
             
             Link("Terms", destination: URL(string: "https://barakbenhur1.github.io/terms.html")!)
                 .font(.footnote)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.white.opacity(0.7))
             
-            Text("•").foregroundStyle(.tertiary)
+            Text("•").foregroundStyle(.white.opacity(0.35))
             
             Link("Privacy", destination: URL(string: "https://barakbenhur1.github.io/privacy.html")!)
                 .font(.footnote)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.white.opacity(0.7))
         }
         .padding(.top, 2)
     }
@@ -147,7 +177,8 @@ struct SubscriptionPaywallView: View {
             Image(systemName: "xmark")
                 .font(.system(size: 14, weight: .bold))
                 .padding(10)
-                .background(.ultraThinMaterial, in: Circle())
+                .background(HubPaywallPalette.card, in: Circle())
+                .overlay(Circle().stroke(HubPaywallPalette.stroke, lineWidth: 1))
         }
         .buttonStyle(.plain)
         .padding(.top, 12)
@@ -165,20 +196,37 @@ struct SubscriptionPaywallView: View {
     }
 }
 
-// MARK: - Pieces
+// MARK: - Pieces (Hub style)
 
-private struct PremiumCrown: View {
+private struct PremiumCrownHub: View {
+    @State private var pulse = false
     var body: some View {
         ZStack {
+            // Accent halo
             Circle()
-                .fill(LinearGradient(colors: [.yellow.opacity(0.35), .orange.opacity(0.15)],
-                                     startPoint: .top, endPoint: .bottom))
-                .overlay(Circle().stroke(.white.opacity(0.35), lineWidth: 1))
-                .shadow(radius: 8, y: 6)
+                .stroke(LinearGradient(colors: [HubPaywallPalette.accent, HubPaywallPalette.accent2],
+                                       startPoint: .topLeading, endPoint: .bottomTrailing),
+                        lineWidth: 2)
+                .blur(radius: 1.5)
+                .opacity(0.9)
+            // Pulsing ring
+            Circle()
+                .stroke(HubPaywallPalette.accent.opacity(0.6), lineWidth: 2)
+                .scaleEffect(pulse ? 1.25 : 0.9)
+                .opacity(pulse ? 0.0 : 0.6)
+                .animation(.easeOut(duration: 0.9).repeatForever(autoreverses: false), value: pulse)
+                .onAppear { pulse = true }
+            // Chip + crown
+            Circle()
+                .fill(LinearGradient(colors: [.white.opacity(0.18), .white.opacity(0.05)],
+                                     startPoint: .topLeading, endPoint: .bottomTrailing))
+                .overlay(Circle().stroke(.white.opacity(0.25), lineWidth: 1))
             Image(systemName: "crown.fill")
-                .symbolRenderingMode(.palette)
-                .foregroundStyle(.yellow, .orange)
+                .symbolRenderingMode(.hierarchical)
+                .foregroundStyle(LinearGradient(colors: [HubPaywallPalette.accent, HubPaywallPalette.accent2],
+                                                startPoint: .topLeading, endPoint: .bottomTrailing))
                 .font(.system(size: 30, weight: .bold))
+                .shadow(color: HubPaywallPalette.accent.opacity(0.6), radius: 8, y: 4)
         }
     }
 }
@@ -190,23 +238,25 @@ private struct FeatureRow: View {
         HStack(alignment: .top, spacing: 12) {
             Image(systemName: icon)
                 .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(.white)
                 .frame(width: 28, height: 28)
                 .background(
-                    LinearGradient(colors: [.purple.opacity(0.35), .indigo.opacity(0.25)],
+                    LinearGradient(colors: [HubPaywallPalette.accent.opacity(0.35),
+                                            HubPaywallPalette.accent2.opacity(0.25)],
                                    startPoint: .topLeading, endPoint: .bottomTrailing)
                 )
                 .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                 .overlay(RoundedRectangle(cornerRadius: 8).stroke(.white.opacity(0.25), lineWidth: 1))
             Text(text)
                 .font(.subheadline)
-                .foregroundStyle(.primary)
+                .foregroundStyle(.white.opacity(0.92))
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
-private struct PlanPicker: View {
+private struct PlanPickerHubStyle: View {
     @Binding var selected: PremiumPlan
     var monthlyPrice: String
     var yearlyPrice: String
@@ -219,7 +269,7 @@ private struct PlanPicker: View {
                     title: "Yearly",
                     subtitle: "Just \(formattedPerMonth(from: yearlyPrice))/mo",
                     price: yearlyPrice,
-                    badge: yearlyBadgeText)
+                    badge: yearlyBadgeText ?? "Best value")
             planRow(.monthly,
                     title: "Monthly",
                     subtitle: nil,
@@ -245,11 +295,11 @@ private struct PlanPicker: View {
             HStack(spacing: 14) {
                 // Radio
                 ZStack {
-                    Circle().strokeBorder(.white.opacity(0.35), lineWidth: 1)
+                    Circle().strokeBorder(.white.opacity(0.30), lineWidth: 1)
                         .frame(width: 22, height: 22)
                     if isSelected {
                         Circle()
-                            .fill(LinearGradient(colors: [.purple, .pink],
+                            .fill(LinearGradient(colors: [HubPaywallPalette.accent, HubPaywallPalette.accent2],
                                                  startPoint: .topLeading, endPoint: .bottomTrailing))
                             .frame(width: 12, height: 12)
                     }
@@ -257,35 +307,50 @@ private struct PlanPicker: View {
                 
                 VStack(alignment: .leading, spacing: 2) {
                     HStack(spacing: 8) {
-                        Text(title).font(.headline.weight(.semibold))
+                        Text(title).font(.headline.weight(.semibold)).foregroundStyle(.white)
                         if let badge {
                             Text(badge)
                                 .font(.caption2.weight(.bold))
                                 .padding(.horizontal, 8).padding(.vertical, 4)
-                                .background(LinearGradient(colors: [.yellow.opacity(0.9), .orange.opacity(0.9)],
-                                                           startPoint: .topLeading, endPoint: .bottomTrailing))
+                                .background(
+                                    LinearGradient(colors: [HubPaywallPalette.accent.opacity(0.95),
+                                                            HubPaywallPalette.accent2.opacity(0.95)],
+                                                   startPoint: .topLeading, endPoint: .bottomTrailing)
+                                )
                                 .foregroundStyle(.black)
                                 .clipShape(Capsule())
                         }
                     }
-                    if let subtitle { Text(subtitle).font(.caption).foregroundStyle(.secondary) }
+                    if let subtitle {
+                        Text(subtitle)
+                            .font(.caption)
+                            .foregroundStyle(.white.opacity(0.65))
+                    }
                 }
                 Spacer()
                 Text(price)
                     .font(.headline.monospacedDigit())
+                    .foregroundStyle(.white)
             }
             .padding(14)
             .frame(maxWidth: .infinity)
             .background(
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(.ultraThinMaterial)
+                    .fill(HubPaywallPalette.card)
                     .overlay(
                         RoundedRectangle(cornerRadius: 16)
-                            .stroke(isSelected
-                                    ? LinearGradient(colors: [.purple, .pink], startPoint: .topLeading, endPoint: .bottomTrailing)
-                                    : .linearGradient(colors: [.white.opacity(0.25), .white.opacity(0.05)],
-                                                      startPoint: .topLeading, endPoint: .bottomTrailing),
-                                    lineWidth: 1.5)
+                            .stroke(
+                                AnyShapeStyle(
+                                    isSelected
+                                    ? AnyShapeStyle(LinearGradient(
+                                        colors: [HubPaywallPalette.accent, HubPaywallPalette.accent2],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    ))
+                                    : AnyShapeStyle(HubPaywallPalette.stroke)
+                                ),
+                                lineWidth: isSelected ? 1.6 : 1.0
+                            )
                     )
             )
         }
@@ -304,22 +369,65 @@ private struct PlanPicker: View {
     }
 }
 
-private struct GlassyButtonStyle: ButtonStyle {
+// MARK: - Styles / Palette (Hub-like)
+
+private struct AccentGlassyButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.headline)
             .foregroundStyle(.black)
             .background(
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(LinearGradient(colors: [.yellow.opacity(0.95), .orange.opacity(0.95)],
-                                         startPoint: .top, endPoint: .bottom))
+                    .fill(
+                        LinearGradient(colors: [HubPaywallPalette.accent, HubPaywallPalette.accent2],
+                                       startPoint: .topLeading, endPoint: .bottomTrailing)
+                        .opacity(configuration.isPressed ? 0.95 : 1)
+                    )
             )
-            .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(.white.opacity(0.35), lineWidth: 1))
-            .scaleEffect(configuration.isPressed ? 0.98 : 1)
-            .shadow(color: .black.opacity(0.25), radius: 12, y: 8)
+            .overlay(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(.white.opacity(0.35), lineWidth: 1)
+            )
+            .scaleEffect(configuration.isPressed ? 0.98 : 1.0)
+            .shadow(color: HubPaywallPalette.glow, radius: configuration.isPressed ? 8 : 14, y: 8)
             .padding(.horizontal, 2)
             .padding(.vertical, 2)
-            .opacity(configuration.isPressed ? 0.95 : 1)
+            .animation(.spring(response: 0.22, dampingFraction: 0.65), value: configuration.isPressed)
+    }
+}
+
+// local palette echoing the hub’s look
+private enum HubPaywallPalette {
+    static let card   = Color.white.opacity(0.06)
+    static let stroke = Color.white.opacity(0.09)
+    static let glow   = Color.white.opacity(0.22)
+    static let accent = Color.cyan
+    static let accent2 = Color.mint
+}
+
+// Reuse shimmer sweep from the hub (inline to avoid imports)
+private struct ShimmerSweep: View {
+    @Binding var trigger: Bool
+    var body: some View {
+        GeometryReader { geo in
+            let w = geo.size.width
+            Rectangle()
+                .fill(
+                    LinearGradient(gradient: Gradient(stops: [
+                        .init(color: .white.opacity(0.0),  location: 0.00),
+                        .init(color: .white.opacity(0.10), location: 0.45),
+                        .init(color: .white.opacity(0.45), location: 0.50),
+                        .init(color: .white.opacity(0.10), location: 0.55),
+                        .init(color: .white.opacity(0.00), location: 1.00),
+                    ]), startPoint: .topLeading, endPoint: .bottomTrailing)
+                )
+                .frame(width: w * 0.42)
+                .rotationEffect(.degrees(24))
+                .offset(x: trigger ? w*1.05 : -w*1.05)
+                .animation(.easeOut(duration: 0.08), value: trigger)
+        }
+        .allowsHitTesting(false)
+        .blendMode(.plusLighter)
     }
 }
 
@@ -333,12 +441,19 @@ private extension NumberFormatter {
     }()
 }
 
-// MARK: - Usage / Preview
+// MARK: - Preview
 
 struct SubscriptionPaywallView_Previews: PreviewProvider {
     static var previews: some View {
         SubscriptionPaywallView(isPresented: .constant(true))
             .environmentObject(PremiumManager.shared) // preview stub
             .preferredColorScheme(.dark)
+            .frame(maxHeight: .infinity)
+            .background(
+                LinearGradient(colors: [Color.black,
+                                        Color(hue: 0.64, saturation: 0.25, brightness: 0.18)],
+                               startPoint: .topLeading, endPoint: .bottomTrailing)
+                .ignoresSafeArea()
+            )
     }
 }

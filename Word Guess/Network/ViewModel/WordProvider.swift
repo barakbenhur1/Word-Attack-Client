@@ -11,11 +11,11 @@ struct WordProvider {
     let network: Network
     
     init() {
-        network = Network(root: "words")
+        network = Network(root: .words)
     }
     
     func word(email: String) async -> SimpleWord? {
-        let value: SimpleWord? = await network.send(route: "word",
+        let value: SimpleWord? = await network.send(route: .word,
                                                     parameters: ["email": email])
         return value
     }

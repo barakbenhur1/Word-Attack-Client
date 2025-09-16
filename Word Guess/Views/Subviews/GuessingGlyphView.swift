@@ -34,7 +34,7 @@ public struct GuessingGlyphView: View {
                 outOf stringLangth: Int,
                 language: Language,
                 staggerFraction: Double = 0.18,
-                changesPerSecond: Double = 1.2,
+                changesPerSecond: Double = 3,
                 fontSize: CGFloat = 18,
                 weight: Font.Weight = .medium,
                 initialHoldDuration: TimeInterval = 2.4,
@@ -72,64 +72,65 @@ public struct GuessingGlyphView: View {
         let offset = Double(index) * period * staggerFraction
         let localHold = initialHoldDuration + holdStagger * Double(visualIndex)
         
-        TimelineView(.periodic(from: .now, by: period)) { context in
+        TimelineView(.periodic(from: .now, by: period / 90.0)) { context in
+            // small tick granularity for smoother in-between progress
             let elapsed = max(0, context.date.timeIntervalSince(appearDate))
             
             if elapsed < localHold {
-                // --- glitchy “?” hold (kept subtle & centered) ---
-                let t = elapsed
-                let frame = Int(floor(t * 30))
-                let jx = CGFloat(sin(t * 17) * 0.4 + cos(t * 11) * 0.3)
-                let jy = CGFloat(cos(t * 13) * 0.35 + sin(t * 19) * 0.25)
-                let spike = (frame % 37 == 0) ? 1.6 : 0.0
-                let chroma: CGFloat = 0.6 + (spike > 0 ? 0.9 : 0)
-                let scale = 1.0 + 0.006 * sin(t * 41)
-                let rot = Angle.degrees(0.28 * sin(t * 53))
-                
                 ZStack {
                     baseStyledText(holdGlyph)
-                        .scaleEffect(scale)
-                        .rotationEffect(rot)
                     
                     Text(holdGlyph)
                         .font(.system(size: fontSize, weight: weight, design: .rounded))
                         .foregroundColor(.red.opacity(0.18))
                         .blendMode(.plusLighter)
-                        .offset(x: jx + chroma + spike, y: jy)
                     
                     Text(holdGlyph)
                         .font(.system(size: fontSize, weight: weight, design: .rounded))
                         .foregroundColor(.cyan.opacity(0.18))
                         .blendMode(.plusLighter)
-                        .offset(x: jx - chroma - spike, y: jy)
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
-                
+                .frame(maxWidth: .infinity,
+                       maxHeight: .infinity,
+                       alignment: .center)
             } else {
-                // --- main animation ---
-                let t = (elapsed - localHold) + offset
-                let step  = Int(floor(t / period))
-                let phase = (t / period).truncatingRemainder(dividingBy: 1)
+                // --- main animation with morphing ---
+                let tAll    = (elapsed - localHold) + offset
+                let stepF   = tAll / period
+                let step    = Int(floor(stepF))
+                let frac    = stepF - floor(stepF)   // 0 → 1 within current period
                 
-                let base   = Int(truncatingIfNeeded: step &* 1103515245 &+ 12345)
-                let salt   = (index &* 9973 &+ 2713) % max(glyphs.count, 1)
-                let idxRaw = (abs(base) &+ salt) % max(glyphs.count, 1)
-                let glyphSymbol  = glyphs[idxRaw].returnChar(isFinal: index == stringLangth - 1)
-                let glyph = index == 0 ? glyphSymbol.capitalizedFirst : glyphSymbol
+                let prevIdx = idx(for: step - 1)
+                let currIdx = idx(for: step)
                 
-                let eased = phase * phase * (3 - 2 * phase)
-                let angle = Angle.degrees(10 * sin(eased * 2 * .pi))
-                let scale = 1.0 + 0.03 * sin(eased * 2 * .pi)
+                let prevRaw = glyphs[prevIdx].returnChar(isFinal: index == stringLangth - 1)
+                let currRaw = glyphs[currIdx].returnChar(isFinal: index == stringLangth - 1)
                 
-                baseStyledText(glyph)
-                    .scaleEffect(scale)
-                    .rotation3DEffect(angle, axis: (x: 0, y: 1, z: 0), perspective: 0.55)
-                    .animation(.easeInOut(duration: period), value: step)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+                let prev = index == 0 ? prevRaw.capitalizedFirst : prevRaw
+                let curr = index == 0 ? currRaw.capitalizedFirst : currRaw
+                
+                MorphStack(
+                    from: prev,
+                    to: curr,
+                    progress: smoothStep(frac),     // eased progress for nicer feel
+                    fontSize: fontSize,
+                    weight: weight,
+                    baseStyled: baseStyledText
+                )
+                .frame(maxWidth: .infinity,
+                       maxHeight: .infinity,
+                       alignment: .center)
+                .accessibilityLabel("Guessing glyph animation")
             }
         }
         .onAppear { appearDate = Date() }
-        .accessibilityLabel("Guessing glyph animation")
+    }
+    
+    // Deterministic index for a given step
+    private func idx(for s: Int) -> Int {
+        let base = Int(truncatingIfNeeded: s &* 1103515245 &+ 12345)
+        let salt = (index &* 9973 &+ 2713) % max(glyphs.count, 1)
+        return (abs(base) &+ salt) % max(glyphs.count, 1)
     }
     
     // MARK: styled text
@@ -147,6 +148,37 @@ public struct GuessingGlyphView: View {
                     .blendMode(.screen)
             )
     }
+    
+    // Hermite smoothstep for nicer interpolation
+    private func smoothStep(_ x: Double) -> Double {
+        let t = max(0, min(1, x))
+        return t * t * (3 - 2 * t)
+    }
+}
+
+// MARK: - Morphing Layer
+private struct MorphStack<BaseStyled: View>: View {
+    let from: String
+    let to: String
+    let progress: Double
+    let fontSize: CGFloat
+    let weight: Font.Weight
+    let baseStyled: (String) -> BaseStyled
+    
+    var body: some View {
+        ZStack {
+            // Previous glyph fades out
+            baseStyled(from)
+                .opacity(1.0 - progress)
+                .allowsHitTesting(false)
+            
+            // Next glyph fades in
+            baseStyled(to)
+                .opacity(progress)
+                .allowsHitTesting(false)
+        }
+        // No implicit animations; progress is driven by TimelineView ticks
+    }
 }
 
 // MARK: - Palette & Glyphs
@@ -155,15 +187,7 @@ public extension GuessingGlyphView {
         let letters = Array(language == .en
                             ? "abcdefghijklmnopqrstuvwxyz"
                             : "אבגדלהוזחטיכלמנסעפצקרשת").map { String($0) }
-        //        let numbers = Array("0123456789").map { String($0) }
-        //        let symbols = [
-        //            "★","☆","✦","✧","✪","✬","✯","◆","◇","◈",
-        //            "♠︎","♣︎","♥︎","♦︎","☯︎","☢︎","☣︎","∞","⌘","⌁",
-        //            "✺","✹","✸","✷","▣","▤","▥","▦","▧","▨","▩",
-        //            "░","▒","▓","█","▞","▚","▟","▙","▛","▜",
-        //            "◉","◎","●","◍","◐","◑","◒","◓","◔","◕"
-        //        ]
-        return letters /*+ numbers + symbols*/
+        return letters
     }
     
     static var placeholderBase: Color { Color(white: 0.25).opacity(0.42) }

@@ -72,7 +72,7 @@ struct WordGuessApp: App {
             }
             .onOpenURL { url in
                 deepLinker.set(url: url)
-                guard loginHaneler.model?.gender != nil else { return  }
+                guard loginHaneler.model?.gender != nil else { return }
                 deepLinker.preform()
             }
         }

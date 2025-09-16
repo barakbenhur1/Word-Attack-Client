@@ -45,7 +45,9 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
         GADMobileAds.sharedInstance().requestConfiguration.testDeviceIdentifiers = [
             "b1f8623026df56ee0408eaae157025db",
             "bb89a5de06dcfb7fad22837648455185",
-            "c76030813578328369b797a6939baf04"
+            "c76030813578328369b797a6939baf04",
+            "81828a9b4a72c815a5432c31e7b5230c",
+            "c5e20a9be39006f4bc5e0da60ed271e4"
         ]
         
         dumpBGConfig()

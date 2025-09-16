@@ -76,26 +76,22 @@ public struct AIPackLoadingView: View {
                         let t = context.date.timeIntervalSince(appearDate)
                         let i = max(0, Int(floor(t / cycleEvery))) % max(messages.count, 1)
                         Text(messages[i].localized)
-                            .font(.system(size: 160, design: .rounded).weight(.thin))
+                            .font(.system(size: 220, design: .rounded).weight(.thin))
                             .foregroundStyle(colors[i % max(colors.count, 1)].opacity(0.15))
                             .multilineTextAlignment(.center)
                             .lineLimit(1)
                             .transition(.opacity)
-                            .offset(x: isHE ? 25 : -25, y: -15)
+                            .offset(x: isHE ? 35 : -35, y: -21)
                             .animation(reduceMotion ? nil : .easeInOut(duration: 0.35), value: i)
                     }
                 }
             }
             .padding(.horizontal, 16)
             
-            // Indeterminate shimmer bar
-            //            ShimmerProgressBar(height: 6)
-            //                .accessibilityLabel("Model is Loading up")
-            
             if showsCancel {
                 Button {
                     guard appeared else { return }
-                    onCancel?()          // fires only on explicit tap
+                    onCancel?()
                 } label: {
                     Label("Cancel", systemImage: "xmark")
                         .labelStyle(.titleAndIcon)

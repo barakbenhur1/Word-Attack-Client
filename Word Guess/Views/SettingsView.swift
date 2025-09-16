@@ -34,9 +34,9 @@ struct SettingsView: View {
     
     @State private var showPaywall = false
     
-    @State private var difficulty = UserDefaults.standard.string(forKey: "aiDifficulty")
+    @State private var difficulty: String?
     
-    private var language: String? { return local.locale.identifier.components(separatedBy: "_").first }
+    @State private var language: String?
     
     var fromSideMenu = false
     
@@ -83,6 +83,10 @@ struct SettingsView: View {
                      message: { Text("Are you sure you want to reset AI difficulty process is unreversible") })
         .fullScreenCover(isPresented: $showPaywall) {
             SubscriptionPaywallView(isPresented: $showPaywall)
+        }
+        .onAppear {
+            difficulty = UserDefaults.standard.string(forKey: "aiDifficulty")
+            language = local.locale.identifier.components(separatedBy: "_").first
         }
     }
     

@@ -15,7 +15,7 @@ public enum MiniResult { case found(Character), foundMany([Character]), nothing,
 
 public enum MiniKind: CaseIterable, Hashable {
     case sand, wax, fog, sonar, ripple,
-         magnet, frost, gyro, aiMerchant, symbolPick,
+         magnet, frost, tag, aiMerchant, symbolPick,
          symbolPuzzle, luckyWait, claw, memory, cardShuffle,
          popBalloon, sliderAlign, longPress, shakeReveal, tapTarget
     
@@ -28,7 +28,7 @@ public enum MiniKind: CaseIterable, Hashable {
         case .ripple: "Ripples".localized
         case .magnet: "Magnet".localized
         case .frost: "Frost".localized
-        case .gyro: "Playing Tag".localized
+        case .tag: "Playing Tag".localized
         case .aiMerchant: "AI Merchant".localized
         case .symbolPick: "Spot the Letter".localized
         case .symbolPuzzle: "Symbol Puzzle".localized
@@ -53,7 +53,7 @@ public enum MiniKind: CaseIterable, Hashable {
         case .ripple: "aqi.low"
         case .magnet: "paperclip.circle.fill"
         case .frost: "snowflake"
-        case .gyro: "figure.run.circle.fill"
+        case .tag: "figure.run.circle.fill"
         case .aiMerchant: "brain.head.profile"
         case .symbolPick: "textformat.abc.dottedunderline"
         case .symbolPuzzle: "puzzlepiece.extension"
@@ -79,12 +79,11 @@ public enum MiniKind: CaseIterable, Hashable {
         case .ripple: return 0.35
         case .magnet: return 0.40
         case .frost:  return 0.30
-        case .gyro:   return 0.40
+        case .tag:   return 1.0
         case .aiMerchant: return 1.0
         case .symbolPick: return 1.0
         case .symbolPuzzle: return 1.0
         case .luckyWait: return 0.0
-            // New 8 — tuned to be rewarding but not guaranteed
         case .claw:        return 0.80
         case .memory:      return 1.00
         case .cardShuffle: return 0.90
@@ -100,7 +99,7 @@ public enum MiniKind: CaseIterable, Hashable {
     public static func weights(hasAI: Bool) -> [(MiniKind, Double)] {
         var w: [(MiniKind, Double)] = [
             (.sand, 11), (.wax, 11), (.fog, 11), (.sonar, 11), (.ripple, 11),
-            (.magnet, 10), (.frost, 9), (.gyro, 8),
+            (.magnet, 10), (.frost, 9), (.tag, 8),
             // keep existing 4
             (.symbolPick, 5), (.symbolPuzzle, 5), (.luckyWait, 5),
             // new 8
@@ -118,7 +117,7 @@ public enum MiniKind: CaseIterable, Hashable {
         case .symbolPick: return 15
         case .symbolPuzzle: return 30
         case .luckyWait: return 12
-        case .gyro: return max(12, Int(12 * 2.2))
+        case .tag: return max(12, Int(12 * 2.2))
         case .fog: return max(12, Int(6 * 2.2))
         case .sand, .wax: return max(12, Int(14 * 2.2))
         case .sonar: return max(12, Int(20 * 2.2))
@@ -187,7 +186,7 @@ public final class MiniGameCatalog {
         case .ripple:       return AnyView(RippleMini(hasLetter: slot.containsLetter, letter: slot.seededLetter, onDone: onDone))
         case .magnet:       return AnyView(MagnetMini(hasLetter: slot.containsLetter, letter: slot.seededLetter, onDone: onDone))
         case .frost:        return AnyView(FrostMini(hasLetter: slot.containsLetter, letter: slot.seededLetter, onDone: onDone))
-        case .gyro:         return AnyView(GyroMazeMini(hasLetter: slot.containsLetter, seed: slot.seededLetter, onDone: onDone))
+        case .tag:          return AnyView(PlayTagMini(hasLetter: slot.containsLetter, seed: slot.seededLetter, onDone: onDone))
         case .aiMerchant:   return AnyView(AIMerchantMini(deadline: slot.expiresAt, ai: hub.aiDifficulty, hub: hub, onDone: onDone))
         case .symbolPick:   return AnyView(SymbolPickMini(deadline: slot.expiresAt, hub: hub, onDone: onDone))
         case .symbolPuzzle: return AnyView(SymbolPuzzleMini(deadline: slot.expiresAt, hub: hub, onDone: onDone))
@@ -930,18 +929,22 @@ private struct FrostOverlay: View {
     }
 }
 
-private struct GyroMazeMini: View {
+private struct PlayTagMini: View {
+    // API parity; this mini always contains a letter
     let hasLetter: Bool
     let seed: Character?
     let onDone: (MiniResult) -> Void
     
-    // Frozen once on appear (parity with Sonar)
-    @State private var letterChar: Character? = nil
+    // Letter (no default “A” flash)
+    @State private var letterText: String = ""
+    private var isHE: Bool { Locale.current.identifier.lowercased().hasPrefix("he") }
+    private var letterFont: Font {
+        .system(size: 42, weight: .heavy, design: isHE ? .default : .rounded)
+    }
     
     // Entities
     @State private var ball = CGPoint(x: 40, y: 40)
     @State private var target = CGPoint(x: 260, y: 220)
-    @State private var velBall = CGVector(dx: 0, dy: 0)
     @State private var velTarget = CGVector(dx: 1.6, dy: -1.2)
     
     // UX & capture
@@ -951,7 +954,7 @@ private struct GyroMazeMini: View {
     @State private var letterOpacity: Double = 1.0
     @State private var ballScale: CGFloat = 1.0
     
-    // Idle & smoothing
+    // Idle & smoothing (to drive target AI)
     @State private var lastBallPos = CGPoint(x: 40, y: 40)
     @State private var lastMoveAt = Date()
     @State private var accLP = CGVector(dx: 0, dy: 0)
@@ -968,10 +971,13 @@ private struct GyroMazeMini: View {
     @State private var centerCruiseUntil: Date? = nil
     @State private var lastCenterCruise = Date(timeIntervalSince1970: 0)
     
-    private let motion = CMMotionManager()
-    // keep your current tick
+    // Timing
     @State private var ticker = Timer.publish(every: 1/140, on: .main, in: .common).autoconnect()
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    
+    // Drag gate — only move when drag begins on the ball
+    @State private var isDragging = false
+    @State private var dragStartBall = CGPoint.zero   // <- ball position when drag began
     
     var body: some View {
         GeometryReader { geo in
@@ -980,40 +986,61 @@ private struct GyroMazeMini: View {
                     .fill(Color.black.opacity(0.88))
                     .overlay(RoundedRectangle(cornerRadius: 18).stroke(PremiumPalette.stroke, lineWidth: 1))
                 
-                Group {
-                    if let ch = letterChar {
-                        Text(String(ch))
-                            .font(.system(size: 42, weight: .heavy, design: .rounded))
-                            .foregroundStyle(.white)
-                            .frame(width: 56, height: 56)
-                            .background(Circle().fill(PremiumPalette.accent.opacity(0.25)))
-                    } else {
-                        Circle().fill(.white.opacity(0.25)).frame(width: 20, height: 20)
-                    }
+                // Letter (script-aware). Hidden until seeded → avoids “A” flash.
+                if !letterText.isEmpty {
+                    Text(letterText)
+                        .font(letterFont)
+                        .foregroundStyle(.white)
+                        .frame(width: 56, height: 56)
+                        .background(Circle().fill(PremiumPalette.accent.opacity(0.25)))
+                        .scaleEffect(letterScale)
+                        .opacity(letterOpacity)
+                        .position(target)
+                        .accessibilityLabel(Text(letterText))
+                } else {
+                    Circle().fill(.white.opacity(0.20))
+                        .frame(width: 12, height: 12)
+                        .position(target)
                 }
-                .scaleEffect(letterScale)
-                .opacity(letterOpacity)
-                .position(target)
                 
+                // Player ball — drag must START on the ball (contentShape: Circle)
                 Circle()
                     .fill(.white)
                     .frame(width: 22, height: 22)
                     .shadow(radius: 2, y: 1)
                     .scaleEffect(ballScale)
                     .position(ball)
-                    .gesture(
+                    .contentShape(Circle()) // hit-test only the circle
+                    .highPriorityGesture(
                         DragGesture(minimumDistance: 0)
                             .onChanged { g in
                                 guard !solved else { return }
-                                ball = clamp(point: g.location, in: geo.size)
+                                
+                                // First onChanged of this gesture: capture where the ball started.
+                                if !isDragging {
+                                    isDragging = true
+                                    dragStartBall = ball
+                                }
+                                
+                                // Move by translation from the captured start (prevents “jump”).
+                                let p = CGPoint(
+                                    x: dragStartBall.x + g.translation.width,
+                                    y: dragStartBall.y + g.translation.height
+                                )
+                                ball = clamp(point: p, in: geo.size)
                                 lastMoveAt = Date()
                                 lastBallPos = ball
+                                checkCatch(in: geo.size) // live capture while dragging
                             }
-                            .onEnded { _ in checkCatch(in: geo.size) }
+                            .onEnded { _ in
+                                isDragging = false
+                                checkCatch(in: geo.size)
+                            }
                     )
                 
                 RoundedRectangle(cornerRadius: 18).stroke(.white.opacity(0.1), lineWidth: 8)
                 
+                // capture ripple
                 TimelineView(.animation) { tl in
                     if let start = captureAt {
                         let dt = tl.date.timeIntervalSince(start)
@@ -1036,193 +1063,14 @@ private struct GyroMazeMini: View {
                     }
                 }
             }
-            .onReceive(ticker) { _ in
-                guard !solved else { return }
-                
-                // --- timing / dt ---
-                let now = Date()
-                let dt = max(0.0, now.timeIntervalSince(lastTickAt))
-                lastTickAt = now
-                
-                // --- idle detection ---
-                let moveDist = hypot(ball.x - lastBallPos.x, ball.y - lastBallPos.y)
-                if moveDist > 0.4 { lastMoveAt = now }
-                lastBallPos = ball
-                let isIdle = now.timeIntervalSince(lastMoveAt) > 0.45
-                
-                // --- wander update (idle = slower, smaller) ---
-                let wanderPeriod = isIdle ? 1.2 : 0.7
-                if now.timeIntervalSince(lastWanderUpdate) > wanderPeriod {
-                    let a = Double.random(in: 0..<(2 * .pi))
-                    let m = Double.random(in: (isIdle ? 0.05...0.22 : 0.20...0.55))
-                    wanderTarget = CGVector(dx: CGFloat(cos(a) * m), dy: CGFloat(sin(a) * m))
-                    lastWanderUpdate = now
-                }
-                // ease toward wander target
-                let wanderEase: CGFloat = isIdle ? 0.03 : 0.05
-                wander.dx += (wanderTarget.dx - wander.dx) * wanderEase
-                wander.dy += (wanderTarget.dy - wander.dy) * wanderEase
-                
-                // --- geometry ---
-                var p = target
-                var acc = CGVector(dx: 0, dy: 0)
-                
-                let inset: CGFloat = 36
-                let minX = inset, maxX = geo.size.width - inset
-                let minY = inset, maxY = geo.size.height - inset
-                let center = CGPoint(x: (minX + maxX) * 0.5, y: (minY + maxY) * 0.5)
-                
-                let toBall = CGVector(dx: ball.x - p.x, dy: ball.y - p.y)
-                let dist = max(0.001, hypot(toBall.dx, toBall.dy))
-                let dirToBall = CGVector(dx: toBall.dx / dist, dy: toBall.dy / dist)
-                let toCenter = CGVector(dx: center.x - p.x, dy: center.y - p.y)
-                let lenC = max(0.001, hypot(toCenter.dx, toCenter.dy))
-                let dirToCenter = CGVector(dx: toCenter.dx/lenC, dy: toCenter.dy/lenC)
-                let perpToBall = CGVector(dx: -dirToBall.dy, dy: dirToBall.dx)
-                let tangentSign: CGFloat = (perpToBall.dx * dirToCenter.dx + perpToBall.dy * dirToCenter.dy) >= 0 ? 1 : -1
-                
-                // --- wall distances / dwell ---
-                let wallRange: CGFloat = 70
-                let dxL = p.x - minX, dxR = maxX - p.x
-                let dyT = p.y - minY, dyB = maxY - p.y
-                let nearEdgeDist = min(min(dxL, dxR), min(dyT, dyB))
-                let nearEdge = nearEdgeDist < 34
-                
-                // Accumulate edge dwell time and trigger escape
-                if nearEdge { edgeDwell += dt } else { edgeDwell = max(0, edgeDwell - dt * 1.5) }
-                if edgeDwell > 0.85, escapeUntil == nil {
-                    escapeUntil = now.addingTimeInterval(0.7)
-                    edgeDwell = 0.25
-                }
-                
-                // Periodic short center cruises if hanging around borders a lot
-                let needCruise = (nearEdge && now.timeIntervalSince(lastCenterCruise) > 2.6)
-                if needCruise {
-                    centerCruiseUntil = now.addingTimeInterval(0.5)
-                    lastCenterCruise = now
-                }
-                
-                let inEscape = (escapeUntil.map { now < $0 } ?? false)
-                let inCruise  = (centerCruiseUntil.map { now < $0 } ?? false)
-                
-                // 1) Flee player (so it doesn’t run *toward* you)
-                let safeRadius: CGFloat  = 180
-                let panicRadius: CGFloat = 80
-                let tClose = max(0, min(1, (safeRadius - dist) / (safeRadius - panicRadius)))
-                let fleeBase: CGFloat  = isIdle ? 0.15 : 0.50
-                let fleeScale: CGFloat = isIdle ? 1.20 : 2.00
-                let fleeMag = (inEscape || inCruise) ? (fleeBase * 0.65) : (fleeBase + fleeScale * tClose)
-                acc.dx += -dirToBall.dx * fleeMag
-                acc.dy += -dirToBall.dy * fleeMag
-                
-                // 2) Side-step around player (reduced when idle; curved when cruising)
-                let slipMag = (isIdle ? 0.10 : 0.25) + (isIdle ? 0.30 : 0.80) * tClose
-                let curveBoost: CGFloat = inCruise ? 0.35 : 0
-                acc.dx += perpToBall.dx * (tangentSign * (slipMag + curveBoost))
-                acc.dy += perpToBall.dy * (tangentSign * (slipMag + curveBoost))
-                
-                // 3) Wall & corner repulsion (softer when idle/escaping)
-                func push(_ d: CGFloat, scale: CGFloat) -> CGFloat {
-                    guard d < wallRange else { return 0 }
-                    let x = max(0, (wallRange - d) / wallRange) // 0..1
-                    return scale * x * x
-                }
-                let wallScale: CGFloat = (isIdle || inEscape || inCruise) ? 1.0 : 2.1
-                acc.dx += push(dxL, scale: wallScale) - push(dxR, scale: wallScale)
-                acc.dy += push(dyT, scale: wallScale) - push(dyB, scale: wallScale)
-                
-                // Corner escape (extra nudge when stuck in the L of a corner)
-                let cornerRange: CGFloat = 44
-                if min(dxL, dxR) < cornerRange && min(dyT, dyB) < cornerRange {
-                    let nx: CGFloat = (dxL < dxR) ? 1 : -1
-                    let ny: CGFloat = (dyT < dyB) ? 1 : -1
-                    let norm = 1 / max(0.001, hypot(nx, ny))
-                    let boost: CGFloat = (isIdle || inEscape || inCruise) ? 1.4 : 2.2
-                    acc.dx += nx * norm * boost
-                    acc.dy += ny * norm * boost
-                }
-                
-                // 4) Escape/Cruise: strong gentle pull to center + orbit, to break wall-hugging
-                if inEscape || inCruise {
-                    acc.dx += dirToCenter.dx * (inEscape ? 0.70 : 0.55)
-                    acc.dy += dirToCenter.dy * (inEscape ? 0.70 : 0.55)
-                    // small center orbit for natural curve inward
-                    let perpC = CGVector(dx: -dirToCenter.dy, dy: dirToCenter.dx)
-                    acc.dx += perpC.dx * 0.25 * (tangentSign)
-                    acc.dy += perpC.dy * 0.25 * (tangentSign)
-                } else if isIdle {
-                    // idle: faint center pull to avoid camping near borders
-                    acc.dx += dirToCenter.dx * 0.25
-                    acc.dy += dirToCenter.dy * 0.25
-                } else {
-                    // active & free: tiny orbit around center for nicer trajectories
-                    let perpC = CGVector(dx: -dirToCenter.dy, dy: dirToCenter.dx)
-                    acc.dx += perpC.dx * 0.10 * tangentSign
-                    acc.dy += perpC.dy * 0.10 * tangentSign
-                }
-                
-                // 5) Add low-frequency wander
-                acc.dx += wander.dx
-                acc.dy += wander.dy
-                
-                // ---- Low-pass smoothing of steering ----
-                accLP.dx = accLP.dx * 0.90 + acc.dx * 0.10
-                accLP.dy = accLP.dy * 0.90 + acc.dy * 0.10
-                
-                let desiredDX = velTarget.dx + accLP.dx
-                let desiredDY = velTarget.dy + accLP.dy
-                
-                velTarget.dx += (desiredDX - velTarget.dx) * 0.12
-                velTarget.dy += (desiredDY - velTarget.dy) * 0.12
-                
-                // Never steer toward the ball (project out "toward" component)
-                let towardDot = velTarget.dx * dirToBall.dx + velTarget.dy * dirToBall.dy
-                if towardDot > 0 {
-                    velTarget.dx -= dirToBall.dx * towardDot * 1.05
-                    velTarget.dy -= dirToBall.dy * towardDot * 1.05
-                }
-                
-                // Idle damping & dead-zone to kill micro-jitter
-                if isIdle {
-                    velTarget.dx *= 0.97
-                    velTarget.dy *= 0.97
-                    let dz: CGFloat = 0.08
-                    if abs(velTarget.dx) < dz { velTarget.dx = 0 }
-                    if abs(velTarget.dy) < dz { velTarget.dy = 0 }
-                }
-                
-                // Keep your per-axis clamp
-                velTarget.dx = clampMag(velTarget.dx, maxValue: 2.6)
-                velTarget.dy = clampMag(velTarget.dy, maxValue: 2.6)
-                
-                // Integrate + soft bounce
-                p.x += velTarget.dx
-                p.y += velTarget.dy
-                
-                let hitLeft  = p.x < minX
-                let hitRight = p.x > maxX
-                let hitTop   = p.y < minY
-                let hitBot   = p.y > maxY
-                
-                if hitLeft  { p.x = minX; velTarget.dx *= -0.95 }
-                if hitRight { p.x = maxX; velTarget.dx *= -0.95 }
-                if hitTop   { p.y = minY; velTarget.dy *= -0.95 }
-                if hitBot   { p.y = maxY; velTarget.dy *= -0.95 }
-                
-                // Flush from exact wall so it doesn’t skate along the border pixels
-                if hitLeft  { p.x += 0.8 }
-                if hitRight { p.x -= 0.8 }
-                if hitTop   { p.y += 0.8 }
-                if hitBot   { p.y -= 0.8 }
-                
-                target = p
-                checkCatch(in: geo.size)
-            }
+            .contentShape(Rectangle()) // does not affect ball-only drag
+            .onReceive(ticker) { _ in tick(geo.size) }
             .onAppear {
-                // Freeze letter once
-                letterChar = hasLetter ? (seed ?? PremiumHubModel.randomLetter()) : nil
+                // Seed letter (always present)
+                let ch = seed ?? PremiumHubModel.randomLetter()
+                letterText = String(ch)
                 
-                // Safe spawn
+                // Safe spawns
                 let inset: CGFloat = 36
                 ball = CGPoint(x: .random(in: inset...(geo.size.width - inset)),
                                y: .random(in: inset...(geo.size.height - inset)))
@@ -1231,26 +1079,185 @@ private struct GyroMazeMini: View {
                 lastBallPos = ball
                 lastMoveAt = Date()
                 lastTickAt = Date()
-                
-                // Motion for the ball
-                if motion.isDeviceMotionAvailable {
-                    motion.deviceMotionUpdateInterval = 1/60
-                    motion.startDeviceMotionUpdates(to: .main) { data, _ in
-                        guard !solved, let g = data?.gravity else { return }
-                        velBall.dx += CGFloat(g.x) * 1.6
-                        velBall.dy -= CGFloat(g.y) * 1.6
-                        velBall.dx *= 0.98; velBall.dy *= 0.98
-                        var next = CGPoint(x: ball.x + velBall.dx, y: ball.y + velBall.dy)
-                        next = clamp(point: next, in: geo.size)
-                        if hypot(next.x - ball.x, next.y - ball.y) > 0.2 { lastMoveAt = Date() }
-                        ball = next
-                        checkCatch(in: geo.size)
-                    }
-                }
             }
-            .onDisappear { motion.stopDeviceMotionUpdates() }
         }
         .frame(height: 280)
+    }
+    
+    // MARK: - Per-frame AI for target (unchanged)
+    private func tick(_ size: CGSize) {
+        guard !solved else { return }
+        
+        let now = Date()
+        let dt = max(0.0, now.timeIntervalSince(lastTickAt))
+        lastTickAt = now
+        
+        // idle detection
+        let moveDist = hypot(ball.x - lastBallPos.x, ball.y - lastBallPos.y)
+        if moveDist > 0.4 { lastMoveAt = now }
+        lastBallPos = ball
+        let isIdle = now.timeIntervalSince(lastMoveAt) > 0.45
+        
+        // wander update
+        let wanderPeriod = isIdle ? 1.2 : 0.7
+        if now.timeIntervalSince(lastWanderUpdate) > wanderPeriod {
+            let a = Double.random(in: 0..<(2 * .pi))
+            let m = Double.random(in: (isIdle ? 0.05...0.22 : 0.20...0.55))
+            wanderTarget = CGVector(dx: CGFloat(cos(a) * m), dy: CGFloat(sin(a) * m))
+            lastWanderUpdate = now
+        }
+        let wanderEase: CGFloat = isIdle ? 0.03 : 0.05
+        wander.dx += (wanderTarget.dx - wander.dx) * wanderEase
+        wander.dy += (wanderTarget.dy - wander.dy) * wanderEase
+        
+        // geometry
+        var p = target
+        var acc = CGVector(dx: 0, dy: 0)
+        
+        let inset: CGFloat = 36
+        let minX = inset, maxX = size.width - inset
+        let minY = inset, maxY = size.height - inset
+        let center = CGPoint(x: (minX + maxX) * 0.5, y: (minY + maxY) * 0.5)
+        
+        let toBall = CGVector(dx: ball.x - p.x, dy: ball.y - p.y)
+        let dist = max(0.001, hypot(toBall.dx, toBall.dy))
+        let dirToBall = CGVector(dx: toBall.dx / dist, dy: toBall.dy / dist)
+        let toCenter = CGVector(dx: center.x - p.x, dy: center.y - p.y)
+        let lenC = max(0.001, hypot(toCenter.dx, toCenter.dy))
+        let dirToCenter = CGVector(dx: toCenter.dx/lenC, dy: toCenter.dy/lenC)
+        let perpToBall = CGVector(dx: -dirToBall.dy, dy: dirToBall.dx)
+        let tangentSign: CGFloat = (perpToBall.dx * dirToCenter.dx + perpToBall.dy * dirToCenter.dy) >= 0 ? 1 : -1
+        
+        // walls / edges
+        let wallRange: CGFloat = 70
+        let dxL = p.x - minX, dxR = maxX - p.x
+        let dyT = p.y - minY, dyB = maxY - p.y
+        let nearEdgeDist = min(min(dxL, dxR), min(dyT, dyB))
+        let nearEdge = nearEdgeDist < 34
+        
+        // edge dwell → escape
+        if nearEdge { edgeDwell += dt } else { edgeDwell = max(0, edgeDwell - dt * 1.5) }
+        if edgeDwell > 0.85, escapeUntil == nil {
+            escapeUntil = now.addingTimeInterval(0.7)
+            edgeDwell = 0.25
+        }
+        
+        // periodic short center cruises
+        if nearEdge && now.timeIntervalSince(lastCenterCruise) > 2.6 {
+            centerCruiseUntil = now.addingTimeInterval(0.5)
+            lastCenterCruise = now
+        }
+        let inEscape = (escapeUntil.map { now < $0 } ?? false)
+        let inCruise  = (centerCruiseUntil.map { now < $0 } ?? false)
+        
+        // 1) Flee player
+        let safeRadius: CGFloat  = 180
+        let panicRadius: CGFloat = 80
+        let tClose = max(0, min(1, (safeRadius - dist) / (safeRadius - panicRadius)))
+        let fleeBase: CGFloat  = isIdle ? 0.15 : 0.50
+        let fleeScale: CGFloat = isIdle ? 1.20 : 2.00
+        let fleeMag = (inEscape || inCruise) ? (fleeBase * 0.65) : (fleeBase + fleeScale * tClose)
+        acc.dx += -dirToBall.dx * fleeMag
+        acc.dy += -dirToBall.dy * fleeMag
+        
+        // 2) Side-step around player
+        let slipMag = (isIdle ? 0.10 : 0.25) + (isIdle ? 0.30 : 0.80) * tClose
+        let curveBoost: CGFloat = inCruise ? 0.35 : 0
+        acc.dx += perpToBall.dx * (tangentSign * (slipMag + curveBoost))
+        acc.dy += perpToBall.dy * (tangentSign * (slipMag + curveBoost))
+        
+        // 3) Wall & corner repulsion
+        func push(_ d: CGFloat, scale: CGFloat) -> CGFloat {
+            guard d < wallRange else { return 0 }
+            let x = max(0, (wallRange - d) / wallRange)
+            return scale * x * x
+        }
+        let wallScale: CGFloat = (isIdle || inEscape || inCruise) ? 1.0 : 2.1
+        acc.dx += push(dxL, scale: wallScale) - push(dxR, scale: wallScale)
+        acc.dy += push(dyT, scale: wallScale) - push(dyB, scale: wallScale)
+        
+        // corner escape
+        let cornerRange: CGFloat = 44
+        if min(dxL, dxR) < cornerRange && min(dyT, dyB) < cornerRange {
+            let nx: CGFloat = (dxL < dxR) ? 1 : -1
+            let ny: CGFloat = (dyT < dyB) ? 1 : -1
+            let norm = 1 / max(0.001, hypot(nx, ny))
+            let boost: CGFloat = (isIdle || inEscape || inCruise) ? 1.4 : 2.2
+            acc.dx += nx * norm * boost
+            acc.dy += ny * norm * boost
+        }
+        
+        // 4) Escape/cruise pulls
+        if inEscape || inCruise {
+            acc.dx += dirToCenter.dx * (inEscape ? 0.70 : 0.55)
+            acc.dy += dirToCenter.dy * (inEscape ? 0.70 : 0.55)
+            let perpC = CGVector(dx: -dirToCenter.dy, dy: dirToCenter.dx)
+            acc.dx += perpC.dx * 0.25 * (tangentSign)
+            acc.dy += perpC.dy * 0.25 * (tangentSign)
+        } else if isIdle {
+            acc.dx += dirToCenter.dx * 0.25
+            acc.dy += dirToCenter.dy * 0.25
+        } else {
+            let perpC = CGVector(dx: -dirToCenter.dy, dy: dirToCenter.dx)
+            acc.dx += perpC.dx * 0.10 * tangentSign
+            acc.dy += perpC.dy * 0.10 * tangentSign
+        }
+        
+        // 5) Wander
+        acc.dx += wander.dx
+        acc.dy += wander.dy
+        
+        // smoothing
+        accLP.dx = accLP.dx * 0.90 + acc.dx * 0.10
+        accLP.dy = accLP.dy * 0.90 + acc.dy * 0.10
+        
+        let desiredDX = velTarget.dx + accLP.dx
+        let desiredDY = velTarget.dy + accLP.dy
+        
+        velTarget.dx += (desiredDX - velTarget.dx) * 0.12
+        velTarget.dy += (desiredDY - velTarget.dy) * 0.12
+        
+        // never steer toward the ball
+        let towardDot = velTarget.dx * dirToBall.dx + velTarget.dy * dirToBall.dy
+        if towardDot > 0 {
+            velTarget.dx -= dirToBall.dx * towardDot * 1.05
+            velTarget.dy -= dirToBall.dy * towardDot * 1.05
+        }
+        
+        // idle damping
+        if isIdle {
+            velTarget.dx *= 0.97
+            velTarget.dy *= 0.97
+            let dz: CGFloat = 0.08
+            if abs(velTarget.dx) < dz { velTarget.dx = 0 }
+            if abs(velTarget.dy) < dz { velTarget.dy = 0 }
+        }
+        
+        // clamp
+        velTarget.dx = clampMag(velTarget.dx, maxValue: 2.6)
+        velTarget.dy = clampMag(velTarget.dy, maxValue: 2.6)
+        
+        // integrate + soft bounce
+        p.x += velTarget.dx
+        p.y += velTarget.dy
+        
+        let hitLeft  = p.x < minX
+        let hitRight = p.x > maxX
+        let hitTop   = p.y < minY
+        let hitBot   = p.y > maxY
+        
+        if hitLeft  { p.x = minX; velTarget.dx *= -0.95 }
+        if hitRight { p.x = maxX; velTarget.dx *= -0.95 }
+        if hitTop   { p.y = minY; velTarget.dy *= -0.95 }
+        if hitBot   { p.y = maxY; velTarget.dy *= -0.95 }
+        
+        if hitLeft  { p.x += 0.8 }
+        if hitRight { p.x -= 0.8 }
+        if hitTop   { p.y += 0.8 }
+        if hitBot   { p.y -= 0.8 }
+        
+        target = p
+        checkCatch(in: size)
     }
     
     // MARK: - Helpers
@@ -1259,7 +1266,6 @@ private struct GyroMazeMini: View {
         CGPoint(x: max(20, min(size.width - 20, point.x)),
                 y: max(20, min(size.height - 20, point.y)))
     }
-    
     private func clampMag(_ v: CGFloat, maxValue: CGFloat) -> CGFloat {
         min(maxValue, max(-maxValue, v))
     }
@@ -1271,7 +1277,6 @@ private struct GyroMazeMini: View {
             captureAt = Date()
             
             UIImpactFeedbackGenerator(style: .soft).impactOccurred()
-            motion.stopDeviceMotionUpdates()
             
             let snapDur = reduceMotion ? 0.15 : 0.28
             let popDur  = reduceMotion ? 0.15 : 0.28
@@ -1293,7 +1298,8 @@ private struct GyroMazeMini: View {
             
             let resolveDelay = reduceMotion ? 0.35 : 0.65
             DispatchQueue.main.asyncAfter(deadline: .now() + resolveDelay) {
-                if let ch = letterChar { onDone(.found(ch)) } else { onDone(.nothing) }
+                let ch = letterText.isEmpty ? PremiumHubModel.randomLetter() : Character(letterText)
+                onDone(.found(ch))
             }
         }
     }
@@ -2197,6 +2203,7 @@ struct PopBalloonMini: View {
                                                              height: b.radius * 2))
                                 )
                                 .onTapGesture { pop(b) }
+                                .disabled(showLetterOverlay)
                         }
                     }
                     
@@ -2354,35 +2361,35 @@ struct SliderAlignMini: View {
     let hub: PremiumHubModel
     let letter: Character?
     var onDone: (MiniResult) -> Void
-
+    
     // MARK: - State
     @State private var seed: Character = "A"
-
+    
     // Playfield
     @State private var fieldSize: CGSize = .zero
     @State private var didSeed = false
-
+    
     // Slider controls ONLY the line height (instant)
     @State private var value: Double = 0.25
-
+    
     // Auto-scanning line (x moves side-to-side)
     @State private var lineX: CGFloat = .zero
     @State private var lineVX: CGFloat = 0    // px/s
-
+    
     // Moving orb
     @State private var dot: CGPoint = .zero
     @State private var vel: CGVector = .zero
     @State private var solved = false
-
+    
     // Reveal overlay
     @State private var showingLetter = false
     @State private var overlayScale: CGFloat = 0.92
-
+    
     // Timing
     @State private var lastTickAt = Date()
     @State private var age: TimeInterval = 0     // seconds since spawn
     private let tick = Timer.publish(every: 1/60, on: .main, in: .common).autoconnect()
-
+    
     // MARK: Tunables
     private let dotR: CGFloat = 10
     private let tipR: CGFloat = 8
@@ -2391,20 +2398,20 @@ struct SliderAlignMini: View {
     private let topPad: CGFloat = 8
     private let bottomPad: CGFloat = 8
     private let minSpawnGap: CGFloat = 80
-
+    
     // Line horizontal speed (keep it not very fast)
     private let lineSpeed: CGFloat = 95   // px/s
-
+    
     // Orb difficulty
     private let baseSpeedRange: ClosedRange<CGFloat> = 240...320
     private let accelPerSec: CGFloat = 70
     private let jitter: CGFloat = 24
     private let maxSpeed: CGFloat = 480
-
+    
     // Anti-“rush the user” (orb initially repelled from tip)
     private let repelWindow: TimeInterval = 0.90
     private let repelAccel: CGFloat = 340
-
+    
     var body: some View {
         ZStack {
             VStack(spacing: 12) {
@@ -2414,7 +2421,7 @@ struct SliderAlignMini: View {
                     Spacer()
                     CountdownPill(deadline: deadline)
                 }
-
+                
                 // PLAYFIELD
                 GeometryReader { geo in
                     let size = geo.size
@@ -2423,25 +2430,25 @@ struct SliderAlignMini: View {
                         RoundedRectangle(cornerRadius: 14, style: .continuous)
                             .fill(Color.white.opacity(0.06))
                             .overlay(RoundedRectangle(cornerRadius: 14).stroke(.white.opacity(0.10), lineWidth: 1))
-
+                        
                         // Compute tip position (lineX scans horizontally; slider sets height)
                         let usableH = max(0, size.height - topPad - bottomPad - tipR)
                         let tipY = size.height - bottomPad - CGFloat(value) * usableH
-
+                        
                         // Line body
                         Path { p in
                             p.move(to: CGPoint(x: lineX, y: size.height - bottomPad))
                             p.addLine(to: CGPoint(x: lineX, y: tipY))
                         }
                         .stroke(.white.opacity(0.9), lineWidth: lineW)
-
+                        
                         // Green tip
                         Circle()
                             .fill(Color.green)
                             .overlay(Circle().stroke(.white.opacity(0.85), lineWidth: 1))
                             .frame(width: tipR * 2, height: tipR * 2)
                             .position(x: lineX, y: tipY)
-
+                        
                         // Orb
                         Circle()
                             .fill(Color.yellow)
@@ -2472,13 +2479,13 @@ struct SliderAlignMini: View {
                     }
                 }
                 .frame(height: 230)
-
+                
                 // SLIDER (controls the line height only)
                 Slider(value: $value, in: 0...1)
                     .disabled(solved)
                     .opacity(solved ? 0.65 : 1)
             }
-
+            
             if showingLetter {
                 Text(String(seed))
                     .font(.system(size: 84, weight: .heavy, design: .rounded))
@@ -2497,13 +2504,13 @@ struct SliderAlignMini: View {
             let dt = max(0, now.timeIntervalSince(lastTickAt))
             lastTickAt = now
             age += dt
-
+            
             // 1) Move the line side-to-side (bounce at edges)
             advanceLine(dt: dt)
-
+            
             // 2) Advance orb physics
             advanceOrb(dt: dt)
-
+            
             // 3) Collision vs current tip
             let tip = currentTipCenter(in: fieldSize)
             if distance(dot, tip) <= (dotR + tipR) {
@@ -2512,20 +2519,20 @@ struct SliderAlignMini: View {
         }
         .allowsHitTesting(!solved)
     }
-
+    
     // MARK: - Init / Seeding
-
+    
     private func seedIfNeeded(size: CGSize) {
         guard !didSeed, size.width > 0, size.height > 0 else { return }
         didSeed = true
         age = 0
-
+        
         let tip = currentTipCenter(in: size)
-
+        
         // spawn away from tip
         let minX = sidePad + dotR, maxX = size.width - sidePad - dotR
         let minY = topPad + dotR,  maxY = size.height - bottomPad - dotR
-
+        
         var start = CGPoint(x: .random(in: minX...maxX), y: .random(in: minY...maxY))
         var guardCount = 0
         while distance(start, tip) < minSpawnGap && guardCount < 200 {
@@ -2534,7 +2541,7 @@ struct SliderAlignMini: View {
             guardCount += 1
         }
         dot = start
-
+        
         // Initial velocity AWAY from the tip
         let speed: CGFloat = .random(in: baseSpeedRange)
         var away = CGVector(dx: start.x - tip.x, dy: start.y - tip.y)
@@ -2542,27 +2549,27 @@ struct SliderAlignMini: View {
         let dirBase = normalized(away)
         let jitterAngle: CGFloat = .random(in: -(.pi/4)...(.pi/4))
         var v = multiply(rotate(dirBase, by: jitterAngle), by: speed)
-
+        
         // If pointing toward tip at all, flip it
         let toTip = CGVector(dx: tip.x - start.x, dy: tip.y - start.y)
         if dot2(v, toTip) > 0 { v.dx = -v.dx; v.dy = -v.dy }
-
+        
         // Ensure both components are meaningful
         if abs(v.dx) < 60 { v.dx = v.dx < 0 ? -60 : 60 }
         if abs(v.dy) < 60 { v.dy = v.dy < 0 ? -60 : 60 }
-
+        
         vel = v
     }
-
+    
     // MARK: - Simulation
-
+    
     private func advanceLine(dt: TimeInterval) {
         guard fieldSize.width > 0 else { return }
         let minX = sidePad
         let maxX = fieldSize.width - sidePad
-
+        
         var x = lineX + lineVX * CGFloat(dt)
-
+        
         if x < minX {
             x = minX + (minX - x)
             lineVX *= -1
@@ -2570,39 +2577,39 @@ struct SliderAlignMini: View {
             x = maxX - (x - maxX)
             lineVX *= -1
         }
-
+        
         lineX = x
     }
-
+    
     private func advanceOrb(dt: TimeInterval) {
         guard dt > 0 else { return }
         var p = dot
         var v = vel
         let size = fieldSize
-
+        
         let minX = sidePad + dotR
         let maxX = size.width - sidePad - dotR
         let minY = topPad + dotR
         let maxY = size.height - bottomPad - dotR
-
+        
         // integrate
         p.x += v.dx * CGFloat(dt)
         p.y += v.dy * CGFloat(dt)
-
+        
         // bounce
         if p.x < minX { p.x = minX + (minX - p.x); v.dx *= -1 }
         else if p.x > maxX { p.x = maxX - (p.x - maxX); v.dx *= -1 }
-
+        
         if p.y < minY { p.y = minY + (minY - p.y); v.dy *= -1 }
         else if p.y > maxY { p.y = maxY - (p.y - maxY); v.dy *= -1 }
-
+        
         // wander + gentle acceleration (hardens over time)
         v.dx += .random(in: -jitter...jitter) * CGFloat(dt)
         v.dy += .random(in: -jitter...jitter) * CGFloat(dt)
         let s = max(1, hypot(v.dx, v.dy))
         v.dx += (v.dx / s) * accelPerSec * CGFloat(dt)
         v.dy += (v.dy / s) * accelPerSec * CGFloat(dt)
-
+        
         // Initial repulsion from current tip
         if age < repelWindow {
             let tip = currentTipCenter(in: size)
@@ -2611,26 +2618,26 @@ struct SliderAlignMini: View {
             v.dx += n.dx * repelAccel * CGFloat(dt)
             v.dy += n.dy * repelAccel * CGFloat(dt)
         }
-
+        
         // clamp
         let s2 = hypot(v.dx, v.dy)
         if s2 > maxSpeed {
             v.dx = v.dx / s2 * maxSpeed
             v.dy = v.dy / s2 * maxSpeed
         }
-
+        
         dot = p
         vel = v
     }
-
+    
     private func currentTipCenter(in size: CGSize) -> CGPoint {
         let usableH = max(0, size.height - topPad - bottomPad - tipR)
         let tipY = size.height - bottomPad - CGFloat(value) * usableH
         return CGPoint(x: lineX, y: tipY)
     }
-
+    
     // MARK: - Resolve
-
+    
     private func resolve() {
         guard !solved else { return }
         solved = true
@@ -2643,9 +2650,9 @@ struct SliderAlignMini: View {
             onDone(.found(seed))
         }
     }
-
+    
     // MARK: - Math
-
+    
     private func normalized(_ v: CGVector) -> CGVector {
         let m = max(0.0001, hypot(v.dx, v.dy))
         return CGVector(dx: v.dx / m, dy: v.dy / m)
@@ -2861,6 +2868,28 @@ struct ShakeRevealMini: View {
 }
 
 // MARK: - Tap Target (slower, safe start, 3 taps required; reveal before close)
+// Disable interactive-pop (edge back swipe) while this mini is on screen.
+private struct PopGestureDisabler: UIViewControllerRepresentable {
+    func makeUIViewController(context: Context) -> UIViewController { Controller() }
+    func updateUIViewController(_ uiViewController: UIViewController, context: Context) {}
+    
+    private final class Controller: UIViewController {
+        private weak var popRecognizer: UIGestureRecognizer?
+        private var wasEnabled = true
+        override func viewWillAppear(_ animated: Bool) {
+            super.viewWillAppear(animated)
+            popRecognizer = navigationController?.interactivePopGestureRecognizer
+            if let g = popRecognizer {
+                wasEnabled = g.isEnabled
+                g.isEnabled = false
+            }
+        }
+        override func viewWillDisappear(_ animated: Bool) {
+            super.viewWillDisappear(animated)
+            if let g = popRecognizer { g.isEnabled = wasEnabled }
+        }
+    }
+}
 
 struct TapTargetMini: View {
     let deadline: Date
@@ -2870,10 +2899,11 @@ struct TapTargetMini: View {
     
     // tuning
     private let hitsNeeded = 3
-    @State private var interval: TimeInterval = 0.68   // fast start, ramps faster
-    @State private var radius: CGFloat = 11            // small target (harder)
-    private let hitFreeze: TimeInterval = 0.35         // ← freeze on hit
-    private let respawnGap: TimeInterval = 0.12        // ← hide briefly before respawn
+    @State private var interval: TimeInterval = 0.68   // start rate; tightens on each hit
+    @State private var radius: CGFloat = 11            // target radius; shrinks on each hit
+    private let hitFreeze: TimeInterval = 0.35         // freeze after a hit
+    private let respawnGap: TimeInterval = 0.12        // hidden gap before respawn
+    private let minDelta: CGFloat = 64                 // min move distance between spawns
     
     // state
     @State private var seeded: Character = "A"
@@ -2881,13 +2911,12 @@ struct TapTargetMini: View {
     @State private var pos: CGPoint = .zero
     @State private var visible = false
     @State private var hits = 0
-    @State private var timer: Timer? = nil
-    @State private var showingLetter = false
     @State private var finished = false
     @State private var tapFlash = false
-    @State private var paused = false                  // ← pause timer-driven movement while frozen
+    @State private var paused = false                  // pauses the move loop cleanly
+    @State private var moveTask: Task<Void, Never>?    // replaces Timer → no race
     
-    // tap indication: ripple pulses
+    // tap indication
     private struct Pulse: Identifiable { let id = UUID(); let center: CGPoint; let start = Date() }
     @State private var pulses: [Pulse] = []
     
@@ -2903,6 +2932,9 @@ struct TapTargetMini: View {
             
             GeometryReader { geo in
                 ZStack {
+                    // block edge-swipes while we’re active
+                    PopGestureDisabler().frame(width: 0, height: 0).hidden()
+                    
                     RoundedRectangle(cornerRadius: 16)
                         .fill(.white.opacity(0.06))
                         .overlay(RoundedRectangle(cornerRadius: 16).stroke(.white.opacity(0.12)))
@@ -2934,32 +2966,14 @@ struct TapTargetMini: View {
                             .shadow(color: .white.opacity(tapFlash ? 0.6 : 0), radius: 6, y: 2)
                             .animation(.easeOut(duration: 0.18), value: tapFlash)
                             .transition(.scale.combined(with: .opacity))
-                            .onTapGesture {
-                                guard !finished else { return }
-                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                                
-                                // visual indication — flash + ripple
-                                tapFlash = true
-                                pulses.append(Pulse(center: pos))
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                                    tapFlash = false
-                                }
-                                
-                                hits += 1
-                                if hits >= hitsNeeded {
-                                    finishSuccess()
-                                } else {
-                                    // speed up + shrink a touch
-                                    interval = max(0.54, interval * 0.86)
-                                    radius   = max(9, radius - 1.0)
-                                    pulses.removeAll { Date().timeIntervalSince($0.start) > 0.6 }
-                                    // freeze, then hide & respawn elsewhere, then resume timer
-                                    freezeThenRespawn()
-                                }
-                            }
+                            .contentShape(Circle())
+                            .highPriorityGesture( // ensure our tap wins
+                                TapGesture().onEnded { handleTap() }
+                            )
                     }
                     
-                    if showingLetter {
+                    // final letter overlay
+                    if finished {
                         Text(String(seeded))
                             .font(.system(size: 64, weight: .heavy, design: .rounded))
                             .foregroundStyle(.white)
@@ -2971,65 +2985,85 @@ struct TapTargetMini: View {
                     seeded = letter ?? hub.pickLetterForOffer()
                     pos = randomPos(in: area, margin: max(40, radius + 20))
                     visible = true
-                    reschedule(in: area)
+                    startMoveLoop()
                 }
                 .onChange(of: geo.size) { _, new in area = new }
-                .onDisappear {
-                    timer?.invalidate()
-                    timer = nil
-                }
+                .onDisappear { stopMoveLoop() }
             }
             .frame(height: 180)
         }
     }
     
-    // MARK: - Freeze on hit → hide → respawn → resume timer
-    private func freezeThenRespawn() {
+    // MARK: - Tap handling (no race)
+    private func handleTap() {
         guard !finished else { return }
-        paused = true
-        timer?.invalidate()
-        timer = nil
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
         
-        // stay visible & frozen for a beat
-        DispatchQueue.main.asyncAfter(deadline: .now() + hitFreeze) {
+        // flash + ripple
+        tapFlash = true
+        pulses.append(Pulse(center: pos))
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { tapFlash = false }
+        // prevent the move loop from toggling visibility during this whole flow
+        paused = true
+        // force visible immediately in case the loop just hid it on the same tick
+        withTransaction(Transaction(animation: nil)) { visible = true }
+        
+        hits += 1
+        if hits >= hitsNeeded {
+            finishSuccess()
+            return
+        }
+        
+        // tighten difficulty for next rounds
+        interval = max(0.54, interval * 0.86)
+        radius   = max(9, radius - 1.0)
+        pulses.removeAll { Date().timeIntervalSince($0.start) > 0.6 }
+        
+        // freeze → hide → move → show → resume (all without the timer)
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: UInt64(hitFreeze * 1_000_000_000))
             withAnimation(.easeInOut(duration: 0.16)) { visible = false }
-            // move to a new spot while hidden
-            let newPos = randomPos(in: area, margin: max(36, radius + 18), awayFrom: pos, minDelta: 64)
+            let newPos = randomPos(in: area, margin: max(36, radius + 18), awayFrom: pos, minDelta: minDelta)
             pos = newPos
-            // brief gap, then show & resume normal timer-driven movement
-            DispatchQueue.main.asyncAfter(deadline: .now() + respawnGap) {
-                withAnimation(.easeInOut(duration: 0.18)) { visible = true }
-                paused = false
-                reschedule(in: area)
+            try? await Task.sleep(nanoseconds: UInt64(respawnGap * 1_000_000_000))
+            withAnimation(.easeInOut(duration: 0.18)) { visible = true }
+            paused = false
+        }
+    }
+    
+    // MARK: - Movement loop (Task-based; easy to pause/cancel)
+    private func startMoveLoop() {
+        stopMoveLoop()
+        moveTask = Task { @MainActor in
+            while !Task.isCancelled && !finished {
+                let wait = interval
+                try? await Task.sleep(nanoseconds: UInt64(wait * 1_000_000_000))
+                if Task.isCancelled || finished || paused { continue }
+                withAnimation(.easeInOut(duration: 0.18)) {
+                    visible.toggle()
+                    if visible {
+                        pos = randomPos(in: area, margin: max(36, radius + 18), awayFrom: pos, minDelta: minDelta)
+                    }
+                }
             }
         }
     }
     
-    // MARK: - Scheduling
-    private func reschedule(in size: CGSize) {
-        timer?.invalidate()
-        guard !finished else { return }
-        let t = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { _ in
-            guard !paused else { return } // ignore ticks while frozen
-            withAnimation(.easeInOut(duration: 0.18)) {
-                visible.toggle()
-                if visible {
-                    pos = randomPos(in: size, margin: max(36, radius + 18), awayFrom: pos, minDelta: 64)
-                }
-            }
-        }
-        timer = t
-        RunLoop.current.add(t, forMode: .common)
+    private func stopMoveLoop() {
+        moveTask?.cancel()
+        moveTask = nil
     }
     
     // MARK: - Success flow
     private func finishSuccess() {
         finished = true
-        timer?.invalidate()
-        timer = nil
+        paused = true
+        stopMoveLoop()
         withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
             visible = false
-            showingLetter = true
+        }
+        withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+            // show the letter overlay
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
             onDone(.found(seeded))
@@ -3044,8 +3078,8 @@ struct TapTargetMini: View {
             tries += 1
             p = CGPoint(x: .random(in: margin...(size.width  - margin)),
                         y: .random(in: margin...(size.height - margin)))
-            // bias first spawn toward center (avoid corners)
             if last == nil {
+                // bias first spawn a bit toward center (avoid corners)
                 let cx = size.width * 0.5, cy = size.height * 0.5
                 let t: CGFloat = 0.28
                 p.x = p.x * (1 - t) + cx * t
@@ -3055,6 +3089,7 @@ struct TapTargetMini: View {
         return p
     }
 }
+
 
 struct CountdownPill: View {
     let deadline: Date

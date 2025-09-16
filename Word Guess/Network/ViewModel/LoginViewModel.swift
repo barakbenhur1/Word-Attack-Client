@@ -12,12 +12,12 @@ class LoginViewModel: ObservableObject {
     private let network: Network
     
     required init() {
-        network = Network(root: "login")
+        network = Network(root: .login)
     }
     
     func login(email: String, name: String, gender: String) async -> Bool {
         guard let language = Locale.current.identifier.components(separatedBy: "_").first else { return false }
-        let value: EmptyModel? = await network.send(route: "",
+        let value: EmptyModel? = await network.send(route: .root,
                                                     parameters: ["email": email,
                                                                  "name": name,
                                                                  "gender": gender,
@@ -26,7 +26,7 @@ class LoginViewModel: ObservableObject {
     }
     
     func gender(email: String) async -> String {
-        let value: GenderData? = await network.send(route: "gender",
+        let value: GenderData? = await network.send(route: .gender,
                                                     parameters: ["email": email])
         return value?.gender ?? "male"
     }
@@ -34,7 +34,7 @@ class LoginViewModel: ObservableObject {
     @discardableResult
     func changeLanguage(email: String) async -> Bool {
         guard let language = Locale.current.identifier.components(separatedBy: "_").first else { return false }
-        let value: EmptyModel? = await network.send(route: "changeLanguage",
+        let value: EmptyModel? = await network.send(route: .changeLanguage,
                                                     parameters: ["email": email,
                                                                  "language": language])
         return value != nil

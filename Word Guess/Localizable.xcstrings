@@ -61,16 +61,6 @@
         }
       }
     },
-    "%lld percent" : {
-      "localizations" : {
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "אחוז"
-          }
-        }
-      }
-    },
     "%lld. %@, %lld points" : {
       "localizations" : {
         "en" : {
@@ -1120,10 +1110,16 @@
     },
     "Downloading AI Pack" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Downloading AI"
+          }
+        },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "מוריד חבילת בינה מלאכותית"
+            "value" : "מוריד מודל"
           }
         }
       }
@@ -3071,16 +3067,6 @@
         }
       }
     },
-    "Preparing AI Model" : {
-      "localizations" : {
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "מכין מודל בינה מלאכותית"
-          }
-        }
-      }
-    },
     "Preposition predator" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -3108,16 +3094,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "פרטיות"
-          }
-        }
-      }
-    },
-    "Progress" : {
-      "localizations" : {
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "התקדמות"
           }
         }
       }
@@ -3350,6 +3326,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "חפירה בחול"
+          }
+        }
+      }
+    },
+    "Saving AI Model" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "שומר מודל"
           }
         }
       }

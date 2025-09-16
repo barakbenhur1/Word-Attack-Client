@@ -73,9 +73,12 @@ class Router: Singleton {
         handeleNavigationAnimation(for: appRoute)
         path.append(appRoute)
         lockNavigation = true
-        Task(priority: .high) {
+        Task.detached(priority: .high) {
             try? await Task.sleep(nanoseconds: 1_000_000_000)
-            lockNavigation = false
+            await MainActor.run { [weak self] in
+                guard let self else { return }
+                lockNavigation = false
+            }
         }
     }
     

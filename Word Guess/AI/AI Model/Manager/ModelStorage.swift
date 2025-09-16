@@ -87,9 +87,9 @@ enum ModelStorage {
     }
     
     static func localHasUsableModels(version: Int = AIPack.currentVersion) -> Bool {
-        let hasPrefill   = modelExists("WordleGPT_prefill", version: version)
-        let hasDecode    = modelExists("WordleGPT_decode",  version: version)
-        let hasFallback  = modelExists("WordleGPT",         version: version)
+        let hasPrefill   = modelExists("WordZapGPT_prefill", version: version)
+        let hasDecode    = modelExists("WordZapGPT_decode",  version: version)
+        let hasFallback  = modelExists("WordZapGPT",         version: version)
         return (hasPrefill && hasDecode) || hasFallback
     }
 }

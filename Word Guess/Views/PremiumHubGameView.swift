@@ -14,12 +14,13 @@ final class PremiumHubGameVM: ViewModel {
     override var wordValue: String { word }
     
     required init(word: String) {
-        self.network = Network(root: "score")
+        self.network = Network(root: .score)
         self.word = word
     }
     
+    @discardableResult
     func score(email: String) async -> Bool {
-        let value: EmptyModel? = await network.send(route: "premiumScore",
+        let value: EmptyModel? = await network.send(route: .premiumScore,
                                                     parameters: ["email": email])
         return value != nil
     }
@@ -311,7 +312,7 @@ struct PremiumHubGameView<VM: PremiumHubGameVM>: View {
             
             if correct {
                 wins += 1
-                if let email { Task(priority: .high, operation: { await vm.score(email: email) }) }
+                if let email { Task.detached(priority: .high, operation: { await vm.score(email: email) }) }
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
                     audio.playSound(sound: "success", type: "wav")
                     withAnimation(.spring(response: 0.55, dampingFraction: 0.75)) { showWinBanner = true }

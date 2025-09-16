@@ -11,11 +11,11 @@ struct ScoreProvider {
     let network: Network
     
     init() {
-        network = Network(root: "score")
+        network = Network(root: .score)
     }
     
     func getPlaceInLeaderboard(email: String) async -> LeaderboaredPlaceData? {
-        let value: LeaderboaredPlaceData? = await network.send(route: "place",
+        let value: LeaderboaredPlaceData? = await network.send(route: .place,
                                                                parameters: ["email": email])
         return value
     }

@@ -153,10 +153,12 @@ struct WordView<VM: ViewModel>: View {
     
     // Allow typing in whichever cell is currently focused (or tapped) in the active row.
     private func onDidType(text: String, index: Int) {
-        guard wordBakup[index] != text else { return }
+        let process = wordBakup.contains(where: { c in c.isEmpty })
+        guard process else { return }
         handleWordWriting(value: text, current: index)
         wordBakup[index] = word[index]
-        guard word.joined().count == length else { return }
+        let isCompleteWord = !wordBakup.contains(where: { c in c.count != 1 })
+        guard isCompleteWord && wordBakup == word else { return }
         done()
     }
     
@@ -168,12 +170,12 @@ struct WordView<VM: ViewModel>: View {
                 if isAI {
                     if isCurrentRow {
                         let waiting = {
-                            GuessingGlyphView(index: i, outOf: length, language: language == "he" ? .he : .en)
+                            GuessingGlyphView(index: i,
+                                              outOf: length,
+                                              language: language == "he" ? .he : .en)
                         }
                         view.placeHolder(when: word[i].isEmpty, placeholder: waiting)
-                    } else {
-                        view
-                    }
+                    } else { view }
                 } else  {
                     let placeHolderData: [BestGuess] = placeHolderData ?? []
                     let placeHolderForCell = placeHolderForCell(i)
@@ -264,7 +266,7 @@ struct WordView<VM: ViewModel>: View {
             .autocorrectionDisabled()
             .background(
                 ZStack {
-                    guess.color.color.opacity(0.18)
+                    guess.color.color.opacity(0.38)
                     LinearGradient(
                         colors: [Color.white.opacity(0.08), .clear],
                         startPoint: .topLeading, endPoint: .bottomTrailing

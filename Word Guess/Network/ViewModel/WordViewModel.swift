@@ -42,16 +42,13 @@ class WordViewModel: ViewModel {
         await MainActor.run { [weak self] in
             guard let self else { return }
             guard let value else { isError = true; return }
-#if DEBUG
             Trace.log("🛟", "Word is \(value.word.value)", Fancy.mag)
-#endif
             withAnimation { self.word = value }
         }
     }
     
     func addGuess(diffculty: DifficultyType, email: String, guess: String) async {
         let value: EmptyModel? = await wordService.addGuess(diffculty: diffculty, email: email, guess: guess)
-        
         await MainActor.run { [weak self] in
             guard let self else { return }
             guard value != nil else { isError = true; return }
@@ -60,7 +57,6 @@ class WordViewModel: ViewModel {
     
     func score(diffculty: DifficultyType, email: String) async {
         let value: EmptyModel? = await scoreService.score(diffculty: diffculty, email: email)
-        
         await MainActor.run { [weak self] in
             guard let self else { return }
             guard value != nil else { return isError = true }
@@ -80,28 +76,28 @@ class WordViewModel: ViewModel {
 fileprivate protocol Service { var network: Network { get } }
 
 fileprivate class ScoreService: Service {
+  
     fileprivate let network: Network
     required init() {
-        network = Network(root: "score")
+        network = Network(root: .score)
     }
+    
     func score(diffculty: DifficultyType, email: String) async -> EmptyModel? {
-        let value: EmptyModel? = await network.send(route: "score",
+        let value: EmptyModel? = await network.send(route: .score,
                                                     parameters: ["diffculty": diffculty.stringValue.trimmingCharacters(in: .whitespacesAndNewlines),
                                                                  "email": email])
-        
         return value
     }
     
     func getScore(diffculty: DifficultyType, email: String) async -> ScoreData? {
-        let value: ScoreData? = await network.send(route: "getScore",
+        let value: ScoreData? = await network.send(route: .getScore,
                                                    parameters: ["diffculty": diffculty.stringValue.trimmingCharacters(in: .whitespacesAndNewlines),
                                                                  "email": email])
-        
         return value
     }
     
     func getPlaceInLeaderboard(email: String) async -> LeaderboaredPlaceData? {
-        let value: LeaderboaredPlaceData? = await network.send(route: "place",
+        let value: LeaderboaredPlaceData? = await network.send(route: .place,
                                                                parameters: ["email": email])
         return value
     }
@@ -109,8 +105,9 @@ fileprivate class ScoreService: Service {
 
 fileprivate class WordService: Service {
     fileprivate let network: Network
+   
     required init() {
-        network = Network(root: "words")
+        network = Network(root: .words)
     }
     
     func initMoc() -> WordData {
@@ -129,18 +126,17 @@ fileprivate class WordService: Service {
                          isTimeAttack: false)
         }
         
-        let value: WordData? = await network.send(route: "getWord",
+        let value: WordData? = await network.send(route: .getWord,
                                                   parameters: ["diffculty": diffculty.stringValue.trimmingCharacters(in: .whitespacesAndNewlines),
                                                                "email": email])
         return value
     }
     
     func addGuess(diffculty: DifficultyType, email: String, guess: String) async -> EmptyModel? {
-        let value: EmptyModel? = await network.send(route: "addGuess",
+        let value: EmptyModel? = await network.send(route: .addGuess,
                                                     parameters: ["diffculty": diffculty.stringValue.trimmingCharacters(in: .whitespacesAndNewlines),
                                                                  "email": email,
                                                                  "guess": guess])
-        
         return value
     }
 }

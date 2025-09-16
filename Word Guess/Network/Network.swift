@@ -11,9 +11,11 @@ import Foundation
 
 protocol DataSource: ObservableObject {}
 
+internal enum APIRoute: String { case root = "", word, score, gender, changeLanguage, getPremiumScore, getAllPremiumScores, scoreboard, place, getScore, getWord, addGuess, premiumScore }
+
 // MARK: Networkble
 private protocol Networkble: DataSource {
-    typealias UrlPathMaker = (String) -> String
+    typealias UrlPathMaker = (APIRoute) -> String
     
     var responedQueue: DispatchQueue { get }
     var root: String { get }
@@ -38,6 +40,7 @@ internal enum HttpMethod: String {
 
 // MARK: Network
 class Network: Networkble {
+    enum APIRoot: String { case login, score, words }
     static private var base: String = ""
     
     // MARK: responedQueue
@@ -50,15 +53,15 @@ class Network: Networkble {
     fileprivate var url: UrlPathMaker {
         return { [weak self] url in
             guard let self else { return "" }
-            return "\(root)/\(url)"
+            return "\(root)/\(url.rawValue)"
         }
     }
     
     // MARK: init
     //    "http://localhost:3000"
     //    "https://word-attack.onrender.com"
-    internal init(root: String, base: String = "https://word-attack.onrender.com") {
-        self.root = root
+    internal init(root: APIRoot, base: String = "https://word-attack.onrender.com") {
+        self.root = root.rawValue
         Network.base = base
     }
     
@@ -138,7 +141,7 @@ extension Network {
     ///  - parameters
     ///  - complition
     ///  - error
-    internal func send<T: Codable>(method: HttpMethod = .post, route: String, parameters: [String: Any] = [:]) async -> T? {
+    internal func send<T: Codable>(method: HttpMethod = .post, route: APIRoute, parameters: [String: Any] = [:]) async -> T? {
         let url = url(route)
         let result: Result<T, NetworkError> = await send(method: method,
                                                          url: url,

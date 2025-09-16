@@ -1,5 +1,5 @@
 //
-//  WordleAI.swift
+//  WordZapAI.swift
 //  Word Zap / Word Guess
 //
 
@@ -60,7 +60,7 @@ public enum AIDifficulty {
     }
 }
 
-public enum WordlePrompt {
+public enum WordZapPrompt {
     public static func make(from history: [GuessHistory]) -> String {
         guard !history.isEmpty else { return "" }
         return history.map { "\($0.word) \($0.feedback)" }.joined(separator: "\n") + "\n"
@@ -239,9 +239,9 @@ final class BPETokenizer {
     }
 }
 
-// MARK: - WordleAI
+// MARK: - WordZapAI
 
-final class WordleAI: Singleton {
+final class WordZapAI: Singleton {
     public var useLangTags = true
     
     private let tokenizer: BPETokenizer
@@ -301,12 +301,12 @@ final class WordleAI: Singleton {
     
     // MARK: Factory
     
-    fileprivate static func make() throws -> WordleAI {
-        let pURL = WordleAI.findOptionalModelURL(named: "WordleGPT_prefill")
-        let dURL = WordleAI.findOptionalModelURL(named: "WordleGPT_decode")
+    fileprivate static func make() throws -> WordZapAI {
+        let pURL = WordZapAI.findOptionalModelURL(named: "WordZapGPT_prefill")
+        let dURL = WordZapAI.findOptionalModelURL(named: "WordZapGPT_decode")
         let anyURL = pURL ?? dURL
         guard let anchor = anyURL else {
-            let tokURL = try WordleAI.findTokenizerJSON(near: nil)
+            let tokURL = try WordZapAI.findTokenizerJSON(near: nil)
             let tokenizer = try BPETokenizer(tokenizerJSON: tokURL)
             let T0 = 84
             let spec = Spec(maxT: T0, numL: 16, vocab: tokenizer.vocabSize,
@@ -314,14 +314,14 @@ final class WordleAI: Singleton {
             let ids   = try MLMultiArray(shape: [1, NSNumber(value: T0)], dataType: .int32)
             let mask  = try MLMultiArray(shape: [1, NSNumber(value: T0)], dataType: .int32)
             let tok11 = try MLMultiArray(shape: [1, 1], dataType: .int32)
-            let (mapEN, candEN) = WordleAI.buildLetterMap(tokenizer: tokenizer, pattern: "^[ ]?[a-z]$")
-            let (mapHE, candHE) = WordleAI.buildLetterMap(tokenizer: tokenizer, pattern: "^[ ]?[אבגדהוזחטיכלמנסעפצקרשתךםןףץ]$")
-            let idsEN = WordleAI.buildWordTokenIDs(tokenizer: tokenizer, lang: .en, length: 5)
-            let idsHE = WordleAI.buildWordTokenIDs(tokenizer: tokenizer, lang: .he, length: 5)
-            let setEN = Set(idsEN.map { WordleAI.decodeWord($0, with: tokenizer) }.filter { $0.count == 5 })
-            let setHE = Set(idsHE.map { WordleAI.decodeWord($0, with: tokenizer) }.filter { $0.count == 5 })
+            let (mapEN, candEN) = WordZapAI.buildLetterMap(tokenizer: tokenizer, pattern: "^[ ]?[a-z]$")
+            let (mapHE, candHE) = WordZapAI.buildLetterMap(tokenizer: tokenizer, pattern: "^[ ]?[אבגדהוזחטיכלמנסעפצקרשתךםןףץ]$")
+            let idsEN = WordZapAI.buildWordTokenIDs(tokenizer: tokenizer, lang: .en, length: 5)
+            let idsHE = WordZapAI.buildWordTokenIDs(tokenizer: tokenizer, lang: .he, length: 5)
+            let setEN = Set(idsEN.map { WordZapAI.decodeWord($0, with: tokenizer) }.filter { $0.count == 5 })
+            let setHE = Set(idsHE.map { WordZapAI.decodeWord($0, with: tokenizer) }.filter { $0.count == 5 })
             Self.markAsInitializedFromOtherSource()
-            return WordleAI(tokenizer: tokenizer, prefill: nil, decode: nil, fallback: nil,
+            return WordZapAI(tokenizer: tokenizer, prefill: nil, decode: nil, fallback: nil,
                             spec: spec, idsMA: ids, maskMA: mask, tok1x1: tok11,
                             letterMapEN: mapEN, candidateEN: candEN,
                             letterMapHE: mapHE, candidateHE: candHE,
@@ -329,7 +329,7 @@ final class WordleAI: Singleton {
                             T_prefill: nil, T_decode: nil, T_fallback: nil)
         }
         
-        let tokURL = try WordleAI.findTokenizerJSON(near: anchor)
+        let tokURL = try WordZapAI.findTokenizerJSON(near: anchor)
         let tokenizer = try BPETokenizer(tokenizerJSON: tokURL)
         
         func loadModel(_ url: URL?) -> MLModel? {
@@ -379,16 +379,16 @@ final class WordleAI: Singleton {
         let mask  = try MLMultiArray(shape: [1, NSNumber(value: T0)], dataType: .int32)
         let tok11 = try MLMultiArray(shape: [1, 1], dataType: .int32)
         
-        let (mapEN, candEN) = WordleAI.buildLetterMap(tokenizer: tokenizer, pattern: "^[ ]?[a-z]$")
-        let (mapHE, candHE) = WordleAI.buildLetterMap(tokenizer: tokenizer, pattern: "^[ ]?[אבגדהוזחטיכלמנסעפצקרשתךםןףץ]$")
+        let (mapEN, candEN) = WordZapAI.buildLetterMap(tokenizer: tokenizer, pattern: "^[ ]?[a-z]$")
+        let (mapHE, candHE) = WordZapAI.buildLetterMap(tokenizer: tokenizer, pattern: "^[ ]?[אבגדהוזחטיכלמנסעפצקרשתךםןףץ]$")
         
-        let idsEN = WordleAI.buildWordTokenIDs(tokenizer: tokenizer, lang: .en, length: 5)
-        let idsHE = WordleAI.buildWordTokenIDs(tokenizer: tokenizer, lang: .he, length: 5)
-        let setEN = Set(idsEN.map { WordleAI.decodeWord($0, with: tokenizer) }.filter { $0.count == 5 })
-        let setHE = Set(idsHE.map { WordleAI.decodeWord($0, with: tokenizer) }.filter { $0.count == 5 })
+        let idsEN = WordZapAI.buildWordTokenIDs(tokenizer: tokenizer, lang: .en, length: 5)
+        let idsHE = WordZapAI.buildWordTokenIDs(tokenizer: tokenizer, lang: .he, length: 5)
+        let setEN = Set(idsEN.map { WordZapAI.decodeWord($0, with: tokenizer) }.filter { $0.count == 5 })
+        let setHE = Set(idsHE.map { WordZapAI.decodeWord($0, with: tokenizer) }.filter { $0.count == 5 })
         
         Self.markAsInitializedFromOtherSource()
-        return WordleAI(tokenizer: tokenizer, prefill: pre, decode: dec, fallback: fb,
+        return WordZapAI(tokenizer: tokenizer, prefill: pre, decode: dec, fallback: fb,
                         spec: spec, idsMA: ids, maskMA: mask, tok1x1: tok11,
                         letterMapEN: mapEN, candidateEN: candEN,
                         letterMapHE: mapHE, candidateHE: candHE,
@@ -480,7 +480,7 @@ final class WordleAI: Singleton {
             return try guessWithFallback(history: history, lang: lang, difficulty: difficulty,
                                          cheatAnswer: nil, turnIndex: turnIndex)
         }
-        throw NSError(domain: "WordleAI", code: -100, userInfo: [NSLocalizedDescriptionKey: "No Core ML model loaded"])
+        throw NSError(domain: "WordZapAI", code: -100, userInfo: [NSLocalizedDescriptionKey: "No Core ML model loaded"])
     }
     
     public func pickFirstGuessFromModel(lang: Language) throws -> String {
@@ -501,7 +501,7 @@ final class WordleAI: Singleton {
         guard !pool.isEmpty else { return lang == .en ? "rocky" : "שלומך" }
         
         let ud  = UserDefaults.standard
-        let key = "WordleAI.OpenerTokenRecent.v3.\(lang.rawValue)"
+        let key = "WordZapAI.OpenerTokenRecent.v3.\(lang.rawValue)"
         var recent = (ud.array(forKey: key) as? [Int] ?? []).filter { pool.contains($0) }
         let cooldown = Self.cooldownSize(poolCount: pool.count)
         if recent.count > cooldown { recent.removeFirst(recent.count - cooldown) }
@@ -636,7 +636,7 @@ final class WordleAI: Singleton {
 
 // MARK: - Helpers (opener + misc)
 
-private extension WordleAI {
+private extension WordZapAI {
     static func decodeWord(_ tokenId: Int, with tok: BPETokenizer) -> String {
         var s = tok.decode([tokenId]).lowercased()
         if s.first == " " { s.removeFirst() }
@@ -870,7 +870,7 @@ private extension WordleAI {
             
             var acc = Array(repeating: Character(" "), count: c.length)
             // quick global sanity: if any slot is huge and bans are light, this could explode;
-            // guard against pathological cases to avoid work (rare in practice for Wordle)
+            // guard against pathological cases to avoid work (rare in practice for WordZap)
             let roughSpace = slots.reduce(1) { min(Int.max, $0 * max(1, $1.count)) }
             if roughSpace > 500_000 { return nil } // too unconstrained → not "obvious"
             
@@ -908,7 +908,7 @@ private struct BossPresencePlan {
     var need: [Character:Int] = [:]
 }
 
-private extension WordleAI {
+private extension WordZapAI {
     func updateBossMemoryForTurn(lang: Language,
                                  solution: String,
                                  turnIndex: Int,
@@ -1017,7 +1017,7 @@ private extension WordleAI {
 
 // MARK: - KV path
 
-private extension WordleAI {
+private extension WordZapAI {
     func ensureBuffers(T: Int) {
         let curT1 = idsMA.shape.last?.intValue ?? -1
         if curT1 != T { idsMA = try! MLMultiArray(shape: [1, NSNumber(value: T)], dataType: .int32) }
@@ -1200,7 +1200,7 @@ private extension WordleAI {
     
     func prefillOnce(prompt: String) throws -> ([Float], [MLMultiArray], [MLMultiArray], Int) {
         guard let prefill else {
-            throw NSError(domain: "WordleAI", code: -200, userInfo: [NSLocalizedDescriptionKey: "Prefill not loaded"])
+            throw NSError(domain: "WordZapAI", code: -200, userInfo: [NSLocalizedDescriptionKey: "Prefill not loaded"])
         }
         let T = T_prefill ?? spec.maxT
         ensureBuffers(T: T)
@@ -1215,14 +1215,14 @@ private extension WordleAI {
             "input_ids": idsMA, "attention_mask": maskMA
         ]))
         guard let (logits, ks, vs) = Self.extractKVOutputs(from: out, vocab: spec.vocab, L: spec.numL)
-        else { throw NSError(domain: "WordleAI", code: -201, userInfo: [NSLocalizedDescriptionKey: "Bad prefill outputs"]) }
+        else { throw NSError(domain: "WordZapAI", code: -201, userInfo: [NSLocalizedDescriptionKey: "Bad prefill outputs"]) }
         Trace.log("ℹ️", "KV layers K=\(ks.count) V=\(vs.count)")
         return (logits, ks, vs, real)
     }
     
     func decodeOnce(nextId: Int) throws -> [Float] {
         guard let decode else {
-            throw NSError(domain: "WordleAI", code: -210, userInfo: [NSLocalizedDescriptionKey: "Decode not loaded"])
+            throw NSError(domain: "WordZapAI", code: -210, userInfo: [NSLocalizedDescriptionKey: "Decode not loaded"])
         }
         let T = T_decode ?? T_prefill ?? spec.maxT
         ensureBuffers(T: T)
@@ -1241,7 +1241,7 @@ private extension WordleAI {
         
         let out = try decode.prediction(from: MLDictionaryFeatureProvider(dictionary: dict))
         guard let (logits, ks, vs) = Self.extractKVOutputs(from: out, vocab: spec.vocab, L: spec.numL)
-        else { throw NSError(domain: "WordleAI", code: -211, userInfo: [NSLocalizedDescriptionKey: "Bad decode outputs"]) }
+        else { throw NSError(domain: "WordZapAI", code: -211, userInfo: [NSLocalizedDescriptionKey: "Bad decode outputs"]) }
         let (kAligned, vAligned, _) = alignKVsForDecode(ks: ks, vs: vs)
         pastK = kAligned; pastV = vAligned
         return logits
@@ -1250,12 +1250,12 @@ private extension WordleAI {
 
 // MARK: - Fallback path
 
-private extension WordleAI {
+private extension WordZapAI {
     func guessWithFallback(history: [GuessHistory], lang: Language, difficulty: AIDifficulty,
                            cheatAnswer: String?, turnIndex: Int) throws -> String
     {
         guard let model = fallbackModel else {
-            throw NSError(domain: "WordleAI", code: -300, userInfo: [NSLocalizedDescriptionKey: "No fallback model"])
+            throw NSError(domain: "WordZapAI", code: -300, userInfo: [NSLocalizedDescriptionKey: "No fallback model"])
         }
         let prompt = buildPrompt(history: history, lang: lang)
         var ids = encodePromptFallback(prompt)
@@ -1344,7 +1344,7 @@ private extension WordleAI {
             "input_ids": idsMA, "attention_mask": maskMA
         ]))
         let ma = out.featureNames.compactMap { out.featureValue(for: $0)?.multiArrayValue }.first
-        guard let logitsMA = ma else { throw NSError(domain: "WordleAI", code: -305, userInfo: [NSLocalizedDescriptionKey: "No logits output"]) }
+        guard let logitsMA = ma else { throw NSError(domain: "WordZapAI", code: -305, userInfo: [NSLocalizedDescriptionKey: "No logits output"]) }
         var logits = [Float](repeating: 0, count: logitsMA.count)
         for i in 0..<logitsMA.count { logits[i] = logitsMA[i].floatValue }
         logitsCache.set(inputIds, logits); return logits
@@ -1435,7 +1435,7 @@ private func normalizeFeedback(feedback: String, count: Int) -> [FBMark] {
 
 // MARK: - Masking helpers
 
-private extension WordleAI {
+private extension WordZapAI {
     func applySoftRepeatPenalty(
         at pos: Int,
         used: [Character: Int],
@@ -1623,7 +1623,7 @@ private extension WordleAI {
 
 // MARK: - Model utils & sampling
 
-extension WordleAI {
+extension WordZapAI {
     static func findOptionalModelURL(named name: String) -> URL? {
         if ModelStorage.modelExists(name) { if let u = try? ModelStorage.modelDir(name: name) { return u } }
         let b = Bundle.main
@@ -1639,7 +1639,7 @@ extension WordleAI {
             let candidates: [(String, String?)] = [
                 ("tokenizer","json"),("tokenizer",nil),("tokenizer_config","json"),("tokenizer_config",nil),
                 ("special_tokens_map","json"),("special_tokens_map",nil),("tokenizer","model"),
-                ("config","json"),("config",nil),("WordleGPT_runtime_spec","json"),("WordleGPT_runtime_spec",nil)
+                ("config","json"),("config",nil),("WordZapGPT_runtime_spec","json"),("WordZapGPT_runtime_spec",nil)
             ]
             for (name, ext) in candidates {
                 let u = (ext == nil) ? dir.appendingPathComponent(name) : dir.appendingPathComponent("\(name).\(ext!)")
@@ -1658,14 +1658,14 @@ extension WordleAI {
         let bundleCandidates: [(String, String?)] = [
             ("tokenizer","json"),("tokenizer",nil),("tokenizer_config","json"),("tokenizer_config",nil),
             ("special_tokens_map","json"),("special_tokens_map",nil),("tokenizer","model"),
-            ("config","json"),("config",nil),("WordleGPT_runtime_spec","json"),("WordleGPT_runtime_spec",nil)
+            ("config","json"),("config",nil),("WordZapGPT_runtime_spec","json"),("WordZapGPT_runtime_spec",nil)
         ]
         for (name, ext) in bundleCandidates { if let u = b.url(forResource: name, withExtension: ext) { return u } }
-        throw NSError(domain: "WordleAI", code: -11,
+        throw NSError(domain: "WordZapAI", code: -11,
                       userInfo: [NSLocalizedDescriptionKey: "Tokenizer not found near model, in Models/vX/, or in bundle."])
     }
     func buildPrompt(history: [GuessHistory], lang: Language) -> String {
-        let body = WordlePrompt.make(from: history)
+        let body = WordZapPrompt.make(from: history)
         guard useLangTags else { return body }
         return ((lang == .en) ? "<|en|>\n" : "<|he|>\n") + body
     }
@@ -1725,20 +1725,20 @@ extension WordleAI {
 
 // MARK: - Convenience Provider
 
-final class WordleAIProvider: Singleton {
-    private var loadTask: Task<WordleAI, Error>?
-    private var ai: WordleAI?
+final class WordZapAIProvider: Singleton {
+    private var loadTask: Task<WordZapAI, Error>?
+    private var ai: WordZapAI?
     
     static var aiWarmedup: Bool { shared.ai != nil ? !shared.ai!.needWarmup : false }
     
     private override init() {}
     
-    func sharedAsync() async -> WordleAI {
+    func sharedAsync() async -> WordZapAI {
         if let ai { return ai }
         do {
             if let t = loadTask { return try await t.value }
-            let t = Task(priority: .userInitiated) { () throws -> WordleAI in
-                let built = try WordleAI.make()
+            let t = Task(priority: .userInitiated) { () throws -> WordZapAI in
+                let built = try WordZapAI.make()
                 await MainActor.run { self.ai = built }
                 return built
             }

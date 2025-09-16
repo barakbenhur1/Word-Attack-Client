@@ -22,7 +22,7 @@ struct AIGameView<VM: WordViewModelForAI>: View {
     @EnvironmentObject private var premium: PremiumManager
     @EnvironmentObject private var adProvider: AdProvider
     
-    private enum Turn: Int  { case player = 0, ai = 1 }
+    private enum Turn: Int { case player = 0, ai = 1 }
     private enum GameState { case inProgress, lose, win }
     
     private let InterstitialAdInterval: Int = 7
@@ -37,8 +37,6 @@ struct AIGameView<VM: WordViewModelForAI>: View {
     private let fullHP :Int = 100
     private let hitPoints = 10
     private let noGuessHitPoints = 40
-    
-    @State private var pack = AIPackManager()
     
     @State private var vm = VM()
     @State private var keyboard = KeyboardHeightHelper()
@@ -66,7 +64,7 @@ struct AIGameView<VM: WordViewModelForAI>: View {
     @State private var aiMatrix: [[String]]
     @State private var aiColors: [[CharColor]]
     @State private var aiHP: Int
-    @State private var ai: WordleAIViewModel?
+    @State private var ai: AIViewModel?
     @State private var showPhrase: Bool = false
     @State private var showAiIntro: Bool
     @State private var aiDifficulty: AIDifficulty {
@@ -95,50 +93,8 @@ struct AIGameView<VM: WordViewModelForAI>: View {
     @State private var turn: Turn {
         didSet {
             switch turn {
-            case .player:
-                screenManager.keepScreenOn = false
-                let idx = current - 1
-                guard idx >= 0,
-                      aiMatrix.indices.contains(idx),
-                      aiColors.indices.contains(idx) else { break }
-                let guess   = aiMatrix[idx].joined()
-                let pattern = aiColors[idx].map { $0.getColor() }.joined()
-                ai?.saveToHistory(guess: (guess, pattern))
-
-            case .ai:
-                screenManager.keepScreenOn = true
-                let idx = current
-                guard matrix.indices.contains(idx),
-                      colors.indices.contains(idx),
-                      aiMatrix.indices.contains(idx),
-                      aiMatrix[idx].allSatisfy(\.isEmpty) else { break }
-                let guess   = matrix[idx].joined()
-                let pattern = colors[idx].map { $0.getColor() }.joined()
-                ai?.saveToHistory(guess: (guess, pattern))
-            }
-            
-            guard turn == .ai else { return }
-            
-            Task(priority: .high) {
-                guard let ai else { return }
-                let row = current // snapshot to avoid races
-                
-                let aiWord = await ai.getFeedback(with: aiDifficulty)
-                    .capitalizedFirst
-                    .toArray()
-                
-                try? await Task.sleep(nanoseconds: 1_000_000_000)
-                
-                var arr = [String](repeating: "", count: aiWord.count)
-                for i in 0..<aiWord.count {
-                    arr[i] = aiWord[i].returnChar(isFinal: i == aiWord.count - 1)
-                    try? await Task.sleep(nanoseconds: 500_000_000)
-                    await MainActor.run {
-                        if aiMatrix.indices.contains(row) {
-                            aiMatrix[row] = arr
-                        }
-                    }
-                }
+            case .player: screenManager.keepScreenOn = false
+            case .ai: screenManager.keepScreenOn = true
             }
         }
     }
@@ -172,15 +128,15 @@ struct AIGameView<VM: WordViewModelForAI>: View {
     }
     
     private func handleError() {
-        guard !vm.fatalError else { return showError = true }
+        guard !vm.fatalError else { showError = true; return }
         guard vm.word == .empty && vm.numberOfErrors > 0 else { return }
-        guard let email else { return closeViewAfterErorr() }
-        Task(priority: .userInitiated) { await vm.word(email: email) }
+        guard let email else { showError = true; return }
+        Task.detached(priority: .userInitiated) { await vm.word(email: email) }
     }
     
     private func handleStartup(email: String) async {
         await vm.word(email: email)
-        didStart = vm.word != .empty
+        await MainActor.run { didStart = vm.word != .empty }
     }
     
     private func backButtonTap() {
@@ -209,9 +165,7 @@ struct AIGameView<VM: WordViewModelForAI>: View {
         audio.stop()
         Task(priority: .userInitiated) {
             try? await Task.sleep(nanoseconds: 100_000_000)
-            await MainActor.run {
-                router.navigateBack()
-            }
+            await MainActor.run { router.navigateBack() }
         }
     }
     
@@ -223,11 +177,11 @@ struct AIGameView<VM: WordViewModelForAI>: View {
     private func chackWord(index i: Int, matrix: [[String]]) -> Bool {
         let guess = matrix[i].joined()
         
-        if guess.lowercased() == vm.word.value.lowercased() || i == rows - 1 {
+        if guess.lowercased() == vm.wordValue.lowercased() || i == rows - 1 {
             disabled = true
             audio.stop()
             
-            let correct = guess.lowercased() == vm.word.value.lowercased()
+            let correct = guess.lowercased() == vm.wordValue.lowercased()
             
             if correct {
                 Task(priority: .userInitiated) {
@@ -242,11 +196,16 @@ struct AIGameView<VM: WordViewModelForAI>: View {
             
             return false
         } else {
-            disabled = turn == .player
+            guard let value = Turn(rawValue: 1 - turn.rawValue) else { return false }
+            disabled = value == .ai
             
-            Task(priority: .userInitiated) {
+            Task(priority: .high) {
                 try? await Task.sleep(nanoseconds: 1_000_000_000)
-                await MainActor.run { withAnimation(.easeInOut(duration: 0.8)) { turn = .init(rawValue: 1 - turn.rawValue)! } }
+                await MainActor.run {
+                    withAnimation(.easeInOut) {
+                        turn = value
+                    }
+                }
             }
             
             return false
@@ -310,7 +269,7 @@ struct AIGameView<VM: WordViewModelForAI>: View {
         }
         
         guard turn != .player else { return }
-        withAnimation(.easeInOut(duration: 0.6)) { turn = .player }
+        withAnimation(.easeInOut) { turn = .player }
     }
     
     init() {
@@ -360,10 +319,10 @@ struct AIGameView<VM: WordViewModelForAI>: View {
         let difficulty = UserDefaults.standard.string(forKey: "aiDifficulty")
         
         switch difficulty ?? AIDifficulty.easy.name {
-        case AIDifficulty.easy.name: self.aiDifficulty = .easy
-        case AIDifficulty.medium.name: self.aiDifficulty = .medium
-        case AIDifficulty.hard.name: self.aiDifficulty = .hard
-        case AIDifficulty.boss.name: self.aiDifficulty = .boss
+        case AIDifficulty.easy.name:   aiDifficulty = .easy
+        case AIDifficulty.medium.name: aiDifficulty = .medium
+        case AIDifficulty.hard.name:   aiDifficulty = .hard
+        case AIDifficulty.boss.name:   aiDifficulty = .boss
         default: fatalError()
         }
     }
@@ -373,9 +332,8 @@ struct AIGameView<VM: WordViewModelForAI>: View {
             await MainActor.run { withAnimation(.easeInOut(duration: 2.5)) { showAiIntro = true } }
             try? await Task.sleep(nanoseconds: 3_000_000_000)
             await MainActor.run { withAnimation(.easeInOut(duration: 1.5)) { showAiIntro = false } }
-            await MainActor.run {
-                aiIntroDone = true
-            }
+            try? await Task.sleep(nanoseconds: 1_500_000_000)
+            await MainActor.run { aiIntroDone = true }
         }
     }
     
@@ -383,10 +341,10 @@ struct AIGameView<VM: WordViewModelForAI>: View {
         guard playerHP > 0 else { return }
         guard aiHP == 0 else { return }
         switch aiDifficulty {
-        case .easy: withAnimation { aiDifficulty = .medium }
+        case .easy:   withAnimation { aiDifficulty = .medium }
         case .medium: withAnimation { aiDifficulty = .hard }
-        case .hard: withAnimation { aiDifficulty = .boss }
-        case .boss: gameState = .win
+        case .hard:   withAnimation { aiDifficulty = .boss }
+        case .boss:   gameState = .win
         }
         guard gameState == .inProgress else { return  }
         aiHP = fullHP
@@ -417,9 +375,10 @@ struct AIGameView<VM: WordViewModelForAI>: View {
         guard let lang = language,
               let language = Language(rawValue: lang) else { return }
         ai = .init(language: language)
+        let aiDifficulty = aiDifficulty
+        let playerHP =     playerHP
         UserDefaults.standard.set(aiDifficulty.name, forKey: "aiDifficulty")
         UserDefaults.standard.set(playerHP, forKey: "playerHP")
-        let aiDifficulty = aiDifficulty
         Task(priority: .utility) { await SharedStore.writeAIStatsAsync(.init(name: aiDifficulty.name, imageName: aiDifficulty.image)) }
     }
     
@@ -432,31 +391,89 @@ struct AIGameView<VM: WordViewModelForAI>: View {
     
     private func handleEndFetchAnimation<T: Equatable>(oldValue: T, newValue: T) {
         handleAiIntroToggle(oldValue: oldValue, newValue: newValue)
-        Task(priority: .utility) {
+        guard let ai else { return }
+        Task.detached(priority: .utility) {
             try? await Task.sleep(nanoseconds: 8_000_000_000)
-            ai?.startShowingPhrase()
+            await MainActor.run { ai.startShowingPhrase() }
+        }
+    }
+    
+    private func getAiWord() {
+        guard let ai else { return }
+        let row = current
+        let aiDifficulty = aiDifficulty
+        var arr = [String](repeating: "", count: length)
+        
+        Task.detached(priority: .high) {
+            let aiWord = await ai.getFeedback(for: aiDifficulty).capitalizedFirst.toArray()
+            
+            try? await Task.sleep(nanoseconds: 500_000_000)
+            
+            for i in 0..<aiWord.count {
+                arr[i] = aiWord[i].returnChar(isFinal: i == aiWord.count - 1)
+                
+                try? await Task.sleep(nanoseconds: 500_000_000)
+                
+                await MainActor.run {
+                    if aiMatrix.indices.contains(row) {
+                        aiMatrix[row] = arr
+                    }
+                }
+            }
+        }
+    }
+    
+    private func saveToHistory(for type: Turn) {
+        switch turn {
+        case .player:
+            let idx = current
+            guard matrix.indices.contains(idx),
+                  colors.indices.contains(idx),
+                  aiMatrix.indices.contains(idx),
+                  aiMatrix[idx].allSatisfy(\.isEmpty) else { return }
+            
+            let guess   = matrix[idx].joined()
+            let pattern = colors[idx].map { $0.getColor() }.joined()
+            ai?.saveToHistory(guess: (guess, pattern))
+        case .ai:
+            let idx = current - 1
+            guard idx >= 0,
+                  aiMatrix.indices.contains(idx),
+                  aiColors.indices.contains(idx) else { return }
+            
+            let guess   = aiMatrix[idx].joined()
+            let pattern = aiColors[idx].map { $0.getColor() }.joined()
+            ai?.saveToHistory(guess: (guess, pattern))
         }
     }
     
     private func calculatePlayerTurn(i: Int) {
         guard i == current else { return }
         colors[i] = vm.calculateColors(with: matrix[i])
-        
+        saveToHistory(for: .player)
         if chackWord(index: i, matrix: matrix) {
             audio.playSound(sound: "success", type: "wav")
             makeHitOnAI(hitPoints: rows * hitPoints - current * hitPoints)
-        } else if current == rows - 1 {
-            Task.detached(priority: .userInitiated) {
-                try? await Task.sleep(nanoseconds: 1_000_000_000)
-                await MainActor.run { withAnimation(.easeInOut(duration: 0.6).delay(0.5)) { turn = .ai } }
+        } else {
+            if current == rows - 1 {
+                Task(priority: .high) {
+                    try? await Task.sleep(nanoseconds: 1_000_000_000)
+                    await MainActor.run {
+                        withAnimation(.easeInOut) {
+                            turn = .ai
+                        }
+                    }
+                }
             }
+            
+            getAiWord()
         }
     }
     
     private func calculateAITurn(i: Int) {
         guard i == current else { return }
         aiColors[i] = vm.calculateColors(with: aiMatrix[i])
-        
+        saveToHistory(for: .ai)
         if chackWord(index: i, matrix: aiMatrix) {
             audio.playSound(sound: "fail", type: "wav")
             makeHitOnPlayer(hitPoints: rows * hitPoints - current * hitPoints)
@@ -476,7 +493,9 @@ struct AIGameView<VM: WordViewModelForAI>: View {
     }
     
     private func initalConfigirationForWord() {
-        Task(priority: .userInitiated) {
+        Task(priority: .high) {
+            await ai?.addDetachedFirstGuess(with: firstGuess)
+           
             try? await Task.sleep(nanoseconds: (keyboard.show ? 0 : 500_000_000))
             audio.playSound(sound: "backround",
                             type: "mp3",
@@ -488,7 +507,6 @@ struct AIGameView<VM: WordViewModelForAI>: View {
         
         disabled = false
         current = 0
-        ai?.addDetachedFirstGuess(with: firstGuess)
     }
     
     var body: some View {
@@ -509,7 +527,9 @@ struct AIGameView<VM: WordViewModelForAI>: View {
             background()
             ZStack(alignment: .top) {
                 topBar()
+                    .padding(.top, 4)
                 game(proxy: proxy)
+                    .padding(.top, 5)
                 overlayViews(proxy: proxy)
             }
         }
@@ -738,7 +758,7 @@ struct AIGameView<VM: WordViewModelForAI>: View {
             ZStack(alignment: .topLeading) {
                 ZStack(alignment: .topLeading) { gameBody(proxy: proxy) }
                     .ignoresSafeArea(.keyboard)
-                    .task { await handleStartup(email: email) }
+                    .onAppear { Task.detached(priority: .userInitiated, operation: { await handleStartup(email: email) } ) }
                     .onChange(of: vm.numberOfErrors, handleError)
                     .onChange(of: vm.word, handleWordChange)
                     .ignoresSafeArea(.keyboard)

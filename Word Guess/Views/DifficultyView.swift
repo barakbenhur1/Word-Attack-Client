@@ -200,6 +200,7 @@ struct DifficultyView: View {
                 }
             }
             .shadow(radius: premium.isPremium ? 4 : 0)
+            .attentionIfNew(isActive: $premium.justDone)
         }
     }
     

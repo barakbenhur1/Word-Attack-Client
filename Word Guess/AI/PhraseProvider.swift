@@ -25,7 +25,7 @@ final class PhraseProvider: ObservableObject {
         didSet {
             if showPhrase { currentPhrase = nextPhrase() }
             guard !blocked else { return blocked = false }
-            Task(priority: .utility) { [weak self] in
+            Task.detached(priority: .utility) { @MainActor [weak self] in
                 guard let self else { return }
                 try? await Task.sleep(nanoseconds: showPhrase ? showPhraseTime : hidePhraseTime)
                 withAnimation { self.showPhrase.toggle() }
@@ -69,10 +69,16 @@ final class PhraseProvider: ObservableObject {
     func startPushingPhrases(every seconds: TimeInterval = 60) {
         timer?.invalidate()
         // Fire immediately once so the widget updates right away.
-        Task { await pushOnce() }
+        Task.detached { @MainActor [weak self] in
+            guard let self else { return }
+            await pushOnce()
+        }
         
         timer = Timer.scheduledTimer(withTimeInterval: seconds, repeats: true) { [weak self] _ in
-            Task { await self?.pushOnce() }
+            Task.detached { @MainActor [weak self] in
+                guard let self else { return }
+                await pushOnce()
+            }
         }
         RunLoop.main.add(timer!, forMode: .common)
     }

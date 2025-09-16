@@ -14,14 +14,14 @@ enum AIPack {
     static let ghTag   = "ML_Models"
     static var ghToken: String? { nil }
     static let expectedAssets: [String] = [
-        "WordleGPT_prefill.mlmodelc.zip",
-        "WordleGPT_decode.mlmodelc.zip",
+        "WordZapGPT_prefill.mlmodelc.zip",
+        "WordZapGPT_decode.mlmodelc.zip",
         "tokenizer.model",
         "tokenizer.json",
         "tokenizer_config.json",
         "special_tokens_map.json",
         "config.json",
-        "WordleGPT_runtime_spec.json"
+        "WordZapGPT_runtime_spec.json"
     ]
     static let defaultsKey = "AIPackVersion"
 }

@@ -33,6 +33,7 @@ final class PremiumManager: PremiumManagerProtocol {
     @Published var trialText:        String? = nil
     @Published var isPurchasing:     Bool = false
     @Published var isPremium:        Bool = false
+    @Published var justDone:         Bool = false
 
     // MARK: - Config (your product IDs)
     private let monthlyID = "WordZap.Premium.Monthly"
@@ -101,6 +102,7 @@ final class PremiumManager: PremiumManagerProtocol {
                 if let transaction: StoreKit.Transaction = verify(verification) {
                     await transaction.finish()
                     await updateEntitlement()
+                    self.justDone = true
                 }
             case .userCancelled:
                 break
@@ -181,6 +183,8 @@ final class PremiumManager: PremiumManagerProtocol {
                 if t.productType == .autoRenewable { active = true }
             }
         }
-        await MainActor.run { self.isPremium = active }
+        await MainActor.run {
+            self.isPremium = active
+        }
     }
 }
