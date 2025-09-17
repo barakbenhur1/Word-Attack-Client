@@ -64,6 +64,10 @@ struct GameView<VM: WordViewModel>: View {
     
     private func handleError() {
         guard vm.isError else { return }
+        showError = true
+    }
+    
+    private func closeAfterError() {
         keyboard.show = true
         audio.stop()
         router.navigateBack()
@@ -75,6 +79,22 @@ struct GameView<VM: WordViewModel>: View {
         initalConfigirationForWord()
         guard diffculty != .tutorial && diffculty != .ai else { return }
         Task(priority: .utility) { await SharedStore.writeDifficultyStatsAsync(.init(answers: vm.word.number, score: vm.score), for: diffculty.liveValue) }
+    }
+    
+    private func handleTimeAttackIfNeeded() {
+        guard diffculty != .tutorial else { return }
+        guard endFetchAnimation && vm.word.isTimeAttack else { return }
+        timeAttackAnimationDone = false
+        withAnimation(.interpolatingSpring(.smooth)) { timeAttackAnimation = true }
+        queue.asyncAfter(deadline: .now() + 1) {
+            timeAttackAnimationDone = true
+            timeAttackAnimation = false
+            queue.asyncAfter(deadline: .now() + 0.3) {
+                audio.playSound(sound: "tick",
+                                type: "wav",
+                                loop: true)
+            }
+        }
     }
     
     private func handleGuessworkChage() {
@@ -107,7 +127,8 @@ struct GameView<VM: WordViewModel>: View {
         await vm.word(diffculty: diffculty, email: email)
     }
     
-    private func handleTimeAttack() {
+    private func afterTimeAttack() {
+        guard !vm.word.isTimeAttack else { return }
         guard !keyboard.show || vm.word.number == 0 || vm.word.number % InterstitialAdInterval != 0 else { return }
         initalConfigirationForWord()
     }
@@ -135,7 +156,7 @@ struct GameView<VM: WordViewModel>: View {
                          type: .fail,
                          isPresented: $showError,
                          actionText: "OK",
-                         action: handleError,
+                         action: closeAfterError,
                          message: { Text("something went wrong") })
     }
     
@@ -168,7 +189,7 @@ struct GameView<VM: WordViewModel>: View {
     }
     
     @ViewBuilder private func gameBody() -> some View {
-        if !vm.isError && vm.word != .empty && timeAttackAnimationDone {
+        if !vm.isError && vm.word != .empty {
             VStack(spacing: 8) {
                 ZStack(alignment: .bottom) {
                     ZStack(alignment: .top) {
@@ -347,7 +368,8 @@ struct GameView<VM: WordViewModel>: View {
                     .onChange(of: vm.isError, handleError)
                     .onChange(of: vm.word.word, handleWordChange)
                     .onChange(of: vm.word.word.guesswork, handleGuessworkChage)
-                    .onChange(of: vm.word.isTimeAttack, handleTimeAttack)
+                    .onChange(of: vm.word.isTimeAttack, afterTimeAttack)
+                    .onChange(of: endFetchAnimation, handleTimeAttackIfNeeded)
                     .onAppear { onAppear(email: email) }
             }
             .padding(.top, 44)
@@ -355,29 +377,18 @@ struct GameView<VM: WordViewModel>: View {
     }
     
     private func initalConfigirationForWord() {
-        guard vm.word.isTimeAttack else {
-            queue.asyncAfter(deadline: .now() + (keyboard.show ? 0 : 0.5)) {
-                guard diffculty != .tutorial else { return }
-                audio.playSound(sound: "backround",
-                                type: "mp3",
-                                loop: true)
-            }
-            queue.asyncAfter(deadline: .now() + 2) { endFetchAnimation = true }
-            return current = vm.word.word.guesswork.count
-        }
-        timeAttackAnimationDone = false
-        queue.asyncAfter(deadline: .now() + 2) {
-            endFetchAnimation = true
-            withAnimation(.interpolatingSpring(.smooth)) { timeAttackAnimation = true }
-            queue.asyncAfter(deadline: .now() + 1) {
-                timeAttackAnimationDone = true
-                timeAttackAnimation = false
-                queue.asyncAfter(deadline: .now() + 0.3) {
-                    current = vm.word.word.guesswork.count
-                    audio.playSound(sound: "tick",
-                                    type: "wav",
-                                    loop: true)
-                }
+        guard diffculty != .tutorial else { return }
+        Task(priority: .high) {
+            try? await Task.sleep(nanoseconds: (keyboard.show ? 0 : 500_000_000))
+            audio.playSound(sound: "backround",
+                            type: "mp3",
+                            loop: true)
+            
+            //            try? await Task.sleep(nanoseconds: 1_500_000_000)
+            await MainActor.run {
+                endFetchAnimation = true
+                endFetchAnimation = true
+                current = vm.word.word.guesswork.count
             }
         }
     }
@@ -442,12 +453,12 @@ struct GameView<VM: WordViewModel>: View {
             let correct = guess.lowercased() == vm.word.word.value.lowercased()
             
             guard diffculty != .tutorial else {
-                return queue.asyncAfter(wallDeadline: .now() + 0.2) {
+                return queue.asyncAfter(deadline: .now() + 0.2) {
                     let sound = correct ? "success" : "fail"
                     audio.playSound(sound: sound,
                                     type: "wav")
                     
-                    return queue.asyncAfter(wallDeadline: .now() + 1) {
+                    return queue.asyncAfter(deadline: .now() + 1) {
                         router.navigateBack()
                     }
                 }
@@ -463,7 +474,7 @@ struct GameView<VM: WordViewModel>: View {
             //                await MainActor.run { cleanCells = true }
             //            }
             
-            queue.asyncAfter(wallDeadline: .now() + 0.8) {
+            queue.asyncAfter(deadline: .now() + 0.8) {
                 let sound = correct ? "success" : "fail"
                 audio.playSound(sound: sound,
                                 type: "wav")

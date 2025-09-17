@@ -382,32 +382,6 @@ private struct TileAvailability: ViewModifier {
         content
             .saturation(isEnabled ? 1.0 : 0.05)
             .opacity(isEnabled ? 1.0 : 0.6)
-            .overlay( innerShadow(corner: corner,
-                                  color: .black.opacity(isEnabled ? 0.0 : 0.35),
-                                  radius: 8, x: 0, y: 2) )
-            .overlay( innerHighlight(corner: corner,
-                                     color: .white.opacity(isEnabled ? 0.0 : 0.20),
-                                     radius: 8, x: 0, y: -2) )
-    }
-    private func innerShadow(corner: CGFloat, color: Color, radius: CGFloat, x: CGFloat, y: CGFloat) -> some View {
-        RoundedRectangle(cornerRadius: corner, style: .continuous)
-            .stroke(color, lineWidth: 4)
-            .blur(radius: radius)
-            .offset(x: x, y: y)
-            .mask(
-                RoundedRectangle(cornerRadius: corner, style: .continuous)
-                    .fill(LinearGradient(colors: [.black, .clear], startPoint: .top, endPoint: .bottom))
-            )
-    }
-    private func innerHighlight(corner: CGFloat, color: Color, radius: CGFloat, x: CGFloat, y: CGFloat) -> some View {
-        RoundedRectangle(cornerRadius: corner, style: .continuous)
-            .stroke(color, lineWidth: 3)
-            .blur(radius: radius)
-            .offset(x: x, y: y)
-            .mask(
-                RoundedRectangle(cornerRadius: corner, style: .continuous)
-                    .fill(LinearGradient(colors: [.white, .clear], startPoint: .top, endPoint: .bottom))
-            )
     }
 }
 private extension View {
