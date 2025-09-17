@@ -317,11 +317,13 @@ struct GameView<VM: WordViewModel>: View {
                 // Rows
                 ForEach(0..<rows, id: \.self) { i in
                     ZStack {
+                        let gainFocus = Binding(get: { current == i && endFetchAnimation && !timeAttackAnimation && timeAttackAnimationDone },
+                                                set: { _ in })
                         WordView(cleanCells: $cleanCells,
                                  current: $current,
                                  length: length,
                                  word: $matrix[i],
-                                 gainFocus: Binding(get: { current == i && endFetchAnimation }, set: { _ in }),
+                                 gainFocus: gainFocus,
                                  colors: $colors[i]) {
                             guard i == current else { return }
                             nextLine(i: i)
