@@ -42,10 +42,10 @@ struct SubscriptionPaywallView: View {
             VStack(spacing: 18) {
                 header
                 
-                FeatureRow(icon: "sparkles",   text: "Exclusive Mini-Games – Access fun and challenging modes only in the Hub.")
-                FeatureRow(icon: "crown.fill", text: "Play unique twists that go beyond regular gameplay.")
-                FeatureRow(icon: "bolt.fill",  text: "Compete with other premium players for top ranks.")
-                FeatureRow(icon: "umbrella",   text: "Ad-Free Play – Smooth, uninterrupted gaming inside the Hub.")
+                FeatureRow(icon: "sparkles",   text: "Exclusive Mini-Games – Access fun and challenging modes only in the Hub.".localized)
+                FeatureRow(icon: "crown.fill", text: "Play unique twists that go beyond regular gameplay.".localized)
+                FeatureRow(icon: "bolt.fill",  text: "Compete with other premium players for top ranks.".localized)
+                FeatureRow(icon: "umbrella",   text: "Ad-Free Play – Smooth, uninterrupted gaming inside the Hub.".localized)
                 
                 PlanPickerHubStyle(
                     selected: $selected,
@@ -126,7 +126,7 @@ struct SubscriptionPaywallView: View {
         } label: {
             HStack(spacing: 10) {
                 Image(systemName: "lock.open.fill")
-                Text(ctaText(for: selected, trialText: premium.trialText))
+                Text(ctaText(for: selected, trialText: premium.trialText).localized)
                     .fontWeight(.semibold)
                     .monospacedDigit()
             }
@@ -190,8 +190,8 @@ struct SubscriptionPaywallView: View {
     
     private func ctaText(for plan: PremiumPlan, trialText: String?) -> String {
         switch plan {
-        case .monthly: return trialText.map { "Start \($0)" } ?? "Subscribe Monthly"
-        case .yearly:  return trialText.map { "Start \($0)" } ?? "Subscribe Yearly"
+        case .monthly: return trialText.map { "Start \($0)" } ?? "Subscribe Monthly".localized
+        case .yearly:  return trialText.map { "Start \($0)" } ?? "Subscribe Yearly".localized
         }
     }
 }
@@ -267,9 +267,9 @@ private struct PlanPickerHubStyle: View {
         VStack(spacing: 12) {
             planRow(.yearly,
                     title: "Yearly",
-                    subtitle: "Just \(formattedPerMonth(from: yearlyPrice))/mo",
+                    subtitle: "\("Just".localized) \(formattedPerMonth(from: yearlyPrice).localized)\("/mo".localized)",
                     price: yearlyPrice,
-                    badge: yearlyBadgeText ?? "Best value")
+                    badge: yearlyBadgeText ?? "Best value".localized)
             planRow(.monthly,
                     title: "Monthly",
                     subtitle: nil,
@@ -307,7 +307,7 @@ private struct PlanPickerHubStyle: View {
                 
                 VStack(alignment: .leading, spacing: 2) {
                     HStack(spacing: 8) {
-                        Text(title).font(.headline.weight(.semibold)).foregroundStyle(.white)
+                        Text(title.localized).font(.headline.weight(.semibold)).foregroundStyle(.white)
                         if let badge {
                             Text(badge)
                                 .font(.caption2.weight(.bold))
@@ -322,13 +322,13 @@ private struct PlanPickerHubStyle: View {
                         }
                     }
                     if let subtitle {
-                        Text(subtitle)
+                        Text(subtitle.localized)
                             .font(.caption)
                             .foregroundStyle(.white.opacity(0.65))
                     }
                 }
                 Spacer()
-                Text(price)
+                Text(price.localized)
                     .font(.headline.monospacedDigit())
                     .foregroundStyle(.white)
             }
@@ -358,14 +358,27 @@ private struct PlanPickerHubStyle: View {
         .accessibilityLabel("\(title) plan \(price)")
     }
     
-    private func formattedPerMonth(from yearly: String) -> String {
-        let digits = yearly.replacingOccurrences(of: "[^0-9.]", with: "", options: .regularExpression)
-        if let value = Double(digits) {
-            let perMonth = value / 12.0
-            let number = NSNumber(value: perMonth)
-            return NumberFormatter.currencyIL.string(from: number) ?? "₪—"
+    private func formattedPerMonth(from yearly: String, locale: Locale = .current) -> String {
+        // Extract only digits, dots, and commas
+        let digits = yearly.replacingOccurrences(of: "[^0-9.,]", with: "", options: .regularExpression)
+        // Normalize commas to dots for Double parsing
+        let normalized = digits.replacingOccurrences(of: ",", with: ".")
+        
+        guard let value = Double(normalized) else {
+            let nf = NumberFormatter()
+            nf.numberStyle = .currency
+            nf.locale = locale
+            return nf.string(from: 0) ?? nf.currencySymbol + "—"
         }
-        return "₪—"
+        
+        let perMonth = value / 12.0
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.locale = locale
+        formatter.maximumFractionDigits = 2
+        formatter.minimumFractionDigits = 0
+        
+        return formatter.string(from: NSNumber(value: perMonth)) ?? formatter.currencySymbol + "—"
     }
 }
 

@@ -74,30 +74,55 @@ public struct PremiumHubView: View {
                            startPoint: .topLeading, endPoint: .bottomTrailing)
             .ignoresSafeArea()
             
-            ScrollView(.vertical, showsIndicators: false) {
-                VStack(alignment: .leading, spacing: 18) {
-                    Text("Discover letters in tactile mini-games. Use them to solve the word.")
-                        .font(.system(.title3, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.7))
-                        .padding(.top, 8)
-                    
-                    Grid3x3(hub: hub, presentedSlot: $presentedSlot, engine: engine)
-                    
-                    if !hub.discoveredLetters.isEmpty {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Available letters")
-                                .font(.footnote.weight(.semibold))
-                                .foregroundStyle(.white.opacity(0.7))
-                            DiscoveredBeltView(letters: Array(hub.discoveredLetters).sorted())
-                        }
-                        .padding(.top, 4)
-                    } else {
-                        Text("No letters yet")
-                            .font(.subheadline)
-                            .foregroundStyle(.white.opacity(0.6))
+            VStack {
+                ScrollView(.vertical, showsIndicators: false) {
+                    VStack(alignment: .leading, spacing: 18) {
+                        Text("Discover letters in tactile mini-games. Use them to solve the word.")
+                            .font(.system(.title3, design: .rounded))
+                            .foregroundStyle(.white.opacity(0.7))
+                            .padding(.top, 8)
+                        
+                        Grid3x3(hub: hub, presentedSlot: $presentedSlot, engine: engine)
+                        
+                        if !hub.discoveredLetters.isEmpty {
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("Available letters")
+                                    .font(.footnote.weight(.semibold))
+                                    .foregroundStyle(.white.opacity(0.7))
+                                DiscoveredBeltView(letters: Array(hub.discoveredLetters).sorted())
+                            }
                             .padding(.top, 4)
+                        } else {
+                            Text("No letters yet")
+                                .font(.subheadline)
+                                .foregroundStyle(.white.opacity(0.6))
+                                .padding(.top, 4)
+                        }
+                        
+                        if !UIDevice.isPad {
+                            Button { lightTap(engine) } label: {
+                                HStack {
+                                    Text("Find letters in mini-games")
+                                    Spacer()
+                                    Image(systemName: language == "he" ? "arrow.left" : "arrow.right")
+                                }
+                                .font(.system(.headline, design: .rounded))
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 16)
+                                .frame(height: 56)
+                                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                                .overlay(RoundedRectangle(cornerRadius: 18).stroke(.white.opacity(0.08)))
+                            }
+                            .padding(.top, 8)
+                        }
                     }
-                    
+                    .padding(.horizontal, 12)
+                    .padding(.bottom, 28)
+                    .disabled(hub.vm.word == .empty)
+                    .grayscale(hub.vm.word == .empty ? 1 : 0)
+                }
+                
+                if UIDevice.isPad {
                     Button { lightTap(engine) } label: {
                         HStack {
                             Text("Find letters in mini-games")
@@ -112,11 +137,8 @@ public struct PremiumHubView: View {
                         .overlay(RoundedRectangle(cornerRadius: 18).stroke(.white.opacity(0.08)))
                     }
                     .padding(.top, 8)
+                    .padding(.bottom, 80)
                 }
-                .padding(.horizontal, 12)
-                .padding(.bottom, 28)
-                .disabled(hub.vm.word == .empty)
-                .grayscale(hub.vm.word == .empty ? 1 : 0)
             }
         }
         .environmentObject(hub.vm)
@@ -424,10 +446,10 @@ final public class PremiumHubModel: ObservableObject {
         self.gameHistory = []
         self.lastWordLetterFoundAt = Date()
         if let email {
-            Task(priority: .userInitiated) { [weak self] in
+            Task.detached(priority: .userInitiated) { [weak self] in
                 guard let self else { return }
+                guard let solved = await vm.getScore(email: email) else { await vm.word(email: email); return }
                 await vm.word(email: email)
-                guard let solved = await vm.getScore(email: email) else { return }
                 UserDefaults.standard.set(solved.value, forKey: "wins_count")
                 UserDefaults.standard.set(solved.rank, forKey: "wins_rank")
                 await MainActor.run { [weak self] in
@@ -931,6 +953,7 @@ private struct HubTutorialOverlay: View {
                     Label("Tap a tile to play a mini-game and collect letters.", systemImage: "square.grid.3x3")
                     Label("The center button starts the main game once you have the letters.", systemImage: "circle.grid.2x1.fill")
                     Label("Timer at the top: swipe it to reset the round.", systemImage: "timer")
+                    Label("Tap the badge to view the leaderboard.", systemImage: "list.number")
                 }
                 .foregroundStyle(.white.opacity(0.9))
                 .labelStyle(.titleAndIcon)

@@ -35,6 +35,17 @@
         }
       }
     },
+    "/mo" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "/חודש"
+          }
+        }
+      }
+    },
     "%@ plan %@" : {
       "localizations" : {
         "en" : {
@@ -127,14 +138,8 @@
         }
       }
     },
-    "👋 logout" : {
+    "👋 Logout" : {
       "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "👋 Logout"
-          }
-        },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
@@ -219,6 +224,23 @@
         }
       }
     },
+    "Ad-Free Play – Smooth, uninterrupted gaming inside the Hub." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ad-Free Play – Smooth, uninterrupted gaming experience."
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "חוויה חלקה ונטולת פרסומות"
+          }
+        }
+      }
+    },
     "Adjective annihilator" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -265,6 +287,7 @@
     },
     "ai" : {
       "extractionState" : "manual",
+      "generatesSymbol" : false,
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -450,6 +473,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "בסיסי"
+          }
+        }
+      }
+    },
+    "Best value" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ערך הכי טוב"
           }
         }
       }
@@ -709,6 +743,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "קטסטרופת פסיקים"
+          }
+        }
+      }
+    },
+    "Compete with other premium players for top ranks." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "התחרה עם שחקני פרימיום אחרים על המקום הראשון."
           }
         }
       }
@@ -1019,14 +1064,8 @@
         }
       }
     },
-    "Difficulty" : {
+    "DIFFICULTY" : {
       "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "DIFICULTY"
-          }
-        },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
@@ -1222,6 +1261,17 @@
         }
       }
     },
+    "Exclusive Mini-Games – Access fun and challenging modes only in the Hub." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מיני משחקים יחודיים - גישה למצבי משחק מהנים ומאתגרים רק בהיכל."
+          }
+        }
+      }
+    },
     "Exit" : {
       "localizations" : {
         "he" : {
@@ -1316,6 +1366,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "המילה האחרונה"
+          }
+        }
+      }
+    },
+    "Finalizing…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מסיים…"
           }
         }
       }
@@ -1467,7 +1528,7 @@
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "לך לפרימיום"
+            "value" : "לך על פרימיום"
           }
         }
       }
@@ -1575,7 +1636,7 @@
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "נוחש"
+            "value" : "נוחשו"
           }
         }
       }
@@ -1910,6 +1971,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "ז׳רגון תקוע"
+          }
+        }
+      }
+    },
+    "Just" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "רק"
           }
         }
       }
@@ -2347,6 +2419,17 @@
         }
       }
     },
+    "Monthly" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "חודשי"
+          }
+        }
+      }
+    },
     "Morph master" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2429,6 +2512,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "שגיאת רשת"
+          }
+        }
+      }
+    },
+    "NEW" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "חדש"
           }
         }
       }
@@ -2905,6 +2999,16 @@
         }
       }
     },
+    "Pick a challenge to begin" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "בחר אתגר להתחיל"
+          }
+        }
+      }
+    },
     "Place" : {
       "localizations" : {
         "he" : {
@@ -2942,6 +3046,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "שחק סיבובי פרימיום בכדי לטפס בדירוג."
+          }
+        }
+      }
+    },
+    "Play unique twists that go beyond regular gameplay." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "שחק במצבי משחק מיוחדים שהולכים מעבר למשחק הרגיל"
           }
         }
       }
@@ -3372,22 +3487,6 @@
         }
       }
     },
-    "Scoreboard" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "LEADERBOARD"
-          }
-        },
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "טבלת דירוג"
-          }
-        }
-      }
-    },
     "SCOREBOARD" : {
       "localizations" : {
         "en" : {
@@ -3751,6 +3850,28 @@
         }
       }
     },
+    "Subscribe Monthly" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "תוכנית חודשית"
+          }
+        }
+      }
+    },
+    "Subscribe Yearly" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "תוכנית שנתית"
+          }
+        }
+      }
+    },
     "Supreme" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -3902,11 +4023,21 @@
         }
       }
     },
+    "Tap the badge to view the leaderboard." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הקש על הסמל כדי לצפות בטבלת הדירוג."
+          }
+        }
+      }
+    },
     "Taps: %lld/%lld" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
-            "state" : "new",
+            "state" : "translated",
             "value" : "Taps: %1$lld/%2$lld"
           }
         },
@@ -4077,10 +4208,16 @@
     },
     "Total" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Out of"
+          }
+        },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "סך הכל"
+            "value" : "מתוך"
           }
         }
       }
@@ -4497,6 +4634,17 @@
         }
       }
     },
+    "Yearly" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "שנתי"
+          }
+        }
+      }
+    },
     "Yes" : {
       "localizations" : {
         "he" : {
@@ -4661,5 +4809,5 @@
       }
     }
   },
-  "version" : "1.0"
+  "version" : "1.1"
 }

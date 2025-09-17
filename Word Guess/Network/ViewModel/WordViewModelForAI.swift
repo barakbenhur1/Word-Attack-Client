@@ -40,12 +40,12 @@ class WordViewModelForAI: ViewModel {
     
     func word(email: String) async {
         let value: SimpleWord? = await provider.word(email: email)
-        guard let value else { return await handleError() }
+        guard let value else { await handleError(); return }
         await MainActor.run { [weak self] in
             guard let self else { return }
             Trace.log("🛟", "word is \(value.value)", Fancy.mag)
-            word = value
             errorCount = 0
+            word = value
         }
     }
     
@@ -53,15 +53,13 @@ class WordViewModelForAI: ViewModel {
     func perIndexCandidatesSparse(matrix: [[String]], colors: [[CharColor]],
                                   aiMatrix: [[String]], aiColors: [[CharColor]]) -> [BestGuess] {
         return BestGuessProducerProvider.guesser.perIndexCandidatesSparse(matrix: matrix, colors: colors,
-                                                                aiMatrix: aiMatrix, aiColors: aiColors,
-                                                                /*debug: true*/)
+                                                                          aiMatrix: aiMatrix, aiColors: aiColors,
+                                                                          /*debug: true*/)
     }
     
-    private func handleError() async {
-        await MainActor.run { [weak self] in
-            guard let self else { return }
-            word = .empty
-            errorCount += 1
-        }
+    @MainActor
+    private func handleError() {
+        errorCount += 1
+        word = .empty
     }
 }

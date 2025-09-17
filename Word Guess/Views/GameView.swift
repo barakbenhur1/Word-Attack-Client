@@ -9,6 +9,26 @@ import SwiftUI
 import CoreData
 import Combine
 
+// MARK: - Text Theme Helpers
+
+private enum TextTone { case primary, secondary, tertiary, accent }
+
+private extension View {
+    @inline(__always)
+    func themedText(_ tone: TextTone) -> some View {
+        switch tone {
+        case .primary:   return self.foregroundStyle(.white)                // crisp white
+        case .secondary: return self.foregroundStyle(.white.opacity(0.78))  // soft white
+        case .tertiary:  return self.foregroundStyle(.white.opacity(0.58))  // dimmer white
+        case .accent:    return self.foregroundStyle(Color(red: 0.98, green: 0.85, blue: 0.37)) // soft gold
+        }
+    }
+    @inline(__always)
+    func softTextShadow() -> some View {
+        shadow(color: .black.opacity(0.55), radius: 2, x: 0, y: 1)
+    }
+}
+
 struct GameView<VM: WordViewModel>: View {
     @EnvironmentObject private var coreData: PersistenceController
     @EnvironmentObject private var loginHandeler: LoginHandeler
@@ -69,11 +89,22 @@ struct GameView<VM: WordViewModel>: View {
         current = guesswork.count
     }
     
+    private func onAppear(email: String) {
+        if diffculty == .tutorial {
+            coreData.new()
+            Task(priority: .userInitiated) {
+                await handleNewWord(email: email)
+            }
+        } else {
+            Task.detached(priority: .userInitiated) {
+                await handleNewWord(email: email)
+            }
+        }
+    }
+    
     private func handleNewWord(email: String) async {
-        await vm.getScore(diffculty: diffculty,
-                          email: email)
-        await vm.word(diffculty: diffculty,
-                      email: email)
+        await vm.getScore(diffculty: diffculty, email: email)
+        await vm.word(diffculty: diffculty, email: email)
     }
     
     private func handleTimeAttack() {
@@ -83,7 +114,7 @@ struct GameView<VM: WordViewModel>: View {
     
     init(diffculty: DifficultyType) {
         self.diffculty = diffculty
-       
+        
         self.matrix = [[String]](repeating: [String](repeating: "",
                                                      count: diffculty.getLength()),
                                  count: rows)
@@ -95,6 +126,17 @@ struct GameView<VM: WordViewModel>: View {
     
     var body: some View {
         conatnet()
+            .ignoresSafeArea(.keyboard)
+            .onChange(of: interstitialAdManager?.interstitialAdLoaded) {
+                guard interstitialAdManager?.interstitialAdLoaded ?? false else { initalConfigirationForWord(); return }
+                interstitialAdManager?.displayInterstitialAd { initalConfigirationForWord() }
+            }
+            .customAlert("Network error",
+                         type: .fail,
+                         isPresented: $showError,
+                         actionText: "OK",
+                         action: handleError,
+                         message: { Text("something went wrong") })
     }
     
     @ViewBuilder private func conatnet() -> some View {
@@ -103,110 +145,115 @@ struct GameView<VM: WordViewModel>: View {
             ZStack(alignment: .top) {
                 topBar()
                     .padding(.top, 4)
-                game(proxy: proxy)
+                game()
                     .padding(.top, 5)
                 overlayViews(proxy: proxy)
             }
         }
-        .ignoresSafeArea(.keyboard)
-        .onChange(of: interstitialAdManager?.interstitialAdLoaded) {
-            guard interstitialAdManager?.interstitialAdLoaded ?? false else { initalConfigirationForWord(); return }
-            interstitialAdManager?.displayInterstitialAd { initalConfigirationForWord() }
-        }
-        .customAlert("Network error",
-                     type: .fail,
-                     isPresented: $showError,
-                     actionText: "OK",
-                     action: handleError,
-                     message: { Text("something went wrong") })
     }
     
     
     @ViewBuilder private func topBar() -> some View {
         HStack {
             backButton()
+            Spacer()
             adProvider.adView(id: "GameBanner")
+            Spacer()
         }
     }
     
     @ViewBuilder private func background() -> some View {
-        LinearGradient(colors: [.red,
-                                .yellow,
-                                .green,
-                                .blue],
-                       startPoint: .topLeading,
-                       endPoint: .bottomTrailing)
-        .blur(radius: 4)
-        .opacity(0.1)
-        .ignoresSafeArea()
+        GameViewBackguard()
+            .ignoresSafeArea()
     }
     
-    @ViewBuilder private func gameBody(proxy: GeometryProxy) -> some View {
+    @ViewBuilder private func gameBody() -> some View {
         if !vm.isError && vm.word != .empty && timeAttackAnimationDone {
             VStack(spacing: 8) {
                 ZStack(alignment: .bottom) {
                     ZStack(alignment: .top) {
                         if diffculty == .tutorial {
                             VStack {
+                                // Title
                                 Text("Tutorial")
-                                    .font(.largeTitle)
+                                    .font(.system(.largeTitle, design: .rounded).weight(.bold))
+                                    .themedText(.primary)
+                                    .softTextShadow()
                                 
+                                // Subtitle / hint
                                 let attr: AttributedString = {
-                                    if current < 3 || current == .max { return AttributedString("Guess The 4 Letters Word".localized) }
-                                    else {
+                                    if current < 3 || current == .max {
+                                        var a = AttributedString("Guess The 4 Letters Word".localized)
+                                        a.foregroundColor = .white.opacity(0.85)
+                                        return a
+                                    } else {
                                         let theWord = vm.word.word.value
-                                        var attr = AttributedString("\("the word is".localized) \"\(theWord)\" \("try it, or not ;)".localized)")
-                                        let range = attr.range(of: theWord)!
-                                        attr.foregroundColor = .black.opacity(0.5)
-                                        attr[range].foregroundColor = .orange
-                                        return attr
+                                        var a = AttributedString("\("the word is".localized) \"\(theWord)\" \("try it, or not ;)".localized)")
+                                        let range = a.range(of: theWord)!
+                                        a.foregroundColor = .white.opacity(0.8)
+                                        a[range].foregroundColor = .orange
+                                        return a
                                     }
                                 }()
                                 
                                 Text(attr)
-                                    .font(.callout.weight(.heavy))
-                                    .shadow(radius: 4)
+                                    .font(.system(.callout, design: .rounded).weight(.semibold))
+                                    .softTextShadow()
                             }
                             .padding()
-                        }
-                        else {
+                        } else {
                             ZStack(alignment: .trailing) {
                                 HStack {
+                                    // Left: Difficulty
                                     VStack {
                                         Spacer()
                                         Text(diffculty.stringValue)
                                             .multilineTextAlignment(.center)
-                                            .font(.title3.weight(.heavy))
-                                            .shadow(radius: 4)
+                                            .font(.system(.title3, design: .rounded).weight(.semibold))
+                                            .themedText(.primary)
+                                            .softTextShadow()
                                             .padding(.bottom, 8)
                                             .padding(.leading, 10)
                                     }
                                     
                                     Spacer()
                                     
+                                    // Center: Score
                                     VStack {
                                         Text("Score")
                                             .multilineTextAlignment(.center)
-                                            .font(.title3.weight(.heavy))
-                                            .shadow(radius: 4)
-                                            .foregroundStyle(.black)
+                                            .font(.system(.headline, design: .rounded).weight(.medium))
+                                            .themedText(.secondary)
+                                            .softTextShadow()
+                                            .padding(.top, 5)
                                         
                                         ZStack(alignment: .top) {
                                             Text("\(vm.score)")
                                                 .multilineTextAlignment(.center)
-                                                .font(.largeTitle.weight(.heavy))
-                                                .foregroundStyle(.angularGradient(colors: [.yellow,
-                                                                                           .green],
-                                                                                  center: .center,
-                                                                                  startAngle: .zero,
-                                                                                  endAngle: .degrees(360)))
-                                                .shadow(radius: 4)
+                                                .font(.system(size: 36, weight: .black, design: .rounded))
+                                                .monospacedDigit()
+                                                .foregroundStyle(
+                                                    .angularGradient(
+                                                        colors: [
+                                                            Color(red: 0.98, green: 0.85, blue: 0.37), // Soft gold
+                                                            Color(red: 0.85, green: 0.65, blue: 0.18), // Rich amber
+                                                            Color(red: 0.98, green: 0.85, blue: 0.42), // Soft gold
+                                                            Color(red: 0.85, green: 0.65, blue: 0.22), // Rich amber
+                                                            Color(red: 0.98, green: 0.85, blue: 0.37), // Soft gold
+                                                        ],
+                                                        center: .center,
+                                                        startAngle: .zero,
+                                                        endAngle: .degrees(360)
+                                                    )
+                                                )
+                                                .softTextShadow()
                                             
                                             let value = vm.word.isTimeAttack ? scoreAnimation.value / 2 : scoreAnimation.value
                                             let color: Color = value == 0 ? .red : value < 80 ? .yellow : .green
                                             
                                             Text("+ \(scoreAnimation.value)")
-                                                .font(.largeTitle.weight(.heavy))
+                                                .font(.system(.title, design: .rounded).weight(.bold))
+                                                .monospacedDigit()
                                                 .multilineTextAlignment(.center)
                                                 .frame(maxWidth: .infinity)
                                                 .foregroundStyle(color)
@@ -217,19 +264,23 @@ struct GameView<VM: WordViewModel>: View {
                                                         y: scoreAnimation.offset)
                                                 .blur(radius: 0.5)
                                                 .fixedSize()
+                                                .softTextShadow()
                                         }
                                     }
                                     .padding(.top, -10)
-                                    .fixedSize(horizontal: false,
-                                               vertical: true)
+                                    .fixedSize(horizontal: false, vertical: true)
+                                    
                                     Spacer()
                                     
+                                    // Right: Words count
                                     VStack {
                                         Spacer()
                                         Text("words: \(vm.word.number)")
                                             .multilineTextAlignment(.center)
-                                            .font(.title3.weight(.heavy))
-                                            .shadow(radius: 4)
+                                            .font(.system(.title3, design: .rounded).weight(.semibold))
+                                            .monospacedDigit()
+                                            .themedText(.primary)
+                                            .softTextShadow()
                                             .padding(.bottom, 8)
                                             .padding(.trailing, 10)
                                     }
@@ -242,13 +293,14 @@ struct GameView<VM: WordViewModel>: View {
                 }
                 .padding(.bottom, -10)
                 
+                // Rows
                 ForEach(0..<rows, id: \.self) { i in
                     ZStack {
                         WordView(cleanCells: $cleanCells,
                                  current: $current,
                                  length: length,
                                  word: $matrix[i],
-                                 gainFocus: Binding(get: { current == i }, set: { _ in }),
+                                 gainFocus: Binding(get: { current == i && endFetchAnimation }, set: { _ in }),
                                  colors: $colors[i]) {
                             guard i == current else { return }
                             nextLine(i: i)
@@ -271,13 +323,13 @@ struct GameView<VM: WordViewModel>: View {
                 if endFetchAnimation {
                     AppTitle(size: 50)
                         .padding(.top, UIDevice.isPad ? 130 : 90)
-                        .padding(.bottom, UIDevice.isPad ? 180 : 140)
+                        .padding(.bottom, UIDevice.isPad ? 190 : 140)
                         .shadow(radius: 4)
                 } else {
                     ZStack{}
-                        .frame(height: UIDevice.isPad ? 111 : 81)
+                        .frame(height: UIDevice.isPad ? 81 : 81)
                         .padding(.top, UIDevice.isPad ? 130 : 90)
-                        .padding(.bottom, UIDevice.isPad ? 180 : 140)
+                        .padding(.bottom, UIDevice.isPad ? 190 : 140)
                         .shadow(radius: 4)
                 }
             }
@@ -287,16 +339,16 @@ struct GameView<VM: WordViewModel>: View {
         }
     }
     
-    @ViewBuilder private func game(proxy: GeometryProxy) -> some View {
+    @ViewBuilder private func game() -> some View {
         if let email {
             ZStack(alignment: .topLeading) {
-                ZStack(alignment: .topLeading) { gameBody(proxy: proxy) }
+                ZStack(alignment: .topLeading) { gameBody() }
+                    .ignoresSafeArea(.keyboard)
                     .onChange(of: vm.isError, handleError)
                     .onChange(of: vm.word.word, handleWordChange)
                     .onChange(of: vm.word.word.guesswork, handleGuessworkChage)
                     .onChange(of: vm.word.isTimeAttack, handleTimeAttack)
-                    .onAppear { Task.detached(priority: .userInitiated, operation: { await handleNewWord(email: email) } ) }
-                    .ignoresSafeArea(.keyboard)
+                    .onAppear { onAppear(email: email) }
             }
             .padding(.top, 44)
         }
@@ -346,17 +398,19 @@ struct GameView<VM: WordViewModel>: View {
                 .padding(.bottom, 10)
             Text("Time Attack")
                 .font(.largeTitle)
-                .foregroundStyle(Color.primary)
+                .themedText(.primary)
+                .softTextShadow()
                 .frame(maxWidth: .infinity)
                 .padding(.bottom, 4)
             Text("double points")
                 .font(.title)
-                .foregroundStyle(Color.secondary)
+                .themedText(.secondary)
+                .softTextShadow()
                 .frame(maxWidth: .infinity)
             Spacer()
         }
         .scaleEffect(.init(1.2))
-        .background(Color.white.ignoresSafeArea())
+        .background(Color.black.opacity(0.6).ignoresSafeArea()) // darker veil over the glossy BG
         .opacity(timeAttackAnimation ? 1 : 0)
         .offset(x: timeAttackAnimation ? 0 : proxy.size.width)
     }
@@ -365,7 +419,6 @@ struct GameView<VM: WordViewModel>: View {
         HStack {
             BackButton(title: diffculty == .tutorial ? "skip" : "back",
                        action: navBack)
-            Spacer()
         }
     }
     
@@ -373,7 +426,6 @@ struct GameView<VM: WordViewModel>: View {
         audio.stop()
         if diffculty == .tutorial {
             UIApplication.shared.hideKeyboard()
-            coreData.new()
         }
         router.navigateBack()
     }
@@ -385,8 +437,6 @@ struct GameView<VM: WordViewModel>: View {
         
         if guess.lowercased() == vm.word.word.value.lowercased() || i == rows - 1 {
             current = .max
-            guard let email else { return }
-            
             audio.stop()
             
             let correct = guess.lowercased() == vm.word.word.value.lowercased()
@@ -398,7 +448,6 @@ struct GameView<VM: WordViewModel>: View {
                                     type: "wav")
                     
                     return queue.asyncAfter(wallDeadline: .now() + 1) {
-                        coreData.new()
                         router.navigateBack()
                     }
                 }
@@ -407,38 +456,31 @@ struct GameView<VM: WordViewModel>: View {
             if correct {
                 let points = vm.word.isTimeAttack ? 40 : 20
                 score(value: rows * points - i * points)
-            }
-            else { score(value: 0) }
+            } else { score(value: 0) }
             
-            Task.detached(priority: .userInitiated) {
-                try? await Task.sleep(nanoseconds: 1_000_000_000)
-                await MainActor.run { cleanCells = true }
+            //            Task.detached(priority: .userInitiated) {
+            //                try? await Task.sleep(nanoseconds: 1_000_000_000)
+            //                await MainActor.run { cleanCells = true }
+            //            }
+            
+            queue.asyncAfter(wallDeadline: .now() + 0.8) {
+                let sound = correct ? "success" : "fail"
+                audio.playSound(sound: sound,
+                                type: "wav")
             }
             
+            guard let email else { return }
             Task.detached(priority: .userInitiated) {
                 if !correct { await vm.addGuess(diffculty: diffculty, email: email, guess: guess) }
                 await vm.score(diffculty: diffculty, email: email)
+                try? await Task.sleep(nanoseconds: 500_000_000)
                 await handleNewWord(email: email)
-                await MainActor.run {
-                    withAnimation(.easeOut(duration: 0.5)) {
-                        scoreAnimation.opticity = 0
-                        scoreAnimation.scale = 0
-                    }
-                    queue.asyncAfter(wallDeadline: .now() + 0.5) {
-                        Task.detached {
-                            await MainActor.run {
-                                scoreAnimation.value = 0
-                                scoreAnimation.offset = 30
-                            }
-                        }
-                    }
-                }
             }
         } else if i == current && i + 1 > vm.word.word.guesswork.count {
             guard let email else { return }
             current = i + 1
             guard diffculty != .tutorial else { return }
-            Task.detached { await vm.addGuess(diffculty: diffculty, email: email, guess: guess) }
+            Task(priority: .userInitiated) { await vm.addGuess(diffculty: diffculty, email: email, guess: guess) }
         }
     }
     
@@ -461,9 +503,6 @@ struct GameView<VM: WordViewModel>: View {
         }
         
         queue.asyncAfter(deadline: .now() + 1.44) {
-            let sound = value > 0 ? "success" : "fail"
-            audio.playSound(sound: sound,
-                            type: "wav")
             guard scoreAnimation.opticity == 1 else { return }
             withAnimation(.linear(duration: 0.2)) {
                 scoreAnimation.opticity = 0
@@ -476,6 +515,21 @@ struct GameView<VM: WordViewModel>: View {
                 scoreAnimation.value = 0
                 scoreAnimation.offset = 30
             }
+            
+//            await MainActor.run {
+//                withAnimation(.easeOut(duration: 0.5)) {
+//                    scoreAnimation.opticity = 0
+//                    scoreAnimation.scale = 0
+//                }
+//                queue.asyncAfter(wallDeadline: .now() + 0.5) {
+//                    Task.detached {
+//                        await MainActor.run {
+//                            scoreAnimation.value = 0
+//                            scoreAnimation.offset = 30
+//                        }
+//                    }
+//                }
+//            }
         }
     }
 }
@@ -521,7 +575,6 @@ extension View {
             if isPresented.wrappedValue {
                 // disable the default FullScreenCover animation
                 transaction.disablesAnimations = true
-                
                 // add custom animation for presenting and dismissing the FullScreenCover
                 transaction.animation = .linear(duration: 0.1)
             }
@@ -558,10 +611,7 @@ extension View {
         }
         .transaction { transaction in
             if isPresented.wrappedValue {
-                // disable the default FullScreenCover animation
                 transaction.disablesAnimations = true
-                
-                // add custom animation for presenting and dismissing the FullScreenCover
                 transaction.animation = .linear(duration: 0.1)
             }
         }
@@ -594,7 +644,6 @@ class KeyboardHeightHelper: ObservableObject {
     }
 }
 
-
 struct ProgressBarView: View {
     @EnvironmentObject private var local: LanguageSetting
     private var language: String? { return local.locale.identifier.components(separatedBy: "_").first }
@@ -610,11 +659,9 @@ struct ProgressBarView: View {
     let done: () -> ()
     
     @State private var waveOffset: CGFloat = 0.0
-    
     @State private var current = 0
     
     private var every: CGFloat = 0.01
-    
     private let timer: Publishers.Autoconnect<Timer.TimerPublisher>
     
     init(length: Int, value: CGFloat, total: CGFloat, done: @escaping () -> Void) {
@@ -653,16 +700,13 @@ struct ProgressBarView: View {
                 }
             }
         }
-        .onReceive(timer) { input in
+        .onReceive(timer) { _ in
             value += every
             current = Int(value / total * CGFloat(length))
             trigger += 1
             
             if value >= total {
-                timer
-                    .upstream
-                    .connect()
-                    .cancel()
+                timer.upstream.connect().cancel()
                 done()
             }
         }
@@ -710,22 +754,15 @@ extension Color {
         Scanner(string: hex).scanHexInt64(&int)
         let a, r, g, b: UInt64
         switch hex.count {
-        case 3: // RGB (12-bit)
-            (a, r, g, b) = (255, (int >> 8) * 17, (int >> 4 & 0xF) * 17, (int & 0xF) * 17)
-        case 6: // RGB (24-bit)
-            (a, r, g, b) = (255, int >> 16, int >> 8 & 0xFF, int & 0xFF)
-        case 8: // ARGB (32-bit)
-            (a, r, g, b) = (int >> 24, int >> 16 & 0xFF, int >> 8 & 0xFF, int & 0xFF)
-        default:
-            (a, r, g, b) = (1, 1, 1, 0)
+        case 3: (a, r, g, b) = (255, (int >> 8) * 17, (int >> 4 & 0xF) * 17, (int & 0xF) * 17)
+        case 6: (a, r, g, b) = (255, int >> 16, int >> 8 & 0xFF, int & 0xFF)
+        case 8: (a, r, g, b) = (int >> 24, int >> 16 & 0xFF, int >> 8 & 0xFF, int & 0xFF)
+        default:(a, r, g, b) = (1, 1, 1, 0)
         }
-        
-        self.init(
-            .sRGB,
-            red: Double(r) / 255,
-            green: Double(g) / 255,
-            blue:  Double(b) / 255,
-            opacity: Double(a) / 255
-        )
+        self.init(.sRGB,
+                  red:   Double(r) / 255,
+                  green: Double(g) / 255,
+                  blue:  Double(b) / 255,
+                  opacity: Double(a) / 255)
     }
 }

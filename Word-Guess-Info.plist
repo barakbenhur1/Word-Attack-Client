@@ -296,9 +296,7 @@
 	<key>TopBanner</key>
 	<string>ca-app-pub-6040820758186818/7249226283</string>
 	<key>UIAppFonts</key>
-	<array>
-		<string>HalfBullet.ttf</string>
-	</array>
+	<array/>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>fetch</string>

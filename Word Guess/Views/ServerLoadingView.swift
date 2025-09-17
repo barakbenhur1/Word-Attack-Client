@@ -35,9 +35,9 @@ public struct ServerLoadingView: View {
     }
     
     public var body: some View {
-        let textWidth   = ringSize * 0.92
-        let titleHeight = UIFont.preferredFont(forTextStyle: .headline).lineHeight + 2
-        let baseContentHeight = (ringSize + 32) + 18 + titleHeight + 8
+        let textWidth            = ringSize * 0.92
+        let titleHeight          = UIFont.preferredFont(forTextStyle: .headline).lineHeight + 2
+        let baseContentHeight    = (ringSize + 32) + 18 + titleHeight + 8
         let cancelBlock: CGFloat = showsCancel ? (44 + 8) : 0
         
         VStack(spacing: 18) {
@@ -57,7 +57,7 @@ public struct ServerLoadingView: View {
             .drawingGroup(opaque: false, colorMode: .linear)
             .accessibilityHidden(true)
             
-            Text(title)
+            Text(title.localized)
                 .font(.system(.headline, design: .rounded).weight(.semibold))
                 .foregroundStyle(LoadPalette.title)
                 .multilineTextAlignment(.center)

@@ -247,9 +247,9 @@ struct WordView<VM: ViewModel>: View {
         .animation(.easeOut(duration: 0.8), value: cleanCells)
         .realisticCell(color: cleanCells ? .white.opacity(0.8) : colors[i].baseColor.opacity(0.8))
         .elevated(cornerRadius: 4)
-        .realStone(cornerRadius: 4,
-                   crackCount: Int.random(in: 3...6),
-                   seed: UInt64.random(in: 1337...2337))
+//        .realStone(cornerRadius: 4,
+//                   crackCount: Int.random(in: 3...6),
+//                   seed: UInt64.random(in: 1337...2337))
         .premiumTile(cornerRadius: 4)
         .focusGlow(fieldFocus?.rawValue == i, cornerRadius: 4)
         .accessibilityLabel(Text("Letter cell \(i+1)"))

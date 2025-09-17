@@ -7,7 +7,7 @@ import Foundation
 import CoreML
 #if canImport(UIKit)
 import UIKit
-import SwiftUICore
+import SwiftUI
 #endif
 
 // MARK: - Public API
@@ -22,40 +22,39 @@ public enum AIDifficulty {
     var image: String { rawValue.image }
     var color: Color { rawValue.color }
     
-    public init?(rawValue: AIDifficultyItem) {
+    init?(rawValue: AIDifficultyItem) {
         switch rawValue {
-        case ("easyAI", "Chad GPT", .green): self = .easy
+        case ("easyAI", "Chad GPT", .green):     self = .easy
         case ("mediumAI", "Hell 9000", .yellow): self = .medium
-        case ("hardAI", "Spynet", .orange): self = .hard
-        case ("bossAI", "This Guy", .red): self = .boss
-        default: fatalError()
+        case ("hardAI", "Spynet", .orange):      self = .hard
+        case ("bossAI", "This Guy", .red):       self = .boss
+        default:                                 fatalError()
         }
     }
     
-    public var rawValue: AIDifficultyItem {
+    var rawValue: AIDifficultyItem {
         switch self {
-        case .easy: return ("easyAI", "Chad GPT", .green)
-        case .medium: return ("mediumAI", "Hell 9000", .yellow)
-        case .hard: return ("hardAI", "Spynet", .orange)
-        case .boss: return ("bossAI", "This Guy", .red)
+        case .easy:   ("easyAI", "Chad GPT", .green)
+        case .medium: ("mediumAI", "Hell 9000", .yellow)
+        case .hard:   ("hardAI", "Spynet", .orange)
+        case .boss:   ("bossAI", "This Guy", .red)
         }
     }
     
-    /// (temperature, topK)
     var params: (temperature: Float, topK: Int) {
         switch self {
-        case .easy: return (0.70, 32)
-        case .medium: return (0.40, 12)
-        case .hard, .boss: return (0.00, 1)
+        case .easy:        (0.70, 32)
+        case .medium:      (0.40, 12)
+        case .hard, .boss: (0.00, 1)
         }
     }
     
     var premiumLetterCount: Int {
         switch self {
-        case .easy: 2
+        case .easy:   2
         case .medium: 3
-        case .hard: 4
-        case .boss: 5
+        case .hard:   4
+        case .boss:   5
         }
     }
 }

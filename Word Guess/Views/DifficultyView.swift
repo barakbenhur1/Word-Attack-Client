@@ -7,6 +7,8 @@
 
 import SwiftUI
 
+// MARK: - Models (unchanged)
+
 struct DifficultyButton: Identifiable {
     var id = UUID()
     let type: DifficultyType
@@ -37,15 +39,14 @@ enum DifficultyType: String, Codable, CaseIterable {
     
     func getLength() -> Int {
         switch self {
-        case .easy, .tutorial:
-            return 4
-        case .medium, .ai:
-            return 5
-        case .hard:
-            return 6
+        case .easy, .tutorial: return 4
+        case .medium, .ai:     return 5
+        case .hard:            return 6
         }
     }
 }
+
+// MARK: - View
 
 struct DifficultyView: View {
     @FetchRequest(sortDescriptors: []) var tutorialItems: FetchedResults<TutorialItem>
@@ -56,11 +57,9 @@ struct DifficultyView: View {
     @EnvironmentObject private var adProvider: AdProvider
     
     @State private var isMenuOpen: Bool = false
-    
     @State private var showPaywall = false
     
-    private var tutorialItem: TutorialItem? { return tutorialItems.first }
-    
+    private var tutorialItem: TutorialItem? { tutorialItems.first }
     private let auth = Authentication()
     
     private let buttons: [DifficultyButton] = [
@@ -72,49 +71,37 @@ struct DifficultyView: View {
     private func onAppear() {
         audio.stopAudio(true)
         UIApplication.shared.hideKeyboard()
+        task()
     }
-    
-    private func onDisappear() {
-        audio.stopAudio(false)
-    }
-    
-    private func task() async {
-        guard tutorialItem == nil else { return}
+    private func onDisappear() { audio.stopAudio(false) }
+    private func task() {
+        guard tutorialItem == nil else { return }
         router.navigateTo(.game(diffculty: .tutorial))
     }
     
     var body: some View {
         ZStack {
-            LinearGradient(colors: [.red,
-                                    .yellow,
-                                    .green,
-                                    .blue],
-                           startPoint: .topLeading,
-                           endPoint: .bottomTrailing)
-            .blur(radius: 4)
-            .opacity(0.1)
-            .ignoresSafeArea()
+            BackgroundDecor().ignoresSafeArea()
             
             contant()
                 .onDisappear { onDisappear() }
                 .onAppear { onAppear() }
-                .task { await task() }
                 .ignoresSafeArea(.keyboard)
                 .fullScreenCover(isPresented: $showPaywall) {
                     SubscriptionPaywallView(isPresented: $showPaywall)
                 }
             
-            SideMenu(isOpen: $isMenuOpen,
-                     content: { SettingsView(fromSideMenu: true) })
+            SideMenu(isOpen: $isMenuOpen, content: { SettingsView(fromSideMenu: true) })
         }
     }
+    
+    // MARK: - Content
     
     @ViewBuilder private func contant() -> some View {
         ZStack(alignment: .top) {
             VStack {
                 topButtons()
                     .padding(.vertical, 10)
-                
                 buttonList()
             }
             .padding(.horizontal, 20)
@@ -122,132 +109,115 @@ struct DifficultyView: View {
         .safeAreaInset(edge: .top) {
             adProvider.adView(id: "TopBanner")
                 .frame(maxWidth: .infinity, minHeight: 50, maxHeight: 50)
+                .background(.ultraThinMaterial)
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .padding(.horizontal, 12)
         }
         .safeAreaInset(edge: .bottom) {
             adProvider.adView(id: "BottomBanner")
                 .frame(maxWidth: .infinity, minHeight: 50, maxHeight: 50)
+                .background(.ultraThinMaterial)
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .padding(.horizontal, 12)
+                .padding(.bottom, 4)
         }
     }
     
     @ViewBuilder private func topButtons() -> some View {
-        HStack {
-            Button {
-                Task.detached {
-                    await MainActor.run {
-                        /*router.navigateTo(.settings)*/
-                        withAnimation {
-                            isMenuOpen = true
+        HStack(spacing: 16) {
+            TopTileButton(
+                title: "Settings",
+                icon: Image(systemName: "gearshape.fill"),
+                action: {
+                    Task.detached {
+                        await MainActor.run {
+                            withAnimation(.spring(response: 0.35, dampingFraction: 0.9)) { isMenuOpen = true }
                         }
                     }
                 }
-            } label: {
-                VStack {
-                    Image(systemName: "gear")
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
-                        .frame(height: 40)
-                    
-                    Text("Settings")
-                }
-            }
-            .foregroundStyle(.black)
-            .shadow(radius: 4)
+            )
+            .frame(maxWidth: .infinity)
             
-            Spacer()
+            TopTileButton(
+                title: "SCOREBOARD",
+                icon: Image(systemName: "person.3.fill"),
+                action: { Task.detached { await MainActor.run { router.navigateTo(.score) } } }
+            )
+            .frame(maxWidth: .infinity)
             
-            Button {
-                Task.detached {
-                    await MainActor.run { router.navigateTo(.score) }
-                }
-            }
-            label: {
-                VStack {
-                    Image(systemName: "person.3.fill")
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
-                        .frame(height: 40)
-                        .foregroundStyle(.linearGradient(colors: [.red.opacity(0.6),
-                                                                  .green.opacity(0.6),
-                                                                  .yellow.opacity(0.6)],
-                                                         startPoint: .leading,
-                                                         endPoint: .trailing))
-                        .blendMode(.difference)
-                    
-                    Text("Scoreboard")
-                }
-            }
-            .foregroundStyle(.black)
-            .shadow(radius: 4)
-            
-            Spacer()
-            
-            Button {
-                if premium.isPremium {
-                    Task.detached(priority: .high) {
-                        await MainActor.run { router.navigateTo(.premium(email: loginHandeler.model?.email)) }
-                    }
-                } else {
-                    showPaywall = true
-                }
-            } label: {
-                VStack {
-                    PremiumBadge()
-                        .grayscale(premium.isPremium ? 0 : 1)
-                        .frame(height: 40)
-                    
-                    Text("Premium Hub")
-                        .foregroundStyle(premium.isPremium ? .black : .gray)
-                }
-            }
-            .shadow(radius: premium.isPremium ? 4 : 0)
+            TopTileButton(
+                title: "Premium Hub",
+                icon: PremiumBadge()
+                    .grayscale(premium.isPremium ? 0 : 1)
+                    .font(.system(size: 28, weight: .semibold)),
+                action: {
+                    if premium.isPremium {
+                        Task.detached(priority: .high) {
+                            await MainActor.run { router.navigateTo(.premium(email: loginHandeler.model?.email)) }
+                        }
+                    } else { showPaywall = true }
+                },
+                isLocked: !premium.isPremium // <-- locked style but still tappable
+            )
+            .tileAvailability(isEnabled: premium.isPremium, corner: 16) // sunken when locked
+            .shadow(color: .yellow.opacity(premium.isPremium ? 0.35 : 0.0),
+                    radius: premium.isPremium ? 8 : 0, y: 3)
+            .frame(maxWidth: .infinity)
             .attentionIfNew(isActive: $premium.justDone)
         }
+        .padding(.horizontal, 4)
     }
     
     @ViewBuilder private func buttonList() -> some View {
         VStack {
-            ZStack {
-                LinearGradient(colors: [.white.opacity(0.4),
-                                        .gray.opacity(0.1)],
-                               startPoint: .topTrailing,
-                               endPoint: .bottomLeading)
-                .blendMode(.luminosity)
-                .blur(radius: 4)
-                
-                VStack(spacing: 6) {
+            GlassContainer(corner: 32) {
+                VStack(spacing: 10) {
                     difficultyButton(type: .ai)
-                        .shadow(radius: 4)
+                        .shadow(color: .black.opacity(0.15), radius: 8, y: 4)
+                    
                     title()
                         .padding(.top, 2)
+                    
                     ForEach(buttons) { button in
                         difficultyButton(type: button.type)
-                            .shadow(radius: 4)
+                            .shadow(color: .black.opacity(0.12), radius: 8, y: 4)
                     }
                 }
-                .padding()
+                .padding(14)
+                .padding(.vertical, 4)
             }
-            .clipShape(RoundedRectangle(cornerRadius: 60))
+            .padding(.top, 6)
             
             logoutButton()
                 .padding(.all, 14)
-                .shadow(radius: 4)
+                .shadow(color: .black.opacity(0.12), radius: 6, y: 3)
         }
     }
     
     @ViewBuilder private func title() -> some View {
-        Text("Difficulty")
-            .font(.title.bold())
-            .shadow(radius: 4)
+        VStack(spacing: 2) {
+            Text("DIFFICULTY")
+                .font(.system(.title, design: .rounded).weight(.black))
+                .foregroundStyle(.primary)
+                .shadow(color: .black.opacity(0.12), radius: 6, y: 2)
+            
+            Text("Pick a challenge to begin")
+                .font(.footnote.weight(.medium))
+                .foregroundStyle(.secondary)
+                .opacity(0.9)
+                .transition(.opacity.combined(with: .scale))
+        }
+        .padding(.bottom, 6)
     }
     
     @ViewBuilder private func difficultyButton(type: DifficultyType) -> some View {
         let style: ElevatedButtonStyle = {
             switch type {
-            case .easy: ElevatedButtonStyle(palette: .green)
+            case .easy:   ElevatedButtonStyle(palette: .green)
             case .medium: ElevatedButtonStyle(palette: .amber)
-            case .hard: ElevatedButtonStyle(palette: .rose)
-            case .ai: ElevatedButtonStyle(palette: .teal)
-            default: ElevatedButtonStyle()
+            case .hard:   ElevatedButtonStyle(palette: .rose)
+            case .ai:     ElevatedButtonStyle(palette: .teal)
+            default:      ElevatedButtonStyle()
             }
         }()
         
@@ -255,8 +225,13 @@ struct DifficultyView: View {
             Task(priority: .userInitiated) {
                 await MainActor.run { router.navigateTo(.game(diffculty: type)) }
             }
-        } label: { ElevatedButtonLabel(LocalizedStringKey(type.rawValue)) }
-            .buttonStyle(style)
+        } label: {
+            ElevatedButtonLabel(LocalizedStringKey(type.rawValue))
+                .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        }
+        .buttonStyle(style)
+        .scaleEffectOnPress()
+        .accessibilityLabel(Text(type.stringValue))
     }
     
     @ViewBuilder private func logoutButton() -> some View {
@@ -267,19 +242,214 @@ struct DifficultyView: View {
                     auth.logout()
                 }
             }
-        } label: { ElevatedButtonLabel(LocalizedStringKey("👋 logout")) }
-            .buttonStyle(ElevatedButtonStyle(palette: .slate))
+        } label: {
+            ElevatedButtonLabel(LocalizedStringKey("👋 Logout"))
+                .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        }
+        .buttonStyle(ElevatedButtonStyle(palette: .slate))
+        .scaleEffectOnPress()
     }
 }
+
+// MARK: - Premium badge (kept)
 
 private struct PremiumBadge: View {
     var body: some View {
         Image(systemName: "crown.fill")
             .symbolRenderingMode(.palette)
-            .foregroundStyle(.yellow, .orange)   // two-tone palette
+            .foregroundStyle(.yellow, .orange)
             .font(.system(size: 32, weight: .semibold))
             .shadow(color: .yellow.opacity(0.35), radius: 8, x: 0, y: 2)
             .accessibilityLabel("Premium")
     }
 }
 
+// MARK: - Background (premium, subtle motion)
+
+private struct BackgroundDecor: View {
+    @State private var t: CGFloat = 0
+    var body: some View {
+        ZStack {
+            LinearGradient(
+                colors: [Color(hex: 0x10131B), Color(hex: 0x151A26)],
+                startPoint: .topLeading, endPoint: .bottomTrailing
+            )
+            .overlay(
+                AngularGradient(
+                    gradient: Gradient(colors: [
+                        .purple.opacity(0.20),
+                        .cyan.opacity(0.16),
+                        .pink.opacity(0.18),
+                        .mint.opacity(0.16),
+                        .purple.opacity(0.20)
+                    ]),
+                    center: .center,
+                    angle: .degrees(Double(t) * 360)
+                )
+                .blendMode(.screen)
+                .blur(radius: 24)
+                .animation(.linear(duration: 22).repeatForever(autoreverses: false), value: t)
+            )
+            .onAppear { t = 1 }
+            
+            RadialGradient(colors: [.clear, .black.opacity(0.30)],
+                           center: .center, startRadius: 0, endRadius: 1200)
+            .allowsHitTesting(false)
+        }
+    }
+}
+
+// MARK: - Glass container
+
+private struct GlassContainer<Content: View>: View {
+    var corner: CGFloat = 32
+    @ViewBuilder var content: Content
+    
+    var body: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: corner, style: .continuous)
+                .fill(.ultraThinMaterial)
+                .overlay(
+                    RoundedRectangle(cornerRadius: corner, style: .continuous)
+                        .strokeBorder(LinearGradient(
+                            colors: [.white.opacity(0.55), .white.opacity(0.10)],
+                            startPoint: .topLeading, endPoint: .bottomTrailing
+                        ), lineWidth: 1)
+                )
+                .shadow(color: .black.opacity(0.18), radius: 18, y: 10)
+                .overlay(
+                    RoundedRectangle(cornerRadius: corner, style: .continuous)
+                        .stroke(.white.opacity(0.06), lineWidth: 12)
+                        .blur(radius: 16)
+                        .blendMode(.overlay)
+                )
+            content
+        }
+    }
+}
+
+// MARK: - Top tile button (now supports locked styling)
+
+private struct TopTileButton<Icon: View>: View {
+    let title: String
+    let icon: Icon
+    var action: () -> Void
+    var isLocked: Bool = false   // NEW
+    
+    private let tileSize: CGFloat = 60
+    private let corner: CGFloat = 16
+    
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 6) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: corner, style: .continuous)
+                        .fill(.ultraThinMaterial)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: corner, style: .continuous)
+                                .stroke(.white.opacity(0.22), lineWidth: 0.8)
+                        )
+                        .shadow(color: .black.opacity(0.12), radius: 8, y: 4)
+                    
+                    icon
+                        .foregroundStyle(.white.opacity(0.92))
+                        .frame(width: tileSize - 24, height: tileSize - 24)
+                }
+                .frame(width: tileSize, height: tileSize)
+                
+                Text(title.localized)
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(isLocked ? .white.opacity(0.55) : .white)
+                    .shadow(color: .black.opacity(0.55), radius: 2, y: 1)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .pressFX()
+        .accessibilityLabel(Text(title + (isLocked ? " (locked)" : "")))
+    }
+}
+
+// MARK: - Locked/sunken appearance (still tappable)
+
+private struct TileAvailability: ViewModifier {
+    let isEnabled: Bool
+    let corner: CGFloat
+    
+    func body(content: Content) -> some View {
+        content
+            .saturation(isEnabled ? 1.0 : 0.05)
+            .opacity(isEnabled ? 1.0 : 0.6)
+            .overlay( innerShadow(corner: corner,
+                                  color: .black.opacity(isEnabled ? 0.0 : 0.35),
+                                  radius: 8, x: 0, y: 2) )
+            .overlay( innerHighlight(corner: corner,
+                                     color: .white.opacity(isEnabled ? 0.0 : 0.20),
+                                     radius: 8, x: 0, y: -2) )
+    }
+    private func innerShadow(corner: CGFloat, color: Color, radius: CGFloat, x: CGFloat, y: CGFloat) -> some View {
+        RoundedRectangle(cornerRadius: corner, style: .continuous)
+            .stroke(color, lineWidth: 4)
+            .blur(radius: radius)
+            .offset(x: x, y: y)
+            .mask(
+                RoundedRectangle(cornerRadius: corner, style: .continuous)
+                    .fill(LinearGradient(colors: [.black, .clear], startPoint: .top, endPoint: .bottom))
+            )
+    }
+    private func innerHighlight(corner: CGFloat, color: Color, radius: CGFloat, x: CGFloat, y: CGFloat) -> some View {
+        RoundedRectangle(cornerRadius: corner, style: .continuous)
+            .stroke(color, lineWidth: 3)
+            .blur(radius: radius)
+            .offset(x: x, y: y)
+            .mask(
+                RoundedRectangle(cornerRadius: corner, style: .continuous)
+                    .fill(LinearGradient(colors: [.white, .clear], startPoint: .top, endPoint: .bottom))
+            )
+    }
+}
+private extension View {
+    /// Makes a tile look sunken/locked but **keeps it tappable**.
+    func tileAvailability(isEnabled: Bool, corner: CGFloat = 16) -> some View {
+        modifier(TileAvailability(isEnabled: isEnabled, corner: corner))
+    }
+}
+
+// MARK: - Press feedback
+
+private struct PressFX: ViewModifier {
+    @GestureState private var pressed = false
+    func body(content: Content) -> some View {
+        content
+            .scaleEffect(pressed ? 0.98 : 1.0)
+            .opacity(pressed ? 0.96 : 1.0)
+            .animation(.spring(response: 0.25, dampingFraction: 0.9), value: pressed)
+            .gesture(DragGesture(minimumDistance: 0).updating($pressed) { _, st, _ in st = true })
+    }
+}
+private extension View { func pressFX() -> some View { modifier(PressFX()) } }
+
+private struct PressEffect: ViewModifier { // alias for your previous helpers
+    @GestureState private var pressed = false
+    func body(content: Content) -> some View {
+        content
+            .scaleEffect(pressed ? 0.98 : 1.0)
+            .opacity(pressed ? 0.95 : 1.0)
+            .animation(.spring(response: 0.25, dampingFraction: 0.9), value: pressed)
+            .gesture(DragGesture(minimumDistance: 0).updating($pressed) { _, st, _ in st = true })
+    }
+}
+private extension View { func scaleEffectOnPress() -> some View { modifier(PressEffect()) } }
+
+// MARK: - Small helpers
+
+private extension Color {
+    init(hex: UInt32, alpha: Double = 1.0) {
+        let r = Double((hex >> 16) & 0xff) / 255
+        let g = Double((hex >>  8) & 0xff) / 255
+        let b = Double((hex >>  0) & 0xff) / 255
+        self = Color(red: r, green: g, blue: b).opacity(alpha)
+    }
+}

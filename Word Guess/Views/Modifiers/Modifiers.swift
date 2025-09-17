@@ -463,203 +463,79 @@ private enum CrackFactory {
     private static func clamp(_ v: CGFloat, _ lo: CGFloat, _ hi: CGFloat) -> CGFloat { min(max(v, lo), hi) }
 }
 
-public struct AttentionAttractor: ViewModifier {
+private struct PremiumAttention: ViewModifier {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var t: TimeInterval = 0
-    @State private var playing = true
-
-    @Binding private var isActive: Bool
-    private let cfg: AttentionConfig
-    private let duration: UInt64
-
-    public init(isActive: Binding<Bool>, duration: UInt64, config: AttentionConfig) {
-        _isActive = isActive
-        self.duration = duration
-        self.cfg = config
-    }
-
-    public func body(content: Content) -> some View {
-        content
-            // Pure background behind the view – never affects layout.
-            .background(
-                HaloCanvas(isActive: isActive,
-                           period: cfg.period,
-                           idlePause: cfg.idlePause,
-                           color: cfg.glow,
-                           ringWidth: cfg.ringWidth,
-                           ringInset: cfg.ringInset,
-                           reduceMotion: reduceMotion)
-                .allowsHitTesting(false)
-            )
-            // Tiny badge overlay; fixed size; does not change layout.
-            .overlay(badge, alignment: .topTrailing)
-            .onChange(of: isActive) { _, on in
-                playing = on
-                if on {
-                    Task {
-                        try? await Task.sleep(nanoseconds: duration)
-                        await MainActor.run { self.isActive = false }
-                    }
-                }
-            }
-    }
-
-    @ViewBuilder
-    private var badge: some View {
-        if isActive, cfg.showNewBadge {
-            Text(cfg.newBadgeText.uppercased())
-                .font(.caption2.weight(.bold))
-                .foregroundStyle(.white)
-                .padding(.horizontal, 6)
-                .padding(.vertical, 3)
-                .background(
-                    Capsule()
-                        .fill(cfg.newBadgeColor)
-                        .shadow(color: cfg.newBadgeColor.opacity(0.35), radius: 4, x: 0, y: 1)
-                )
-                .offset(x: 6, y: -6)
-                .allowsHitTesting(false)
-                .transition(.opacity)
-        }
-    }
-}
-
-struct HaloCanvas: View {
-    let isActive: Bool
-    let period: TimeInterval
-    let idlePause: TimeInterval
-    let color: Color
-    let ringWidth: CGFloat
-    let ringInset: CGFloat
-    let reduceMotion: Bool
-
-    @State private var time: TimeInterval = Date().timeIntervalSinceReferenceDate
-
-    var body: some View {
-        Canvas { ctx, size in
-            guard isActive else { return }
-
-            // Circle strictly inside bounds
-            let d = min(size.width - 18, size.height - 18)
-            let inset = ringInset + ringWidth * 0.5
-            let rect = CGRect(
-                x: (size.width  - d) / 2 + inset,
-                y: (size.height - d) / 2 + inset - 12,
-                width:  d - inset * 2,
-                height: d - inset * 2
-            )
-            
-            let circle = Path(ellipseIn: rect)
-            
-            // Time → 0…1 with idle pause
-            let total = max(0.001, period + idlePause)
-            let phase = time.truncatingRemainder(dividingBy: total)
-            let activeFrac = period / total
-            let p = phase / total
-            let f = (p < activeFrac) ? (p / activeFrac) : 0.0
-
-            // Opacity pulse only (no scale/offset)
-            let op = (reduceMotion ? 0.15 : 0.25) * (1 - f)
-
-            let stroke = StrokeStyle(lineWidth: ringWidth, lineCap: .round)
-            ctx.stroke(circle, with: .color(color.opacity(op)), style: stroke)
-            
-            let stroke2 = StrokeStyle(lineWidth: max(1, ringWidth * 0.4), lineCap: .round)
-            ctx.stroke(circle, with: .color(color.opacity(op * 0.7)), style: stroke2)
-        }
-        .backgroundStyle(color.opacity(0.4))
-        // Drive time via a hidden TimelineView (no layout/compositing side effects)
-        .overlay(
-            TimelineView(.animation(minimumInterval: 1.0 / 60.0)) { ctx in
-                Color.clear
-                    .onChange(of: ctx.date) { _, date in
-                        if isActive { time = date.timeIntervalSinceReferenceDate }
-                    }
-            }
-                .allowsHitTesting(false)
-                .opacity(0)   // fully invisible
-        )
-    }
-}
-
-// MARK: - Lock current measured size so overlays never affect layout
-private struct LayoutLock: ViewModifier {
-    @Binding var size: CGSize
-    func body(content: Content) -> some View {
-        content
-            .background(
-                GeometryReader { g in
-                    Color.clear
-                        .onAppear { size = g.size }
-                        .onChange(of: g.size) { _, new in size = new }
-                }
-            )
-    }
-}
-
-public enum AttentionStyle {
-    case haloBounceSheen        // default: halo + gentle bounce + sheen sweep
-    case haloOnly
-    case bounceOnly
-}
-
-// MARK: - Helpers
-
-private struct GlowOverlay: ViewModifier {
-    var glow: Color
-    var radius: CGFloat
+    @Binding var isActive: Bool
+    var duration: UInt64? = nil
     
-    func body(content: Content) -> some View {
-        content
-            .shadow(color: glow, radius: radius)
-            .shadow(color: glow.opacity(0.5), radius: radius * 0.5)
-            .shadow(color: glow.opacity(0.25), radius: radius * 0.25)
-    }
-}
-
-/// Drives `t` using a TimelineView without blocking the main thread.
-private struct TimelineDriver: ViewModifier {
-    @Binding var playing: Bool
-    let tick: (TimeInterval) -> Void
+    // Animation state
+    @State private var t: CGFloat = 0            // 0...1 oscillator
+    @State private var startedAt: Date? = nil
+    
+    // Tuning
+    private let baseScale: CGFloat = 1.0
+    private let scaleAmplitude: CGFloat = 0.05    // ±5% breathing
+    private let haloColor = Color.yellow
+    private let bloomColor = Color.yellow.opacity(0.65)
     
     func body(content: Content) -> some View {
         ZStack {
             content
-            if playing {
-                TimelineView(.animation(minimumInterval: 1/60.0)) { ctx in
-                    Color.clear
-                        .onChange(of: ctx.date) { _, date in
-                            tick(date.timeIntervalSinceReferenceDate)
-                        }
-                }
-                .allowsHitTesting(false)
-                .accessibilityHidden(true)
-            }
+                .scaleEffect(isActive ? (reduceMotion ? 1.0 : (baseScale + scaleAmplitude * sin(.pi * Double(t*2)))) : 1.0)
+                .shadow(color: bloomColor.opacity(isActive ? 0.35 : 0), radius: isActive ? 14 : 0, x: 0, y: 3)
+                .overlay(halo)
+                .animation(reduceMotion ? nil : .easeInOut(duration: 0.9), value: t)
+                .animation(reduceMotion ? nil : .spring(response: 0.5, dampingFraction: 0.9), value: isActive)
+        }
+        .compositingGroup() // prevent clipping of glow
+        .onChange(of: isActive) { _, newValue in
+            if newValue { start() } else { stop() }
+        }
+        .onAppear {
+            if isActive { start() }
         }
     }
-}
-
-public struct AttentionConfig {
-    public let tint: Color
-    public let glow: Color
-    public let ringWidth: CGFloat
-    public let ringInset: CGFloat
-    public let period: TimeInterval
-    public let idlePause: TimeInterval
-    public let showNewBadge: Bool
-    public let newBadgeText: String
-    public let newBadgeColor: Color
     
-    init(tint: Color = .white, glow: Color = .cyan.opacity(0.45), ringWidth: CGFloat = 3, ringInset: CGFloat = 2, period: TimeInterval = 1.8, idlePause: TimeInterval = 1.2, showNewBadge: Bool = true, newBadgeText: String = "NEW", newBadgeColor: Color = .pink) {
-        self.tint = tint
-        self.glow = glow
-        self.ringWidth = ringWidth
-        self.ringInset = ringInset
-        self.period = period
-        self.idlePause = idlePause
-        self.showNewBadge = showNewBadge
-        self.newBadgeText = newBadgeText
-        self.newBadgeColor = newBadgeColor
+    // Radiating halo ring
+    private var halo: some View {
+        GeometryReader { geo in
+            let size = min(geo.size.width, geo.size.height)
+            let ringScale = 1.0 + (reduceMotion ? 0.0 : 0.2 * CGFloat(sin(.pi * Double(t*2))))
+            let ringOpacity = 0.25 + 0.35 * Double((sin(.pi * Double(t*2)) + 1) / 2) // 0.25...0.60
+            
+            Circle()
+                .strokeBorder(
+                    LinearGradient(colors: [
+                        haloColor.opacity(0.85), .clear
+                    ], startPoint: .top, endPoint: .bottom),
+                    lineWidth: size * 0.08
+                )
+                .scaleEffect(ringScale)
+                .opacity(isActive ? ringOpacity : 0)
+                .blendMode(.screen)
+                .allowsHitTesting(false)
+        }
+    }
+    
+    // MARK: - Control
+    
+    private func start() {
+        if startedAt == nil { startedAt = Date() }
+        guard !reduceMotion else { return }
+        withAnimation(.linear(duration: 0.9).repeatForever(autoreverses: true)) {
+            t = 1
+        }
+        
+        guard let duration else { return }
+        Task(priority: .medium) {
+            try? await Task.sleep(nanoseconds: duration)
+            isActive = false
+        }
+    }
+    
+    private func stop() {
+        t = 0
+        startedAt = nil
     }
 }
 
@@ -670,5 +546,6 @@ extension View {
     func loading(show: Bool) -> some View { modifier(LoadingViewModifier(show: show)) }
     func brickBorder(color: Color = .gray, lineWidth: CGFloat = 6, brickLength: CGFloat = 24, gapLength: CGFloat = 8, cornerRadius: CGFloat = 8) -> some View { modifier(BrickBorderModifier(color: color, lineWidth: lineWidth, brickLength: brickLength, gapLength: gapLength, cornerRadius: cornerRadius)) }
     func realStone(base: Color = Color(white: 0.78), cornerRadius: CGFloat = 4, crackCount: Int = 3, crackWidth: CGFloat = 1.2, bevel: CGFloat = 8, seed: UInt64 = 1337) -> some View { modifier(RealStoneModifier(base: base, cornerRadius: cornerRadius, crackCount: crackCount, crackWidth: crackWidth, bevel: bevel, seed: seed)) }
-    func attentionIfNew(isActive: Binding<Bool>, duration: UInt64 = 8_000_000_000, config: AttentionConfig = AttentionConfig()) -> some View { modifier(AttentionAttractor(isActive: isActive, duration: duration, config: config)) }
+    func attentionIfNew(isActive: Binding<Bool>, duration: UInt64 = 8_000_000_000) -> some View { modifier(PremiumAttention(isActive: isActive, duration: duration))
+    }
 }

@@ -7,7 +7,7 @@
 
 import Foundation
 import WidgetKit
-import SwiftUICore
+import SwiftUI
 
 // MARK: - Usage
 // Call this once at app startup (before reading SharedStore):

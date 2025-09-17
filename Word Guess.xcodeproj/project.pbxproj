@@ -328,7 +328,7 @@
 					"ai-pack-v1",
 				);
 				LastSwiftUpdateCheck = 1640;
-				LastUpgradeCheck = 1640;
+				LastUpgradeCheck = 2600;
 				TargetAttributes = {
 					4FC111362E636F30007D1E2B = {
 						CreatedOnToolsVersion = 16.4;
@@ -468,7 +468,7 @@
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
 				CODE_SIGN_ENTITLEMENTS = WordZapWidgetExtensionExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 7;
+				CURRENT_PROJECT_VERSION = 7.5;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = WordZapWidgetExtension/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = WordZapWidgetExtension;
@@ -496,7 +496,7 @@
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
 				CODE_SIGN_ENTITLEMENTS = WordZapWidgetExtensionExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 7;
+				CURRENT_PROJECT_VERSION = 7.5;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = WordZapWidgetExtension/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = WordZapWidgetExtension;
@@ -579,6 +579,7 @@
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
@@ -640,6 +641,7 @@
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				VALIDATE_PRODUCT = YES;
@@ -654,7 +656,7 @@
 				CODE_SIGN_ENTITLEMENTS = "Word Guess/Word Guess.entitlements";
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 7;
+				CURRENT_PROJECT_VERSION = 7.5;
 				DEVELOPMENT_ASSET_PATHS = "\"Word Guess/Preview Content\"";
 				DEVELOPMENT_TEAM = D6DN86P8S8;
 				EMBED_ASSET_PACKS_IN_PRODUCT_BUNDLE = YES;
@@ -679,7 +681,6 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.barak.wordzap;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
-				STRIP_INSTALLED_PRODUCT = NO;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
@@ -698,7 +699,7 @@
 				CODE_SIGN_ENTITLEMENTS = "Word Guess/Word Guess.entitlements";
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 7;
+				CURRENT_PROJECT_VERSION = 7.5;
 				DEVELOPMENT_ASSET_PATHS = "\"Word Guess/Preview Content\"";
 				DEVELOPMENT_TEAM = D6DN86P8S8;
 				EMBED_ASSET_PACKS_IN_PRODUCT_BUNDLE = NO;
@@ -722,7 +723,6 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.barak.wordzap;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
-				STRIP_INSTALLED_PRODUCT = NO;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;

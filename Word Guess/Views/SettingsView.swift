@@ -119,7 +119,7 @@ struct SettingsView: View {
         ZStack {
             if !fromSideMenu {
                 HStack {
-                    BackButton()
+                    BackButton(action: router.navigateBack)
                     Spacer()
                 }
                 .environment(\.layoutDirection, language == "he" ? .rightToLeft : .leftToRight)

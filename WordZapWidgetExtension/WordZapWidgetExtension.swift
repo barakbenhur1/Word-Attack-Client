@@ -230,7 +230,7 @@ struct WordZapWidgetView: View {
         let answers   = entry.answers.map(String.init) ?? "—"
         let score     = entry.score.map { $0.formatted(.number.grouping(.automatic)) } ?? "—"
         let place     = entry.place.map { "#\($0)" } ?? "—"
-        let diff      = d.stringValue.localized.capitalized
+        let diff      = d.rawValue.localized.capitalized
         
         return VStack(spacing: 4) {
             AppTitle(isWidget: true)
@@ -279,7 +279,7 @@ struct WordZapWidgetView: View {
                     GridRow {
                         tapTarget("wordzap://play?difficulty=\(d.rawValue)") {
                             VStack(alignment: .leading, spacing: 12) {
-                                chip("\("Diff".localized): \(d.stringValue.localized.capitalized)", icon: "flag.checkered", color: d.color)
+                                chip("\("Diff".localized): \(d.rawValue.localized.capitalized)", icon: "flag.checkered", color: d.color)
                                 chip("\("Today".localized): \(shortDate)", icon: "calendar")
                                 
                                 if hasStats {
@@ -319,49 +319,73 @@ struct WordZapWidgetView: View {
     
     // MARK: Extra Large
     private var extraLargeLayout: some View {
-        let shortDate = entry.date.formatted(.dateTime.day().month(.wide).locale(Locale.current))
+        // Match Large date style for consistency
+        let shortDate = entry.date.formatted(.dateTime.day().month(.abbreviated).locale(Locale.current))
         let d         = entry.difficulty
-        
+
         return VStack(spacing: 16) {
             AppTitle(isWidget: true)
                 .font(.title2).bold()
                 .foregroundColor(.primary)
                 .frame(maxWidth: .infinity, alignment: .center)
-            
-            HStack(alignment: .top, spacing: 22) {
-                // left tools card unchanged...
-                
-                tapTarget("wordzap://play?difficulty=\(d.rawValue)") {
-                    VStack(alignment: .leading, spacing: 12) {
-                        chip("\("Diff".localized): \(d.stringValue.localized.capitalized)", icon: "flag.checkered", color: d.color)
-                        chip("\("Today".localized): \(shortDate)", icon: "calendar")
-                        
-                        if hasStats {
-                            chip("\("Place".localized): \(entry.place.map { "#\($0)" } ?? "—")", icon: "trophy")
-                            chip("\("Score".localized): \(entry.score.map(String.init) ?? "—")", icon: "sum")
-                            chip("\("Answers".localized): \(entry.answers.map(String.init) ?? "—")", icon: "text.cursor")
-                        } else {
-                            statsPlaceholderBlock()
+
+            Grid(horizontalSpacing: 22, verticalSpacing: 0) {
+                GridRow {
+                    VStack(alignment: .center, spacing: 0) {
+                        Spacer()
+                        tapTarget("wordzap://settings") {
+                            Image(systemName: "gearshape.fill")
+                                .resizable()
+                                .scaledToFill()
+                                .frame(width: 40, height: 40)
                         }
+                        Spacer()
+                        tapTarget("wordzap://scoreboard") {
+                            Image(systemName: "trophy.fill")
+                                .resizable()
+                                .scaledToFill()
+                                .frame(width: 40, height: 40)
+                        }
+                        Spacer()
                     }
-                    .padding(16)
+                    .padding(5)
                     .softGlass()
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                }
-                
-                tapTarget("wordzap://ai") {
-                    AICardWithTooltip(
-                        name: entry.aiName ?? "AI Opponent",
-                        imageName: entry.aiImageName,
-                        tooltip: entry.aiName == nil ? "start your ai journey" : entry.aiTooltip,
-                        isExtraLarge: true
-                    )
-                    .frame(width: 300)
-                    .softGlass()
+
+                    // Middle column: Play card (same content structure as Large)
+                    tapTarget("wordzap://play?difficulty=\(d.rawValue)") {
+                        VStack(alignment: .leading, spacing: 12) {
+                            chip("\("Diff".localized): \(d.rawValue.localized.capitalized)", icon: "flag.checkered", color: d.color)
+                            chip("\("Today".localized): \(shortDate)", icon: "calendar")
+
+                            if hasStats {
+                                chip("\("Place".localized): \(entry.place.map { "#\($0)" } ?? "—")", icon: "trophy")
+                                chip("\("Score".localized): \(entry.score.map(String.init) ?? "—")", icon: "sum")
+                                chip("\("Answers".localized): \(entry.answers.map(String.init) ?? "—")", icon: "text.cursor")
+                            } else {
+                                statsPlaceholderBlock()
+                            }
+                        }
+                        .padding(16)
+                        .softGlass()
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+
+                    // Right column: AI card
+                    tapTarget("wordzap://ai") {
+                        AICardWithTooltip(
+                            name: entry.aiName ?? "AI Opponent",
+                            imageName: entry.aiImageName,
+                            tooltip: entry.aiName == nil ? "start your ai journey" : entry.aiTooltip,
+                            isExtraLarge: true
+                        )
+                        .frame(width: 300)
+                        .softGlass()
+                    }
                 }
             }
         }
         .padding(20)
+        .environment(\.layoutDirection, Locale.current.identifier.components(separatedBy: "_").first == "he" ? .rightToLeft : .leftToRight)
     }
 }
 

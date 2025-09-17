@@ -163,9 +163,13 @@ struct AIGameView<VM: WordViewModelForAI>: View {
         ai?.hidePhrase()
         ai?.deassign()
         audio.stop()
-        Task(priority: .userInitiated) {
-            try? await Task.sleep(nanoseconds: 100_000_000)
-            await MainActor.run { router.navigateBack() }
+        
+        if vm.fatalError { router.navigateBack() }
+        else {
+            Task(priority: .userInitiated) {
+                try? await Task.sleep(nanoseconds: 100_000_000)
+                await MainActor.run { router.navigateBack() }
+            }
         }
     }
     
@@ -501,7 +505,7 @@ struct AIGameView<VM: WordViewModelForAI>: View {
                             type: "mp3",
                             loop: true)
             
-            try? await Task.sleep(nanoseconds: 1_500_000_000)
+//            try? await Task.sleep(nanoseconds: 1_500_000_000)
             await MainActor.run { endFetchAnimation = true }
         }
         
@@ -523,14 +527,14 @@ struct AIGameView<VM: WordViewModelForAI>: View {
     }
     
     @ViewBuilder private func contant() -> some View {
-        GeometryReader { proxy in
+        GeometryReader { _ in
             background()
             ZStack(alignment: .top) {
                 topBar()
                     .padding(.top, 4)
-                game(proxy: proxy)
-                    .padding(.top, 5)
-                overlayViews(proxy: proxy)
+                game()
+                    .padding(.top, 10)
+                overlayViews()
             }
         }
         .ignoresSafeArea(.keyboard)
@@ -567,20 +571,15 @@ struct AIGameView<VM: WordViewModelForAI>: View {
     @ViewBuilder private func topBar() -> some View {
         HStack {
             backButton()
+            Spacer()
             adProvider.adView(id: "GameBanner")
+            Spacer()
         }
     }
     
     @ViewBuilder private func background() -> some View {
-        LinearGradient(colors: [.red,
-                                .yellow,
-                                .green,
-                                .blue],
-                       startPoint: .topLeading,
-                       endPoint: .bottomTrailing)
-        .blur(radius: 4)
-        .opacity(0.1)
-        .ignoresSafeArea()
+        GameViewBackguard()
+            .ignoresSafeArea()
     }
     
     @ViewBuilder private func aiIntro() -> some View {
@@ -591,7 +590,7 @@ struct AIGameView<VM: WordViewModelForAI>: View {
             
             VStack {
                 Text(aiDifficulty.name.localized)
-                    .font(.largeTitle)
+                    .font(.system(.largeTitle, design: .rounded).weight(.bold))
                     .foregroundStyle(aiDifficulty.color)
                 
                 Image(aiDifficulty.image)
@@ -607,7 +606,7 @@ struct AIGameView<VM: WordViewModelForAI>: View {
                maxHeight: .infinity)
     }
     
-    @ViewBuilder private func gameBody(proxy: GeometryProxy) -> some View {
+    @ViewBuilder private func gameBody() -> some View {
         if !vm.fatalError && didStart {
             VStack(spacing: 8) {
                 ZStack(alignment: .bottom) {
@@ -624,19 +623,19 @@ struct AIGameView<VM: WordViewModelForAI>: View {
                                         .opacity(turn == .player ? 1 : 0.4)
                                     
                                     ZStack {
-                                        HPBar(value: Double(playerHP),
-                                              maxValue: Double(fullHP))
-                                        .frame(width: 100)
+                                        HPBar(value: Double(playerHP), maxValue: Double(fullHP))
+                                            .frame(width: 100)
                                         
                                         Text("- \(playerHpAnimation.value)")
-                                            .font(.body.weight(.heavy))
+                                            .font(.system(.title3, design: .rounded).weight(.bold))
+                                            .monospacedDigit()
                                             .multilineTextAlignment(.center)
                                             .frame(maxWidth: .infinity)
                                             .foregroundStyle(.red)
                                             .opacity(playerHpAnimation.opacity)
                                             .scaleEffect(.init(width: playerHpAnimation.scale,
                                                                height: playerHpAnimation.scale))
-                                            .offset(x: playerHpAnimation.scale > 0 ? language == "he" ? 12 : -12 : 0,
+                                            .offset(x: playerHpAnimation.scale > 0 ? (language == "he" ? 12 : -12) : 0,
                                                     y: playerHpAnimation.offset)
                                             .blur(radius: 0.5)
                                             .fixedSize()
@@ -659,19 +658,19 @@ struct AIGameView<VM: WordViewModelForAI>: View {
                                                  isPresented: $showPhrase)
                                     
                                     ZStack {
-                                        HPBar(value: Double(aiHP),
-                                              maxValue: Double(fullHP))
-                                        .frame(width: 100)
+                                        HPBar(value: Double(aiHP), maxValue: Double(fullHP))
+                                            .frame(width: 100)
                                         
                                         Text("- \(aiHpAnimation.value)")
-                                            .font(.body.weight(.heavy))
+                                            .font(.system(.title3, design: .rounded).weight(.bold))
+                                            .monospacedDigit()
                                             .multilineTextAlignment(.center)
                                             .frame(maxWidth: .infinity)
                                             .foregroundStyle(.red)
                                             .opacity(aiHpAnimation.opacity)
                                             .scaleEffect(.init(width: aiHpAnimation.scale,
                                                                height: aiHpAnimation.scale))
-                                            .offset(x: aiHpAnimation.scale > 0 ? language == "he" ? 12 : -12 : 0,
+                                            .offset(x: aiHpAnimation.scale > 0 ? (language == "he" ? 12 : -12) : 0,
                                                     y: aiHpAnimation.offset)
                                             .blur(radius: 0.5)
                                             .fixedSize()
@@ -735,14 +734,14 @@ struct AIGameView<VM: WordViewModelForAI>: View {
                 
                 if endFetchAnimation {
                     AppTitle(size: 50)
-                        .padding(.top, UIDevice.isPad ? 130 : 90)
-                        .padding(.bottom, UIDevice.isPad ? 190 : 150)
+                        .padding(.top, UIDevice.isPad ? 130 : 95)
+                        .padding(.bottom, UIDevice.isPad ? 190 : 145)
                         .shadow(radius: 4)
                 } else {
                     ZStack{}
-                        .frame(height: UIDevice.isPad ? 111 : 81)
-                        .padding(.top, UIDevice.isPad ? 130 : 90)
-                        .padding(.bottom, UIDevice.isPad ? 190 : 150)
+                        .frame(height: UIDevice.isPad ? 81 : 86)
+                        .padding(.top, UIDevice.isPad ? 130 : 95)
+                        .padding(.bottom, UIDevice.isPad ? 190 : 140)
                         .shadow(radius: 4)
                 }
             }
@@ -753,21 +752,21 @@ struct AIGameView<VM: WordViewModelForAI>: View {
         }
     }
     
-    @ViewBuilder private func game(proxy: GeometryProxy) -> some View {
+    @ViewBuilder private func game() -> some View {
         if let email {
             ZStack(alignment: .topLeading) {
-                ZStack(alignment: .topLeading) { gameBody(proxy: proxy) }
+                ZStack(alignment: .topLeading) { gameBody() }
                     .ignoresSafeArea(.keyboard)
                     .onAppear { Task.detached(priority: .userInitiated, operation: { await handleStartup(email: email) } ) }
                     .onChange(of: vm.numberOfErrors, handleError)
                     .onChange(of: vm.word, handleWordChange)
                     .ignoresSafeArea(.keyboard)
             }
-            .padding(.top, 64)
+            .padding(.top, 44)
         }
     }
     
-    @ViewBuilder private func overlayViews(proxy: GeometryProxy) -> some View {
+    @ViewBuilder private func overlayViews() -> some View {
         if !vm.fatalError && !endFetchAnimation && !keyboard.show { FetchingView(word: vm.wordValue) }
         else { aiIntro() }
     }
@@ -775,10 +774,7 @@ struct AIGameView<VM: WordViewModelForAI>: View {
     @ViewBuilder func backButton() -> some View {
         HStack {
             BackButton(action: backButtonTap)
-                .padding(.top, 20)
-            Spacer()
         }
-        .padding(.bottom, 20)
     }
 }
 

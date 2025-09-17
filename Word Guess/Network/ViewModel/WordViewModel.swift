@@ -84,14 +84,15 @@ fileprivate class ScoreService: Service {
     
     func score(diffculty: DifficultyType, email: String) async -> EmptyModel? {
         let value: EmptyModel? = await network.send(route: .score,
-                                                    parameters: ["diffculty": diffculty.stringValue.trimmingCharacters(in: .whitespacesAndNewlines),
+                                                    parameters: ["diffculty": diffculty.rawValue.trimmingCharacters(in: .whitespacesAndNewlines),
                                                                  "email": email])
         return value
     }
     
     func getScore(diffculty: DifficultyType, email: String) async -> ScoreData? {
+        guard diffculty != .tutorial else { return .init(score: 0) }
         let value: ScoreData? = await network.send(route: .getScore,
-                                                   parameters: ["diffculty": diffculty.stringValue.trimmingCharacters(in: .whitespacesAndNewlines),
+                                                   parameters: ["diffculty": diffculty.rawValue.trimmingCharacters(in: .whitespacesAndNewlines),
                                                                  "email": email])
         return value
     }
@@ -127,14 +128,14 @@ fileprivate class WordService: Service {
         }
         
         let value: WordData? = await network.send(route: .getWord,
-                                                  parameters: ["diffculty": diffculty.stringValue.trimmingCharacters(in: .whitespacesAndNewlines),
+                                                  parameters: ["diffculty": diffculty.rawValue.trimmingCharacters(in: .whitespacesAndNewlines),
                                                                "email": email])
         return value
     }
     
     func addGuess(diffculty: DifficultyType, email: String, guess: String) async -> EmptyModel? {
         let value: EmptyModel? = await network.send(route: .addGuess,
-                                                    parameters: ["diffculty": diffculty.stringValue.trimmingCharacters(in: .whitespacesAndNewlines),
+                                                    parameters: ["diffculty": diffculty.rawValue.trimmingCharacters(in: .whitespacesAndNewlines),
                                                                  "email": email,
                                                                  "guess": guess])
         return value

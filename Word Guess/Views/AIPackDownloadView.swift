@@ -47,7 +47,7 @@ struct AIPackDownloadView: View {
     
     private var progressLabel: String {
         isLoadingModel
-        ? "Finalizing…"
+        ? "Finalizing…".localized
         : "\(Int((max(0, min(1, mgr.progress))) * 100))% \("complete".localized)"
     }
     

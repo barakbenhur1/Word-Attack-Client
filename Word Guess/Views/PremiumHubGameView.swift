@@ -120,39 +120,39 @@ struct PremiumHubGameView<VM: PremiumHubGameVM>: View {
     // MARK: Body
     
     var body: some View {
-        ZStack {
+        GeometryReader { _ in
             background()
             
-            VStack(spacing: 10) {
-                gameArea()
-                    .opacity(endBannerUp ? 0.25 : 1)
-                    .padding(.horizontal, 10)
+            ZStack {
+                VStack(spacing: 10) {
+                    topBar()
+                    
+                    gameArea()
+                        .opacity(endBannerUp ? 0.25 : 1)
+                        .padding(.horizontal, 10)
+                    
+                    AppTitle(size: 50)
+                        .padding(.top, UIDevice.isPad ? 140 : 100)
+                        .padding(.bottom, UIDevice.isPad ? 210 : 170)
+                        .shadow(radius: 4)
+                }
+                .frame(maxHeight: .infinity)
+                .ignoresSafeArea(.keyboard)
                 
-                AppTitle(size: 50)
-                    .padding(.top, UIDevice.isPad ? 140 : 100)
-                    .padding(.bottom, UIDevice.isPad ? 210 : 170)
-                    .shadow(radius: 4)
-            }
-            .frame(maxHeight: .infinity)
-            .ignoresSafeArea(.keyboard)
-            
-            if showWinBanner {
-                WinCelebrationView(wins: wins) { forceEnd(asFail: false, reset: true) }
-                    .transition(.scale.combined(with: .opacity))
-                    .zIndex(2)
-            }
-            
-            if showLoseBanner {
-                LoseCelebrationView { forceEnd(asFail: true, reset: loseResetFlag) }
-                    .transition(.scale.combined(with: .opacity))
-                    .zIndex(2)
+                if showWinBanner {
+                    WinCelebrationView(wins: wins) { forceEnd(asFail: false, reset: true) }
+                        .transition(.scale.combined(with: .opacity))
+                        .zIndex(2)
+                }
+                
+                if showLoseBanner {
+                    LoseCelebrationView { forceEnd(asFail: true, reset: loseResetFlag) }
+                        .transition(.scale.combined(with: .opacity))
+                        .zIndex(2)
+                }
             }
         }
         .ignoresSafeArea(.keyboard)
-        .safeAreaInset(edge: .top) {
-            topBar()
-                .padding(.bottom, 10)
-        }
         .onAppear {
             isVisible = true
             // Seed the timer progress with NO animation so bar doesn't "grow" on first frame.
@@ -276,12 +276,8 @@ struct PremiumHubGameView<VM: PremiumHubGameVM>: View {
     }
     
     @ViewBuilder private func background() -> some View {
-        LinearGradient(
-            colors: [Color.black,
-                     Color(hue: 0.64, saturation: 0.25, brightness: 0.18)],
-            startPoint: .topLeading, endPoint: .bottomTrailing
-        )
-        .ignoresSafeArea()
+        GameViewBackguard()
+            .ignoresSafeArea()
     }
     
     // MARK: - Logic
@@ -313,13 +309,13 @@ struct PremiumHubGameView<VM: PremiumHubGameVM>: View {
             if correct {
                 wins += 1
                 if let email { Task.detached(priority: .high, operation: { await vm.score(email: email) }) }
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
                     audio.playSound(sound: "success", type: "wav")
                     withAnimation(.spring(response: 0.55, dampingFraction: 0.75)) { showWinBanner = true }
                 }
             } else {
                 // OUT OF TRIES → lose animation (reset after)
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
                     loseResetFlag = true
                     audio.playSound(sound: "fail", type: "wav")
                     withAnimation(.spring(response: 0.55, dampingFraction: 0.75)) { showLoseBanner = true }
