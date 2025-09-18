@@ -86,7 +86,7 @@ struct GameView<VM: WordViewModel>: View {
         guard endFetchAnimation && vm.word.isTimeAttack else { return }
         timeAttackAnimationDone = false
         withAnimation(.interpolatingSpring(.smooth)) { timeAttackAnimation = true }
-        queue.asyncAfter(deadline: .now() + 1) {
+        queue.asyncAfter(deadline: .now() + 2) {
             timeAttackAnimationDone = true
             timeAttackAnimation = false
             queue.asyncAfter(deadline: .now() + 0.3) {
@@ -387,12 +387,10 @@ struct GameView<VM: WordViewModel>: View {
                             loop: true)
             
             //            try? await Task.sleep(nanoseconds: 1_500_000_000)
-            await MainActor.run {
-                endFetchAnimation = true
-                endFetchAnimation = true
-                current = vm.word.word.guesswork.count
-            }
+            await MainActor.run { endFetchAnimation = true }
         }
+        
+        current = vm.word.word.guesswork.count
     }
     
     @ViewBuilder private func overlayViews(proxy: GeometryProxy) -> some View {

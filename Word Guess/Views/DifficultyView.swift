@@ -80,18 +80,20 @@ struct DifficultyView: View {
     }
     
     var body: some View {
-        ZStack {
+        GeometryReader { _ in
             BackgroundDecor().ignoresSafeArea()
             
-            contant()
-                .onDisappear { onDisappear() }
-                .onAppear { onAppear() }
-                .ignoresSafeArea(.keyboard)
-                .fullScreenCover(isPresented: $showPaywall) {
-                    SubscriptionPaywallView(isPresented: $showPaywall)
-                }
-            
-            SideMenu(isOpen: $isMenuOpen, content: { SettingsView(fromSideMenu: true) })
+            ZStack {
+                contant()
+                    .onDisappear { onDisappear() }
+                    .onAppear { onAppear() }
+                    .ignoresSafeArea(.keyboard)
+                    .fullScreenCover(isPresented: $showPaywall) {
+                        SubscriptionPaywallView(isPresented: $showPaywall)
+                    }
+                
+                SideMenu(isOpen: $isMenuOpen, content: { SettingsView(fromSideMenu: true) })
+            }
         }
     }
     
@@ -112,6 +114,7 @@ struct DifficultyView: View {
                 .background(.ultraThinMaterial)
                 .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                 .padding(.horizontal, 12)
+                .padding(.top, 4)
         }
         .safeAreaInset(edge: .bottom) {
             adProvider.adView(id: "BottomBanner")
@@ -264,7 +267,7 @@ private struct PremiumBadge: View {
     }
 }
 
-// MARK: - Background (premium, subtle motion)
+// MARK: - Background (subtle motion)
 
 private struct BackgroundDecor: View {
     @State private var t: CGFloat = 0
@@ -284,11 +287,42 @@ private struct BackgroundDecor: View {
                         .purple.opacity(0.20)
                     ]),
                     center: .center,
-                    angle: .degrees(Double(t) * 360)
+                    // your motion + seam offset
+                    angle: .degrees(Double(t) * 360
+                                    + 0.7
+                                    + sin(Double(t) * .pi * 2 * 0.25) * 0.8)
                 )
-                .blendMode(.screen)
-                .blur(radius: 24)
-                .animation(.linear(duration: 22).repeatForever(autoreverses: false), value: t)
+                // your breathing + blur safety
+                    .scaleEffect(1.08 + CGFloat(sin(Double(t) * .pi * 2 * 0.14)) * 0.006)
+                    .compositingGroup()
+                    .blur(radius: 24, opaque: true)
+                    .blendMode(.screen)
+                // ↓ keep colors but reduce how much they brighten the base
+                    .opacity(0.30) // 0.25–0.35 is a good range
+                // ↓ concentrate the glow near the center so edges stay dark
+                    .mask(
+                        RadialGradient(
+                            colors: [
+                                .white.opacity(1.0),
+                                .white.opacity(0.0)
+                            ],
+                            center: .center,
+                            startRadius: 0,
+                            endRadius: 1050   // tweak 800–1100 to taste
+                        )
+                    )
+                    .mask(
+                        LinearGradient(
+                            stops: [
+                                .init(color: .white,                location: 0.00),
+                                .init(color: .white,                location: 0.82), // start feather
+                                .init(color: .white.opacity(0.75),  location: 0.92),
+                                .init(color: .clear,                location: 1.00)
+                            ],
+                            startPoint: .leading, endPoint: .trailing
+                        )
+                    )
+                    .animation(.linear(duration: 22).repeatForever(autoreverses: false), value: t)
             )
             .onAppear { t = 1 }
             

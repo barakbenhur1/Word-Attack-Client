@@ -33,7 +33,7 @@ class WordViewModel: ViewModel {
     func initMoc() async {
         await MainActor.run { [weak self] in
             guard let self else { return }
-            withAnimation { self.word = self.wordService.initMoc()  }
+            word = wordService.initMoc()
         }
     }
     
@@ -43,7 +43,7 @@ class WordViewModel: ViewModel {
             guard let self else { return }
             guard let value else { isError = true; return }
             Trace.log("🛟", "Word is \(value.word.value)", Fancy.mag)
-            withAnimation { self.word = value }
+            word = value
         }
     }
     
@@ -76,8 +76,8 @@ class WordViewModel: ViewModel {
 fileprivate protocol Service { var network: Network { get } }
 
 fileprivate class ScoreService: Service {
-  
     fileprivate let network: Network
+    
     required init() {
         network = Network(root: .score)
     }
