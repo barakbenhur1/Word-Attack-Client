@@ -34,7 +34,7 @@ public struct GuessingGlyphView: View {
                 outOf stringLangth: Int,
                 language: Language,
                 staggerFraction: Double = 0.18,
-                changesPerSecond: Double = 3,
+                changesPerSecond: Double = 4.6,
                 fontSize: CGFloat = 18,
                 weight: Font.Weight = .medium,
                 initialHoldDuration: TimeInterval = 2.4,
@@ -68,58 +68,90 @@ public struct GuessingGlyphView: View {
     }
     
     public var body: some View {
-        let period = self.period
-        let offset = Double(index) * period * staggerFraction
+        let letterPeriod = self.period                      // time to animate ONE letter
         let localHold = initialHoldDuration + holdStagger * Double(visualIndex)
-        
-        TimelineView(.periodic(from: .now, by: period / 90.0)) { context in
-            // small tick granularity for smoother in-between progress
-            let elapsed = max(0, context.date.timeIntervalSince(appearDate))
-            
-            if elapsed < localHold {
+
+        TimelineView(.periodic(from: .now, by: letterPeriod / 90.0)) { context in
+            let now = max(0, context.date.timeIntervalSince(appearDate))
+
+            // During local hold → show the hold symbol (staggered per letter)
+            if now < localHold {
                 ZStack {
                     baseStyledText(holdGlyph)
-                    
+
                     Text(holdGlyph)
                         .font(.system(size: fontSize, weight: weight, design: .rounded))
                         .foregroundColor(.red.opacity(0.18))
                         .blendMode(.plusLighter)
-                    
+
                     Text(holdGlyph)
                         .font(.system(size: fontSize, weight: weight, design: .rounded))
                         .foregroundColor(.cyan.opacity(0.18))
                         .blendMode(.plusLighter)
                 }
-                .frame(maxWidth: .infinity,
-                       maxHeight: .infinity,
-                       alignment: .center)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+
             } else {
-                // --- main animation with morphing ---
-                let tAll    = (elapsed - localHold) + offset
-                let stepF   = tAll / period
-                let step    = Int(floor(stepF))
-                let frac    = stepF - floor(stepF)   // 0 → 1 within current period
-                
-                let prevIdx = idx(for: step - 1)
-                let currIdx = idx(for: step)
-                
+                // --- One-by-one letter change driver (global, same for all letters) ---
+                // Baseline global time (don’t include each letter’s extra hold)
+                let globalT = max(0, now - initialHoldDuration)
+
+                // Which letter is currently animating?
+                let stepIndex      = Int(floor(globalT / letterPeriod))              // 0,1,2,...
+                let activeLetter   = stepIndex % stringLangth                        // 0..n-1
+                let passIndex      = stepIndex / stringLangth                        // which glyph boundary we’re between
+                let withinLetterT  = globalT.truncatingRemainder(dividingBy: letterPeriod)
+                let frac           = smoothStep(min(1, max(0, withinLetterT / letterPeriod)))
+                let firstPass      = (passIndex == 0)
+
+                // Determine previous/next glyphs for THIS pass
+                let prevIdx = idx(for: passIndex - 1)
+                let currIdx = idx(for: passIndex)
+
                 let prevRaw = glyphs[prevIdx].returnChar(isFinal: index == stringLangth - 1)
                 let currRaw = glyphs[currIdx].returnChar(isFinal: index == stringLangth - 1)
-                
+
                 let prev = index == 0 ? prevRaw.capitalizedFirst : prevRaw
                 let curr = index == 0 ? currRaw.capitalizedFirst : currRaw
-                
-                MorphStack(
-                    from: prev,
-                    to: curr,
-                    progress: smoothStep(frac),     // eased progress for nicer feel
-                    fontSize: fontSize,
-                    weight: weight,
-                    baseStyled: baseStyledText
-                )
-                .frame(maxWidth: .infinity,
-                       maxHeight: .infinity,
-                       alignment: .center)
+
+                Group {
+                    if index < activeLetter {
+                        // Letters BEFORE the active one have already switched this pass → show new glyph
+                        baseStyledText(curr)
+                    } else if index == activeLetter {
+                        // Only the ACTIVE letter morphs right now
+                        MorphStack(
+                            from: prev,
+                            to: curr,
+                            progress: frac,
+                            fontSize: fontSize,
+                            weight: weight,
+                            baseStyled: baseStyledText
+                        )
+                    } else {
+                        // Letters AFTER the active one:
+                        // - On the very first pass, keep the hold symbol until it’s their turn.
+                        // - On later passes, show the previous glyph (stable) until they animate.
+                        if firstPass {
+                            ZStack {
+                                baseStyledText(holdGlyph)
+
+                                Text(holdGlyph)
+                                    .font(.system(size: fontSize, weight: weight, design: .rounded))
+                                    .foregroundColor(.red.opacity(0.18))
+                                    .blendMode(.plusLighter)
+
+                                Text(holdGlyph)
+                                    .font(.system(size: fontSize, weight: weight, design: .rounded))
+                                    .foregroundColor(.cyan.opacity(0.18))
+                                    .blendMode(.plusLighter)
+                            }
+                        } else {
+                            baseStyledText(prev)
+                        }
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
                 .accessibilityLabel("Guessing glyph animation")
             }
         }

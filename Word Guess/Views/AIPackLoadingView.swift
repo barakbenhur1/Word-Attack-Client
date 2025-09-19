@@ -95,7 +95,6 @@ public struct AIPackLoadingView: View {
                     .buttonStyle(.borderedProminent)
                     .tint(Palette.buttonTint)
                     .buttonBorderShape(.capsule)
-                    .padding(.bottom, 14)
                     .accessibilityLabel("Cancel")
                 }
                 

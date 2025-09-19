@@ -22,7 +22,11 @@ class AIViewModel {
     private let phraseProvider: PhraseProvider
     private var history: [GuessHistory]
     private var solverWarmedup: Bool = false
-    private var bossProvider: BossProvider = { nil } { didSet { installBossEnhancementProvider(bossProvider: bossProvider) } }
+    private var bossProvider: BossProvider = { nil } {
+        didSet {
+            installBossEnhancementProvider(bossProvider: bossProvider)
+        }
+    }
     
     // MARK: - Public Parameters
     var isReadyToGuess: Bool { solverWarmedup }
@@ -33,8 +37,8 @@ class AIViewModel {
         lang = language
         history = startingHistory
         phraseProvider = PhraseProvider()
-        solverWarmedup = WordZapAIProvider.aiWarmedup
-        Task.detached(priority: .userInitiated) { [weak self] in
+        solverWarmedup = WordZapAIProvider.shared.aiWarmedup
+        Task(priority: .high) { [weak self] in
             guard let self else { return }
             guard !solverWarmedup  else { return }
             await solver().warmUp()
@@ -65,7 +69,6 @@ extension AIViewModel {
 }
 
 // MARK: - Private
-
 extension AIViewModel {
     private func solver() async -> WordZapAI { await WordZapAIProvider.shared.sharedAsync() }
     private func fallbackGuess() -> String { return generateWord(for: lang, length: 5) }
@@ -77,7 +80,7 @@ extension AIViewModel {
         } catch { fatalError("Solver Faild Return Word!!!") /*return generateWord(for: lang)*/ }
     }
     private func installBossEnhancementProvider(bossProvider: @escaping BossProvider) {
-        Task.detached(priority: .userInitiated) { [weak self] in
+        Task.detached(priority: .high) { [weak self] in
             guard let self else { return }
             await solver().installBossEnhancementProvider(bossProvider)
         }

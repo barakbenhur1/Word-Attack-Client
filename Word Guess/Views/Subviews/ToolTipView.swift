@@ -144,7 +144,8 @@ public struct Tooltip<Content: View>: View {
                     .shadow(radius: shadowRadius * 0.6, y: 0.5)
                 
                 bubble
-                    .offset(x:  -arrowSize.width)
+                    .offset(x:  -(arrowSize.width + 1.5))
+                    .zIndex(2)
             } else {
                 bubble
                     .offset(x: contentGap + 1.5)
@@ -181,6 +182,7 @@ public struct Tooltip<Content: View>: View {
                 .padding(.vertical, padding - 5)
                 .background(
                     RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                        .fill(.white)
                         .fill(background)
                 )
                 .shadow(radius: shadowRadius, y: 1)

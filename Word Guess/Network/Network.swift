@@ -251,20 +251,13 @@ extension Network {
 extension NetworkError: LocalizedError {
     fileprivate var errorDescription: String? {
         switch self {
-        case .badUrl:
-            return "There was an error creating the URL"
-        case .invalidRequestBody:
-            return "There was an error creating the request body"
-        case .badResponse:
-            return "Did not get a valid response"
-        case .badStatus:
-            return "Did not get a 2xx status code from the response"
-        case .noData:
-            return "No data"
-        case .failedToDecodeResponse:
-            return "Failed to decode response into the given type"
-        case .custom(error: let error):
-            return error.localizedDescription
+        case .badUrl: return "There was an error creating the URL"
+        case .invalidRequestBody: return "There was an error creating the request body"
+        case .badResponse: return "Did not get a valid response"
+        case .badStatus: return "Did not get a 2xx status code from the response"
+        case .noData: return "No data"
+        case .failedToDecodeResponse: return "Failed to decode response into the given type"
+        case .custom(error: let error): return error.localizedDescription
         }
     }
 }

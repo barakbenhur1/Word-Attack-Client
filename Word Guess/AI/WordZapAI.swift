@@ -1256,6 +1256,7 @@ private extension WordZapAI {
         guard let model = fallbackModel else {
             throw NSError(domain: "WordZapAI", code: -300, userInfo: [NSLocalizedDescriptionKey: "No fallback model"])
         }
+        
         let prompt = buildPrompt(history: history, lang: lang)
         var ids = encodePromptFallback(prompt)
         
@@ -1728,7 +1729,7 @@ final class WordZapAIProvider: Singleton {
     private var loadTask: Task<WordZapAI, Error>?
     private var ai: WordZapAI?
     
-    static var aiWarmedup: Bool { shared.ai != nil ? !shared.ai!.needWarmup : false }
+    var aiWarmedup: Bool { ai != nil ? !ai!.needWarmup : false }
     
     private override init() {}
     
@@ -1736,9 +1737,11 @@ final class WordZapAIProvider: Singleton {
         if let ai { return ai }
         do {
             if let t = loadTask { return try await t.value }
-            let t = Task(priority: .userInitiated) { () throws -> WordZapAI in
+            let t = Task(priority: .high) { () throws -> WordZapAI in
                 let built = try WordZapAI.make()
-                await MainActor.run { self.ai = built }
+                await MainActor.run {
+                    self.ai = built
+                }
                 return built
             }
             loadTask = t
@@ -1747,5 +1750,9 @@ final class WordZapAIProvider: Singleton {
         } catch { fatalError("-- AI can not be initialize --") }
     }
     
-    func deassign() { ai = nil }
+    @MainActor
+    func deassign() {
+        loadTask = nil
+        ai = nil
+    }
 }

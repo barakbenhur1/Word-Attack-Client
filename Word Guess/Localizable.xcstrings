@@ -325,6 +325,17 @@
         }
       }
     },
+    "AI’s Turn" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "התור של הAI"
+          }
+        }
+      }
+    },
     "Align" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -4759,6 +4770,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "הטיית הזמן שלך שגויה"
+          }
+        }
+      }
+    },
+    "Your Turn" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "התור שלך"
           }
         }
       }

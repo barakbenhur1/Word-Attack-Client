@@ -9,6 +9,7 @@ import SwiftUI
 import CoreData
 import Combine
 import SwiftUITooltip
+import QuartzCore
 
 typealias HpAnimationParams =  (value: Int, opacity: CGFloat, scale: CGFloat, offset: CGFloat)
 
@@ -22,7 +23,7 @@ struct AIGameView<VM: WordViewModelForAI>: View {
     @EnvironmentObject private var premium: PremiumManager
     @EnvironmentObject private var adProvider: AdProvider
     
-    private enum Turn: Int { case player = 0, ai = 1 }
+    fileprivate enum Turn: Int { case player = 0, ai = 1 }
     private enum GameState { case inProgress, lose, win }
     
     private let InterstitialAdInterval: Int = 7
@@ -90,6 +91,10 @@ struct AIGameView<VM: WordViewModelForAI>: View {
         }
     }
     
+    // MARK: - Turn FX
+    fileprivate struct TurnFX { var show = false; var next: Turn = .player }
+    @State private var turnFX = TurnFX()
+    
     @State private var turn: Turn {
         didSet {
             switch turn {
@@ -113,6 +118,31 @@ struct AIGameView<VM: WordViewModelForAI>: View {
                 .map { $0.getColor() }
                 .joined()
             return (s, pattern)
+        }
+    }
+    
+    private func animatedTurnSwitch(to next: Turn) {
+        // disable input while animating
+        disabled = (next == .ai)
+        
+        // present overlay sweep & badge
+        turnFX.next = next
+        withAnimation(.easeInOut(duration: 0.22)) { turnFX.show = true }
+        UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
+        
+        Task(priority: .userInitiated) {
+            // flip board shortly after sweep begins
+            try? await Task.sleep(nanoseconds: 260_000_000)
+            await MainActor.run {
+                withAnimation(.spring(response: 0.36, dampingFraction: 0.92)) {
+                    turn = next
+                }
+            }
+            // let badge linger then fade overlay
+            try? await Task.sleep(nanoseconds: 420_000_000)
+            await MainActor.run {
+                withAnimation(.easeOut(duration: 0.25)) { turnFX.show = false }
+            }
         }
     }
     
@@ -164,7 +194,7 @@ struct AIGameView<VM: WordViewModelForAI>: View {
         ai?.deassign()
         audio.stop()
         
-        if vm.fatalError { router.navigateBack() }
+        if vm.fatalError || ai == nil || !ai!.isReadyToGuess { router.navigateBack() }
         else {
             Task(priority: .userInitiated) {
                 try? await Task.sleep(nanoseconds: 100_000_000)
@@ -190,28 +220,19 @@ struct AIGameView<VM: WordViewModelForAI>: View {
             if correct {
                 Task(priority: .userInitiated) {
                     try? await Task.sleep(nanoseconds: 2_000_000_000)
-                    //                    await MainActor.run { cleanCells = true }
                     guard let email else { return }
                     await vm.word(email: email)
                 }
-                
                 return true
             }
-            
             return false
         } else {
             guard let value = Turn(rawValue: 1 - turn.rawValue) else { return false }
             disabled = value == .ai
-            
             Task(priority: .high) {
                 try? await Task.sleep(nanoseconds: 1_000_000_000)
-                await MainActor.run {
-                    withAnimation(.easeInOut) {
-                        turn = value
-                    }
-                }
+                await MainActor.run { animatedTurnSwitch(to: value) }
             }
-            
             return false
         }
     }
@@ -273,7 +294,7 @@ struct AIGameView<VM: WordViewModelForAI>: View {
         }
         
         guard turn != .player else { return }
-        withAnimation(.easeInOut) { turn = .player }
+        animatedTurnSwitch(to: .player)
     }
     
     init() {
@@ -296,32 +317,22 @@ struct AIGameView<VM: WordViewModelForAI>: View {
                                       count: rows)
         
         self.showGameEndPopup = false
-        
         self.showExitPopup = false
-        
         self.showAiIntro = false
-        
         self.aiIntroDone = false
-        
         self.showCelebrate = false
-        
         self.showMourn = false
-        
         self.showError = false
-        
         self.current = 0
-        
         self.aiHP = fullHP
         
         let playerHP = UserDefaults.standard.integer(forKey: "playerHP")
         self.playerHP = playerHP > 0 ? playerHP : fullHP
         
         self.turn = .player
-        
         self.gameState = .inProgress
         
         let difficulty = UserDefaults.standard.string(forKey: "aiDifficulty")
-        
         switch difficulty ?? AIDifficulty.easy.name {
         case AIDifficulty.easy.name:   aiDifficulty = .easy
         case AIDifficulty.medium.name: aiDifficulty = .medium
@@ -376,14 +387,13 @@ struct AIGameView<VM: WordViewModelForAI>: View {
     
     private func initializeAI() {
         guard vm.aiDownloaded && ai == nil else { return }
-        guard let lang = language,
-              let language = Language(rawValue: lang) else { return }
-        ai = .init(language: language)
+        guard let lang = language, let language = Language(rawValue: lang) else { return }
+        ai               = .init(language: language)
         let aiDifficulty = aiDifficulty
-        let playerHP =     playerHP
+        let playerHP     = playerHP
         UserDefaults.standard.set(aiDifficulty.name, forKey: "aiDifficulty")
         UserDefaults.standard.set(playerHP, forKey: "playerHP")
-        Task(priority: .utility) { await SharedStore.writeAIStatsAsync(.init(name: aiDifficulty.name, imageName: aiDifficulty.image)) }
+        Task.detached(priority: .utility) { await SharedStore.writeAIStatsAsync(.init(name: aiDifficulty.name, imageName: aiDifficulty.image)) }
     }
     
     private func handlePhrase() { showPhrase = ai?.showPhraseValue ?? false }
@@ -395,14 +405,17 @@ struct AIGameView<VM: WordViewModelForAI>: View {
     
     private func handleEndFetchAnimation<T: Equatable>(oldValue: T, newValue: T) {
         guard let ai else { return }
-        Task(priority: .high) {
-            try? await Task.sleep(nanoseconds: (keyboard.show ? 0 : 500_000_000))
-            handleAiIntroToggle(oldValue: oldValue, newValue: newValue)
-        }
-        Task.detached(priority: .utility) {
-            try? await Task.sleep(nanoseconds: 8_000_000_000)
+        handleAiIntroToggle(oldValue: oldValue, newValue: newValue)
+        
+        Task.detached(priority: .high) {
+            try? await Task.sleep(nanoseconds: 9_000_000_000)
             await MainActor.run { ai.startShowingPhrase() }
         }
+    }
+    
+    private func hanldePlayerTurnAfterAiChange() {
+        guard aiIntroDone else { return }
+        animatedTurnSwitch(to: .player)
     }
     
     private func getAiWord() {
@@ -413,18 +426,12 @@ struct AIGameView<VM: WordViewModelForAI>: View {
         
         Task.detached(priority: .high) {
             let aiWord = await ai.getFeedback(for: aiDifficulty).capitalizedFirst.toArray()
-            
             try? await Task.sleep(nanoseconds: 500_000_000)
-            
             for i in 0..<aiWord.count {
                 arr[i] = aiWord[i].returnChar(isFinal: i == aiWord.count - 1)
-                
                 try? await Task.sleep(nanoseconds: 500_000_000)
-                
                 await MainActor.run {
-                    if aiMatrix.indices.contains(row) {
-                        aiMatrix[row] = arr
-                    }
+                    if aiMatrix.indices.contains(row) { aiMatrix[row] = arr }
                 }
             }
         }
@@ -438,7 +445,6 @@ struct AIGameView<VM: WordViewModelForAI>: View {
                   colors.indices.contains(idx),
                   aiMatrix.indices.contains(idx),
                   aiMatrix[idx].allSatisfy(\.isEmpty) else { return }
-            
             let guess   = matrix[idx].joined()
             let pattern = colors[idx].map { $0.getColor() }.joined()
             ai?.saveToHistory(guess: (guess, pattern))
@@ -447,7 +453,6 @@ struct AIGameView<VM: WordViewModelForAI>: View {
             guard idx >= 0,
                   aiMatrix.indices.contains(idx),
                   aiColors.indices.contains(idx) else { return }
-            
             let guess   = aiMatrix[idx].joined()
             let pattern = aiColors[idx].map { $0.getColor() }.joined()
             ai?.saveToHistory(guess: (guess, pattern))
@@ -465,14 +470,9 @@ struct AIGameView<VM: WordViewModelForAI>: View {
             if current == rows - 1 {
                 Task(priority: .high) {
                     try? await Task.sleep(nanoseconds: 1_000_000_000)
-                    await MainActor.run {
-                        withAnimation(.easeInOut) {
-                            turn = .ai
-                        }
-                    }
+                    await MainActor.run { animatedTurnSwitch(to: .ai) }
                 }
             }
-            
             getAiWord()
         }
     }
@@ -492,7 +492,6 @@ struct AIGameView<VM: WordViewModelForAI>: View {
             makeHitOnAI(hitPoints: noGuessHitPoints)
             Task(priority: .userInitiated) {
                 try? await Task.sleep(nanoseconds: 2_000_000_000)
-                //                await MainActor.run { cleanCells = true }
                 guard let email else { return }
                 await vm.word(email: email)
             }
@@ -503,14 +502,10 @@ struct AIGameView<VM: WordViewModelForAI>: View {
         audio.playSound(sound: "backround",
                         type: "mp3",
                         loop: true)
-        
         endFetchAnimation = true
         disabled = false
         current = 0
-        
-        Task(priority: .high) {
-            await ai?.addDetachedFirstGuess(with: firstGuess)
-        }
+        Task(priority: .high) { await ai?.addDetachedFirstGuess(with: firstGuess) }
     }
     
     var body: some View {
@@ -522,8 +517,8 @@ struct AIGameView<VM: WordViewModelForAI>: View {
     
     @ViewBuilder private func bodyContant() -> some View {
         if let ai, ai.isReadyToGuess { contant() }
-        else if vm.aiDownloaded { AIPackLoadingView(onCancel: router.navigateBack) }
-        else { AIPackDownloadView(downloaded: $vm.aiDownloaded, onCancel: router.navigateBack) }
+        else if vm.aiDownloaded { AIPackLoadingView(onCancel: closeView) }
+        else { AIPackDownloadView(downloaded: $vm.aiDownloaded, onCancel: closeView) }
     }
     
     @ViewBuilder private func contant() -> some View {
@@ -533,11 +528,17 @@ struct AIGameView<VM: WordViewModelForAI>: View {
                 topBar().padding(.top, 4)
                 game().padding(.top, 10)
                 overlayViews()
+                
+                // Turn-change overlay on top (NOW SYMMETRIC)
+                TurnChangeOverlay(isPresented: $turnFX.show,
+                                  isAI: turnFX.next == .ai,
+                                  language: language)
             }
         }
         .ignoresSafeArea(.keyboard)
         .onChange(of: aiDifficulty, handleAiIntroToggle)
         .onChange(of: endFetchAnimation, handleEndFetchAnimation)
+        .onChange(of: aiIntroDone, hanldePlayerTurnAfterAiChange)
         .onChange(of: interstitialAdManager?.interstitialAdLoaded, handleInterstitial)
         .onChange(of: playerHP, handlePlayer)
         .onChange(of: aiHP, handleAi)
@@ -604,87 +605,95 @@ struct AIGameView<VM: WordViewModelForAI>: View {
                maxHeight: .infinity)
     }
     
+    @ViewBuilder private func topViews() -> some View {
+        ZStack(alignment: .bottom) {
+            ZStack(alignment: .top) {
+                ZStack(alignment: .trailing) {
+                    HStack {
+                        Spacer()
+                        VStack {
+                            ZStack {
+                                Image("player_\(gender ?? "male")")
+                                    .resizable()
+                                    .scaledToFill()
+                                    .shadow(radius: 4)
+                                    .frame(width: 50, height: 50)
+                                    .opacity(turn == .player ? 1 : 0.4)
+                            }
+                            
+                            ZStack {
+                                HPBar(value: Double(playerHP), maxValue: Double(fullHP))
+                                    .frame(width: 100)
+                                
+                                Text("- \(playerHpAnimation.value)")
+                                    .font(.system(.title3, design: .rounded).weight(.bold))
+                                    .monospacedDigit()
+                                    .multilineTextAlignment(.center)
+                                    .frame(maxWidth: .infinity)
+                                    .foregroundStyle(.red)
+                                    .opacity(playerHpAnimation.opacity)
+                                    .scaleEffect(.init(width: playerHpAnimation.scale,
+                                                       height: playerHpAnimation.scale))
+                                    .offset(x: playerHpAnimation.scale > 0 ? (language == "he" ? 12 : -12) : 0,
+                                            y: playerHpAnimation.offset)
+                                    .blur(radius: 0.5)
+                                    .fixedSize()
+                            }
+                            .padding(.bottom, 5)
+                        }
+                        
+                        Spacer()
+                        
+                        VStack {
+                            ZStack {
+                                Image(aiDifficulty.image)
+                                    .resizable()
+                                    .scaledToFill()
+                                    .shadow(radius: 4)
+                                    .frame(width: 50, height: 50)
+                                    .opacity(turn == .ai ? 1 : 0.4)
+                                    .tooltip(ai!.phrase,
+                                             language: language == "he" ? .he : .en,
+                                             trigger: .manual,
+                                             isPresented: $showPhrase)
+                            }
+                            
+                            ZStack {
+                                HPBar(value: Double(aiHP), maxValue: Double(fullHP))
+                                    .frame(width: 100)
+                                
+                                Text("- \(aiHpAnimation.value)")
+                                    .font(.system(.title3, design: .rounded).weight(.bold))
+                                    .monospacedDigit()
+                                    .multilineTextAlignment(.center)
+                                    .frame(maxWidth: .infinity)
+                                    .foregroundStyle(.red)
+                                    .opacity(aiHpAnimation.opacity)
+                                    .scaleEffect(.init(width: aiHpAnimation.scale,
+                                                       height: aiHpAnimation.scale))
+                                    .offset(x: aiHpAnimation.scale > 0 ? (language == "he" ? 12 : -12) : 0,
+                                            y: aiHpAnimation.offset)
+                                    .blur(radius: 0.5)
+                                    .fixedSize()
+                            }
+                            .padding(.bottom, 5)
+                        }
+                        
+                        Spacer()
+                    }
+                }
+                .padding(.vertical)
+            }
+            .shadow(radius: 4)
+        }
+    }
+    
     @ViewBuilder private func gameBody() -> some View {
         if !vm.fatalError && didStart {
             VStack(spacing: 8) {
-                ZStack(alignment: .bottom) {
-                    ZStack(alignment: .top) {
-                        ZStack(alignment: .trailing) {
-                            HStack {
-                                Spacer()
-                                VStack {
-                                    Image("player_\(gender ?? "male")")
-                                        .resizable()
-                                        .scaledToFill()
-                                        .shadow(radius: 4)
-                                        .frame(width: 50, height: 50)
-                                        .opacity(turn == .player ? 1 : 0.4)
-                                    
-                                    ZStack {
-                                        HPBar(value: Double(playerHP), maxValue: Double(fullHP))
-                                            .frame(width: 100)
-                                        
-                                        Text("- \(playerHpAnimation.value)")
-                                            .font(.system(.title3, design: .rounded).weight(.bold))
-                                            .monospacedDigit()
-                                            .multilineTextAlignment(.center)
-                                            .frame(maxWidth: .infinity)
-                                            .foregroundStyle(.red)
-                                            .opacity(playerHpAnimation.opacity)
-                                            .scaleEffect(.init(width: playerHpAnimation.scale,
-                                                               height: playerHpAnimation.scale))
-                                            .offset(x: playerHpAnimation.scale > 0 ? (language == "he" ? 12 : -12) : 0,
-                                                    y: playerHpAnimation.offset)
-                                            .blur(radius: 0.5)
-                                            .fixedSize()
-                                    }
-                                    .padding(.bottom, 5)
-                                }
-                                
-                                Spacer()
-                                
-                                VStack {
-                                    Image(aiDifficulty.image)
-                                        .resizable()
-                                        .scaledToFill()
-                                        .shadow(radius: 4)
-                                        .frame(width: 50, height: 50)
-                                        .opacity(turn == .ai ? 1 : 0.4)
-                                        .tooltip(ai!.phrase,
-                                                 language: language == "he" ? .he : .en,
-                                                 trigger: .manual,
-                                                 isPresented: $showPhrase)
-                                    
-                                    ZStack {
-                                        HPBar(value: Double(aiHP), maxValue: Double(fullHP))
-                                            .frame(width: 100)
-                                        
-                                        Text("- \(aiHpAnimation.value)")
-                                            .font(.system(.title3, design: .rounded).weight(.bold))
-                                            .monospacedDigit()
-                                            .multilineTextAlignment(.center)
-                                            .frame(maxWidth: .infinity)
-                                            .foregroundStyle(.red)
-                                            .opacity(aiHpAnimation.opacity)
-                                            .scaleEffect(.init(width: aiHpAnimation.scale,
-                                                               height: aiHpAnimation.scale))
-                                            .offset(x: aiHpAnimation.scale > 0 ? (language == "he" ? 12 : -12) : 0,
-                                                    y: aiHpAnimation.offset)
-                                            .blur(radius: 0.5)
-                                            .fixedSize()
-                                    }
-                                    .padding(.bottom, 5)
-                                }
-                                
-                                Spacer()
-                            }
-                        }
-                        .padding(.vertical)
-                    }
-                    .shadow(radius: 4)
-                }
-                .padding(.top, -10)
-                .padding(.bottom, -20)
+                topViews()
+                    .padding(.top, -10)
+                    .padding(.bottom, -20)
                 
                 ForEach(0..<rows, id: \.self) { i in
                     ZStack {
@@ -706,7 +715,8 @@ struct AIGameView<VM: WordViewModelForAI>: View {
                             .allowsHitTesting(!disabled && current == i)
                             .disabled(disabled || current != i)
                             .shadow(radius: 4)
-                            .rotation3DEffect(.degrees(turn == .ai ? 180 : 0), axis: (x: 0, y: 1, z: 0))
+                            // IMPROVED FLIP
+                            .cardFlip(degrees: turn == .ai ? 180 : 0)
                             
                         case .ai:
                             let isAIRowActive = current == i && matrix[current].contains { !$0.isEmpty }
@@ -724,10 +734,12 @@ struct AIGameView<VM: WordViewModelForAI>: View {
                             .allowsHitTesting(false)
                             .disabled(true)
                             .shadow(radius: 4)
-                            .rotation3DEffect(.degrees(180), axis: (x: 0, y: 1, z: 0))
+                            // IMPROVED FLIP
+                            .cardFlip(degrees: 180)
                         }
                     }
-                    .rotation3DEffect(.degrees(turn == .ai ? 180 : 0), axis: (x: 0, y: 1, z: 0))
+                    // Row container flip (board-level)
+                    .boardFlip(isAI: turn == .ai)
                 }
                 
                 if endFetchAnimation {
@@ -789,16 +801,205 @@ extension String {
         while let found = range(of: needle, options: options, range: searchRange) {
             count += 1
             let nextStart = overlapping
-            ? index(after: found.lowerBound)   // step 1 char → allows overlaps
-            : found.upperBound                 // skip past match → non-overlapping
+            ? index(after: found.lowerBound)
+            : found.upperBound
             searchRange = nextStart..<endIndex
         }
-        return count
+        return count;
     }
 }
 
+// MARK: - Turn Change Overlay (sweep + badge, symmetric)
+fileprivate struct TurnChangeOverlay: View {
+    @Binding var isPresented: Bool
+    var isAI: Bool
+    var language: String?
+    @Environment(\.colorScheme) private var scheme
+    
+    private var direction: SweepStripe.Direction { isAI ? .rightToLeft : .leftToRight }
+    
+    var body: some View {
+        ZStack {
+            if isPresented {
+                Rectangle()
+                    .fill(.ultraThinMaterial)
+                    .opacity(scheme == .dark ? 0.25 : 0.22)
+                    .ignoresSafeArea()
+                    .transition(.opacity)
+                
+                // Dual-layer sweep with soft edge mask, mirrored by role
+                SweepStripe(accent: accent, direction: direction)
+                    .allowsHitTesting(false)
+                
+                VStack {
+                    Text(label)
+                        .font(.system(size: 20, weight: .semibold, design: .rounded))
+                        .kerning(language == "he" ? 0.0 : 0.3)
+                        .padding(.horizontal, 18)
+                        .padding(.vertical, 10)
+                        .background(.ultraThickMaterial, in: Capsule(style: .continuous))
+                        .overlay(
+                            Capsule().stroke(accent.opacity(0.55), lineWidth: 1)
+                                .shadow(color: accent.opacity(0.35), radius: 6)
+                        )
+                        .shadow(radius: 10)
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                }
+            }
+        }
+        .animation(.easeInOut(duration: 0.32), value: isPresented)
+    }
+    
+    private var label: String {
+        isAI ? "AI’s Turn".localized : "Your Turn".localized
+    }
+    private var accent: Color { isAI ? .pink : .cyan }
+}
 
-//#Preview {
-//    AIGameView()
-//        .environment(\.managedObjectContext, PersistenceController.preview.container.viewContext)
-//}
+// MARK: - Diagonal moving light stripe (mirrored + layered)
+fileprivate struct SweepStripe: View {
+    enum Direction { case leftToRight, rightToLeft }
+    var accent: Color
+    var direction: Direction = .leftToRight
+    @State private var run = false
+    
+    var body: some View {
+        GeometryReader { geo in
+            let L = max(geo.size.width, geo.size.height) * 1.8
+            let startX = (direction == .leftToRight) ? -L :  L
+            let endX   = (direction == .leftToRight) ?  L : -L
+            let angle: Double = (direction == .leftToRight) ? -18 : 18
+            
+            ZStack {
+                // Main band
+                LinearGradient(
+                    colors: [accent.opacity(0.00), accent.opacity(0.36), accent.opacity(0.00)],
+                    startPoint: .leading, endPoint: .trailing
+                )
+                .frame(width: L * 0.58, height: L)
+                .mask(
+                    LinearGradient(colors: [.clear, .white, .clear],
+                                   startPoint: .top, endPoint: .bottom)
+                )
+                .blur(radius: 10)
+                .offset(x: run ? endX : startX)
+                .animation(.easeInOut(duration: 0.70), value: run)
+                
+                // Echo band (slightly thinner, delayed for depth)
+                LinearGradient(
+                    colors: [accent.opacity(0.00), accent.opacity(0.24), accent.opacity(0.00)],
+                    startPoint: .leading, endPoint: .trailing
+                )
+                .frame(width: L * 0.42, height: L)
+                .mask(
+                    LinearGradient(colors: [.clear, .white, .clear],
+                                   startPoint: .top, endPoint: .bottom)
+                )
+                .blur(radius: 14)
+                .offset(x: run ? endX : startX)
+                .animation(.easeInOut(duration: 0.86).delay(0.06), value: run)
+                
+                // Crisp center line for a premium feel
+                Rectangle()
+                    .fill(accent.opacity(0.45))
+                    .frame(width: 2.0, height: L)
+                    .blur(radius: 0.6)
+                    .offset(x: run ? endX : startX)
+                    .animation(.easeInOut(duration: 0.72), value: run)
+            }
+            .rotationEffect(.degrees(angle))
+            .onAppear { run = true }
+        }
+        .ignoresSafeArea()
+    }
+}
+
+// MARK: - High-quality 3D Flip (perspective + lift + mid-flip blur)
+fileprivate struct Flip3D: AnimatableModifier {
+    var degrees: Double
+    var axis: (x: CGFloat, y: CGFloat, z: CGFloat) = (0, 1, 0)
+    var perspective: CGFloat = -1/800
+    var lift: CGFloat = 16
+    var blurMax: CGFloat = 1.1
+    var scaleDelta: CGFloat = 0.03
+    var specularStrength: Double = 0.18
+    
+    var animatableData: Double {
+        get { degrees }
+        set { degrees = newValue }
+    }
+    
+    func body(content: Content) -> some View {
+        let rad   = CGFloat(degrees) * .pi / 180
+        let s     = abs(sin(rad))                    // 0 → 1 (peaks at 90°)
+        let liftY = -lift * s
+        let scale = 1 - scaleDelta * s
+        let blur  = blurMax * s
+        let shade = min(0.22, 0.22 * Double(s))
+        
+        return content
+            .overlay(specularOverlay(intensity: s * s))   // subtle, not a halo
+            .scaleEffect(scale)
+            .offset(y: liftY)
+            .shadow(color: .black.opacity(shade), radius: 14 * s, y: 10 * s)
+            .blur(radius: blur)
+            .modifier(Projection3D(angle: rad, axis: axis, m34: perspective))
+    }
+    
+    @ViewBuilder
+    private func specularOverlay(intensity: CGFloat) -> some View {
+        if intensity > 0.05 {
+            LinearGradient(
+                colors: [.clear, Color.white.opacity(specularStrength * Double(intensity)), .clear],
+                startPoint: .leading, endPoint: .trailing
+            )
+            .blendMode(.plusLighter)
+            .rotationEffect(.degrees(-16))
+            .opacity(Double(intensity))
+        } else {
+            EmptyView()
+        }
+    }
+    
+    private struct Projection3D: ViewModifier {
+        let angle: CGFloat
+        let axis: (x: CGFloat, y: CGFloat, z: CGFloat)
+        let m34: CGFloat
+        func body(content: Content) -> some View {
+            var t = CATransform3DIdentity
+            t.m34 = m34
+            t = CATransform3DRotate(t, angle, axis.x, axis.y, axis.z)
+            return content.projectionEffect(ProjectionTransform(t))
+        }
+    }
+}
+
+// Convenience wrappers for board vs. card
+fileprivate extension View {
+    func boardFlip(isAI: Bool) -> some View {
+        self.modifier(
+            Flip3D(
+                degrees: isAI ? 180 : 0,
+                axis: (0,1,0),
+                perspective: -1/850,
+                lift: 18,
+                blurMax: 1.3,
+                scaleDelta: 0.035,
+                specularStrength: 0.16
+            )
+        )
+    }
+    func cardFlip(degrees: Double) -> some View {
+        self.modifier(
+            Flip3D(
+                degrees: degrees,
+                axis: (0,1,0),
+                perspective: -1/900,
+                lift: 10,
+                blurMax: 0.9,
+                scaleDelta: 0.02,
+                specularStrength: 0.14
+            )
+        )
+    }
+}
