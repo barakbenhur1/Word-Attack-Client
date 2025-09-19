@@ -453,15 +453,17 @@ struct GameView<VM: WordViewModel>: View {
             let correct = guess.lowercased() == vm.word.word.value.lowercased()
             
             guard diffculty != .tutorial else {
-                return queue.asyncAfter(deadline: .now() + 0.2) {
+                Task(priority: .userInitiated) {
+                    try? await Task.sleep(nanoseconds: 200_000_000)
                     let sound = correct ? "success" : "fail"
                     audio.playSound(sound: sound,
                                     type: "wav")
                     
-                    return queue.asyncAfter(deadline: .now() + 1) {
-                        router.navigateBack()
-                    }
+                    try? await Task.sleep(nanoseconds: 1_000_000_000)
+                    router.navigateBack()
                 }
+                
+                return
             }
             
             if correct {

@@ -394,8 +394,11 @@ struct AIGameView<VM: WordViewModelForAI>: View {
     }
     
     private func handleEndFetchAnimation<T: Equatable>(oldValue: T, newValue: T) {
-        handleAiIntroToggle(oldValue: oldValue, newValue: newValue)
         guard let ai else { return }
+        Task(priority: .high) {
+            try? await Task.sleep(nanoseconds: (keyboard.show ? 0 : 500_000_000))
+            handleAiIntroToggle(oldValue: oldValue, newValue: newValue)
+        }
         Task.detached(priority: .utility) {
             try? await Task.sleep(nanoseconds: 8_000_000_000)
             await MainActor.run { ai.startShowingPhrase() }
@@ -497,43 +500,38 @@ struct AIGameView<VM: WordViewModelForAI>: View {
     }
     
     private func initalConfigirationForWord() {
-        Task(priority: .high) {
-            await ai?.addDetachedFirstGuess(with: firstGuess)
-           
-            try? await Task.sleep(nanoseconds: (keyboard.show ? 0 : 500_000_000))
-            audio.playSound(sound: "backround",
-                            type: "mp3",
-                            loop: true)
-            
-//            try? await Task.sleep(nanoseconds: 1_500_000_000)
-            await MainActor.run { endFetchAnimation = true }
-        }
+        audio.playSound(sound: "backround",
+                        type: "mp3",
+                        loop: true)
         
+        endFetchAnimation = true
         disabled = false
         current = 0
+        
+        Task(priority: .high) {
+            await ai?.addDetachedFirstGuess(with: firstGuess)
+        }
     }
     
     var body: some View {
         bodyContant()
+            .onAppear { initializeAI() }
             .onChange(of: vm.aiDownloaded, initializeAI)
             .onChange(of: ai?.showPhraseValue, handlePhrase)
     }
     
     @ViewBuilder private func bodyContant() -> some View {
         if let ai, ai.isReadyToGuess { contant() }
-        else if vm.aiDownloaded { AIPackLoadingView(onCancel: { router.navigateBack() }) }
-        else { AIPackDownloadView(downloaded: $vm.aiDownloaded,
-                                  onCancel: { router.navigateBack() }) }
+        else if vm.aiDownloaded { AIPackLoadingView(onCancel: router.navigateBack) }
+        else { AIPackDownloadView(downloaded: $vm.aiDownloaded, onCancel: router.navigateBack) }
     }
     
     @ViewBuilder private func contant() -> some View {
         GeometryReader { _ in
             background()
             ZStack(alignment: .top) {
-                topBar()
-                    .padding(.top, 4)
-                game()
-                    .padding(.top, 10)
+                topBar().padding(.top, 4)
+                game().padding(.top, 10)
                 overlayViews()
             }
         }

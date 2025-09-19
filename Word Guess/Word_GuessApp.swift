@@ -40,7 +40,7 @@ struct WordGuessApp: App {
                 else if loginHaneler.hasGender { DifficultyView() }
                 else { ServerLoadingView() }
             }
-            .autoPauseAudio()
+            .handleBackground()
             .onAppear {
                 guard let currentUser = Auth.auth().currentUser,
                       let email = currentUser.email else { return }
@@ -115,3 +115,32 @@ struct WordGuessApp: App {
                                    email: email)
     }
 }
+
+struct BackgroundHandlerModifier: ViewModifier {
+    @Environment(\.scenePhase) private var scenePhase
+    @EnvironmentObject private var audio: AudioPlayer
+    @EnvironmentObject private var premium: PremiumManager
+    
+    func body(content: Content) -> some View {
+        content
+            .onChange(of: scenePhase) { _, newPhase in
+                switch newPhase {
+                case .inactive, .background:
+                    audio.pauseForBackground()
+                case .active:
+                    audio.resumeIfNeeded()
+                    Task(priority: .medium) {
+                        await premium.loadProducts()
+                    }
+                default:
+                    break
+                }
+            }
+    }
+}
+
+extension View {
+    /// Attach this once (e.g., on your root view) to auto-pause/resume audio on background/foreground.
+    func handleBackground() -> some View { modifier(BackgroundHandlerModifier()) }
+}
+

@@ -14,10 +14,20 @@ class AdProvider: ObservableObject {
     init(premium: PremiumManager) {
         self.premium = premium
     }
-
-    @ViewBuilder func adView(id: String) -> some View {
+    
+    @ViewBuilder func adView(id: String, withPlaceholder: Bool = false) -> some View {
         if !premium.isPremium {
-            AdView(adUnitID: id)
+            if withPlaceholder {
+                ZStack(alignment: .center) {
+                    Rectangle()
+                    AdView(adUnitID: id)
+                }
+            } else { AdView(adUnitID: id) }
+        }
+        else if withPlaceholder {
+            ZStack(alignment: .center) {
+                Rectangle()
+            }
         }
     }
     

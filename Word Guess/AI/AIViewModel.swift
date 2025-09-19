@@ -34,11 +34,14 @@ class AIViewModel {
         history = startingHistory
         phraseProvider = PhraseProvider()
         solverWarmedup = WordZapAIProvider.aiWarmedup
-        Task(priority: .userInitiated) { [weak self] in
+        Task.detached(priority: .userInitiated) { [weak self] in
             guard let self else { return }
             guard !solverWarmedup  else { return }
             await solver().warmUp()
-            solverWarmedup = true
+            await MainActor.run { [weak self] in
+                guard let self else { return }
+                solverWarmedup = true
+            }
         }
     }
 }
@@ -74,7 +77,7 @@ extension AIViewModel {
         } catch { fatalError("Solver Faild Return Word!!!") /*return generateWord(for: lang)*/ }
     }
     private func installBossEnhancementProvider(bossProvider: @escaping BossProvider) {
-        Task(priority: .high) { [weak self] in
+        Task.detached(priority: .userInitiated) { [weak self] in
             guard let self else { return }
             await solver().installBossEnhancementProvider(bossProvider)
         }

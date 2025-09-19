@@ -61,27 +61,3 @@ class AudioPlayer: NSObject, ObservableObject, AVAudioPlayerDelegate {
         resumeOnForeground = false
     }
 }
-
-struct AutoPauseAudioModifier: ViewModifier {
-    @Environment(\.scenePhase) private var scenePhase
-    @EnvironmentObject private var audio: AudioPlayer
-    
-    func body(content: Content) -> some View {
-        content
-            .onChange(of: scenePhase) { _, newPhase in
-                switch newPhase {
-                case .inactive, .background:
-                    audio.pauseForBackground()
-                case .active:
-                    audio.resumeIfNeeded()
-                default:
-                    break
-                }
-            }
-    }
-}
-
-extension View {
-    /// Attach this once (e.g., on your root view) to auto-pause/resume audio on background/foreground.
-    func autoPauseAudio() -> some View { modifier(AutoPauseAudioModifier()) }
-}

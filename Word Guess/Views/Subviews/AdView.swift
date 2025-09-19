@@ -15,7 +15,6 @@ struct AdView: View {
         BannerView(adUnitID: adUnitID)
             .frame(width: GADAdSizeBanner.size.width,
                    height: GADAdSizeBanner.size.height)
-            .padding(.horizontal, 10)
             .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in ATTrackingManager.requestTrackingAuthorization(completionHandler: { status in }) }
     }
 }

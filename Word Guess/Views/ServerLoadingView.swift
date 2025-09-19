@@ -71,16 +71,6 @@ public struct ServerLoadingView: View {
         }
         .frame(minHeight: baseContentHeight + cancelBlock)
         .padding(22)
-        .background(
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .fill(LoadPalette.cardBackground)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 22, style: .continuous)
-                        .strokeBorder(LoadPalette.cardStroke, lineWidth: 1)
-                )
-                .shadow(color: LoadPalette.cardShadow, radius: 22, x: 0, y: 14)
-        )
-        .padding(24)
         .onAppear {
             startDate = Date()
             withAnimation(.easeInOut(duration: 0.2)) { opacity = 1 }

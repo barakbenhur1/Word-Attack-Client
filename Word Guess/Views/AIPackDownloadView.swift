@@ -87,18 +87,18 @@ struct AIPackDownloadView: View {
                         .padding(.horizontal)
                 }
                 
-                Button {
-                    onCancel()          // fires only on explicit tap
-                } label: {
-                    Label("Cancel", systemImage: "xmark")
+                Button { onCancel() }
+                label: {
+                    Label("Cancel", systemImage: "xmark.circle.fill")
                         .labelStyle(.titleAndIcon)
                         .font(.system(size: 15, weight: .medium, design: .rounded))
                         .padding(.horizontal, 14)
                         .padding(.vertical, 8)
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(.borderedProminent)
                 .tint(Palette.buttonTint)
-                .padding(.top, 15)
+                .buttonBorderShape(.capsule)
+                .padding(.bottom, 14)
                 .accessibilityLabel("Cancel")
             }
             .padding(.top, 280)

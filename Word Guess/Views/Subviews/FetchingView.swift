@@ -13,10 +13,14 @@ struct FetchingView: View {
     var body: some View { fetchingView() }
     
     @ViewBuilder private func fetchingView() -> some View {
-        VStack {
-            Spacer()
-            if word.isEmpty { ServerLoadingView(title: "Fetching Word") }
-            Spacer()
+        ZStack {
+            Color.white
+            VStack {
+                Spacer()
+                if word.isEmpty { ServerLoadingView(title: "Fetching Word") }
+                Spacer()
+            }
         }
+        .ignoresSafeArea()
     }
 }

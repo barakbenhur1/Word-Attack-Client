@@ -67,6 +67,7 @@ class Router: Singleton {
     }
     
     // Used by views to navigate to another view
+    @MainActor
     func navigateTo(_ appRoute: Route) {
         guard !lockNavigation else { return }
         UIApplication.shared.hideKeyboard()
@@ -83,6 +84,7 @@ class Router: Singleton {
     }
     
     // Used to go back to the previous screen
+    @MainActor
     func navigateBack() {
         guard !path.isEmpty else { return }
         UIApplication.shared.hideKeyboard()

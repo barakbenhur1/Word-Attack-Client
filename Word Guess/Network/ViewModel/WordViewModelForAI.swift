@@ -12,7 +12,7 @@ import Alamofire
 class WordViewModelForAI: ViewModel {
     private let provider: WordProvider
     var word: SimpleWord
-    var aiDownloaded: Bool = ModelStorage.localHasUsableModels()
+    var aiDownloaded: Bool = false
     var fatalError: Bool { errorCount >= maxErrorCount }
     var numberOfErrors: Int { errorCount }
     
@@ -24,9 +24,9 @@ class WordViewModelForAI: ViewModel {
     required override init() {
         provider = .init()
         word = .empty
-        aiDownloaded = false
         maxErrorCount = 3
         errorCount = 0
+        aiDownloaded = ModelStorage.localHasUsableModels()
     }
     
     func initMoc() async {

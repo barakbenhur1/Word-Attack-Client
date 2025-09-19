@@ -109,16 +109,16 @@ struct DifficultyView: View {
             .padding(.horizontal, 20)
         }
         .safeAreaInset(edge: .top) {
-            adProvider.adView(id: "TopBanner")
-                .frame(maxWidth: .infinity, minHeight: 50, maxHeight: 50)
+            adProvider.adView(id: "TopBanner", withPlaceholder: true)
+                .frame(minHeight: 50, maxHeight: 50)
                 .background(.ultraThinMaterial)
                 .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                 .padding(.horizontal, 12)
                 .padding(.top, 4)
         }
         .safeAreaInset(edge: .bottom) {
-            adProvider.adView(id: "BottomBanner")
-                .frame(maxWidth: .infinity, minHeight: 50, maxHeight: 50)
+            adProvider.adView(id: "BottomBanner", withPlaceholder: true)
+                .frame(minHeight: 50, maxHeight: 50)
                 .background(.ultraThinMaterial)
                 .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                 .padding(.horizontal, 12)
@@ -162,7 +162,7 @@ struct DifficultyView: View {
                 },
                 isLocked: !premium.isPremium // <-- locked style but still tappable
             )
-            .tileAvailability(isEnabled: premium.isPremium, corner: 16) // sunken when locked
+            .tileAvailability(isEnabled: premium.isPremium) // sunken when locked
             .shadow(color: .yellow.opacity(premium.isPremium ? 0.35 : 0.0),
                     radius: premium.isPremium ? 8 : 0, y: 3)
             .frame(maxWidth: .infinity)
@@ -174,7 +174,7 @@ struct DifficultyView: View {
     @ViewBuilder private func buttonList() -> some View {
         VStack {
             GlassContainer(corner: 32) {
-                VStack(spacing: 10) {
+                VStack(spacing: 6) {
                     difficultyButton(type: .ai)
                         .shadow(color: .black.opacity(0.15), radius: 8, y: 4)
                     
@@ -192,7 +192,7 @@ struct DifficultyView: View {
             .padding(.top, 6)
             
             logoutButton()
-                .padding(.all, 14)
+                .padding(.all, 10)
                 .shadow(color: .black.opacity(0.12), radius: 6, y: 3)
         }
     }
@@ -271,6 +271,21 @@ private struct PremiumBadge: View {
 
 private struct BackgroundDecor: View {
     @State private var t: CGFloat = 0
+    
+    private let seam: Double = 0.012
+    
+    private var conicStops: [Gradient.Stop] {
+        [
+            .init(color: .purple.opacity(0.20), location: 0.00),
+            .init(color: .purple.opacity(0.20), location: seam),        // guard band start
+            .init(color: .cyan.opacity(0.16),   location: 0.25),
+            .init(color: .pink.opacity(0.18),   location: 0.50),
+            .init(color: .mint.opacity(0.16),   location: 0.75),
+            .init(color: .purple.opacity(0.20), location: 1.0 - seam),   // guard band end
+            .init(color: .purple.opacity(0.20), location: 1.00)
+        ]
+    }
+    
     var body: some View {
         ZStack {
             LinearGradient(
@@ -279,13 +294,7 @@ private struct BackgroundDecor: View {
             )
             .overlay(
                 AngularGradient(
-                    gradient: Gradient(colors: [
-                        .purple.opacity(0.20),
-                        .cyan.opacity(0.16),
-                        .pink.opacity(0.18),
-                        .mint.opacity(0.16),
-                        .purple.opacity(0.20)
-                    ]),
+                    gradient: Gradient(stops: conicStops),
                     center: .center,
                     // your motion + seam offset
                     angle: .degrees(Double(t) * 360
@@ -314,10 +323,10 @@ private struct BackgroundDecor: View {
                     .mask(
                         LinearGradient(
                             stops: [
-                                .init(color: .white,                location: 0.00),
-                                .init(color: .white,                location: 0.82), // start feather
-                                .init(color: .white.opacity(0.75),  location: 0.92),
-                                .init(color: .clear,                location: 1.00)
+                                .init(color: .white,               location: 0.00),
+                                .init(color: .white,               location: 0.82),
+                                .init(color: .white.opacity(0.75), location: 0.92),
+                                .init(color: .clear,               location: 1.00)
                             ],
                             startPoint: .leading, endPoint: .trailing
                         )
@@ -410,7 +419,6 @@ private struct TopTileButton<Icon: View>: View {
 
 private struct TileAvailability: ViewModifier {
     let isEnabled: Bool
-    let corner: CGFloat
     
     func body(content: Content) -> some View {
         content
@@ -420,8 +428,8 @@ private struct TileAvailability: ViewModifier {
 }
 private extension View {
     /// Makes a tile look sunken/locked but **keeps it tappable**.
-    func tileAvailability(isEnabled: Bool, corner: CGFloat = 16) -> some View {
-        modifier(TileAvailability(isEnabled: isEnabled, corner: corner))
+    func tileAvailability(isEnabled: Bool) -> some View {
+        modifier(TileAvailability(isEnabled: isEnabled))
     }
 }
 

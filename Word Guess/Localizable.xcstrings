@@ -3797,6 +3797,16 @@
         }
       }
     },
+    "Status" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מצב"
+          }
+        }
+      }
+    },
     "Still wrong" : {
       "extractionState" : "manual",
       "localizations" : {
