@@ -121,32 +121,65 @@ struct AIGameView<VM: WordViewModelForAI>: View {
         }
     }
     
+    // MARK: - Task control
+    @State private var isVisible = false
+    @State private var aiIntroTask: Task<Void, Never>?
+    @State private var aiTypeTask: Task<Void, Never>?
+    @State private var hitTaskPlayer: Task<Void, Never>?
+    @State private var hitTaskAI: Task<Void, Never>?
+    @State private var delayedNavTask: Task<Void, Never>?
+    @State private var delayedTurnTask: Task<Void, Never>?
+    @State private var phraseTask: Task<Void, Never>?
+    
+    @State private var aiTypeToken = UUID()
+    @State private var playerHitToken = UUID()
+    @State private var aiHitToken = UUID()
+    
+    private func cancelAllTasks() {
+        aiIntroTask?.cancel(); aiIntroTask = nil
+        aiTypeTask?.cancel(); aiTypeTask = nil
+        hitTaskPlayer?.cancel(); hitTaskPlayer = nil
+        hitTaskAI?.cancel(); hitTaskAI = nil
+        delayedNavTask?.cancel(); delayedNavTask = nil
+        delayedTurnTask?.cancel(); delayedTurnTask = nil
+        phraseTask?.cancel(); phraseTask = nil
+    }
+    
+    private func guardVisible() -> Bool { isVisible && !Task.isCancelled }
+    
     private func animatedTurnSwitch(to next: Turn) {
-        // disable input while animating
+        // cancel any pending flip before starting a new one
+        delayedTurnTask?.cancel()
         disabled = (next == .ai)
-        
-        // present overlay sweep & badge
         turnFX.next = next
         withAnimation(.easeInOut(duration: 0.22)) { turnFX.show = true }
         UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
         
-        Task(priority: .userInitiated) {
-            // flip board shortly after sweep begins
-            try? await Task.sleep(nanoseconds: 260_000_000)
-            await MainActor.run {
-                withAnimation(.spring(response: 0.36, dampingFraction: 0.92)) {
-                    turn = next
+        delayedTurnTask = Task {
+            do {
+                try await Task.sleep(nanoseconds: 260_000_000)
+                guard guardVisible() else { return }
+                await MainActor.run {
+                    withAnimation(.spring(response: 0.36, dampingFraction: 0.92)) {
+                        turn = next
+                    }
                 }
-            }
-            // let badge linger then fade overlay
-            try? await Task.sleep(nanoseconds: 420_000_000)
-            await MainActor.run {
-                withAnimation(.easeOut(duration: 0.25)) { turnFX.show = false }
-            }
+                // FIX: reset ai typing token on role flip so previous AI typing stops
+                aiTypeToken = UUID()
+                try await Task.sleep(nanoseconds: 420_000_000)
+                guard guardVisible() else { return }
+                await MainActor.run {
+                    withAnimation(.easeOut(duration: 0.25)) { turnFX.show = false }
+                }
+            } catch { /* cancelled */ }
         }
     }
     
     private func handleWordChange() {
+        // FIX: cancel tasks tied to previous word and reset tokens/state
+        cancelAllTasks()
+        aiTypeToken = UUID()
+        ai?.hidePhrase()
         initMatrixState()
         wordNumber += 1
         guard interstitialAdManager == nil || wordNumber % InterstitialAdInterval != 0 else {
@@ -161,7 +194,25 @@ struct AIGameView<VM: WordViewModelForAI>: View {
         guard !vm.fatalError else { showError = true; return }
         guard vm.word == .empty && vm.numberOfErrors > 0 else { return }
         guard let email else { showError = true; return }
-        Task.detached(priority: .userInitiated) { await vm.word(email: email) }
+        Task.detached(priority: .high) {
+            await vm.word(email: email)
+            await MainActor.run {
+                guard !didStart else { return }
+                didStart = vm.word != .empty
+            }
+        }
+    }
+    
+    private func onAppear(email: String) {
+        aiIntroTask?.cancel()
+        aiTypeTask?.cancel()
+        hitTaskPlayer?.cancel()
+        hitTaskAI?.cancel()
+        phraseTask?.cancel()
+        aiTypeToken = UUID()
+        Task.detached(priority: .userInitiated) {
+            await handleStartup(email: email)
+        }
     }
     
     private func handleStartup(email: String) async {
@@ -185,18 +236,24 @@ struct AIGameView<VM: WordViewModelForAI>: View {
     private func clearSaved() {
         UserDefaults.standard.set(nil, forKey: "playerHP")
         UserDefaults.standard.set(nil, forKey: "aiDifficulty")
-        Task(priority: .utility) { await SharedStore.writeAIStatsAsync(.init(name: AIDifficulty.easy.name, imageName: AIDifficulty.easy.image)) }
+        Task.detached(priority: .utility) {
+            await SharedStore.writeAIStatsAsync(.init(name: AIDifficulty.easy.name, imageName: AIDifficulty.easy.image))
+        }
     }
     
     private func closeView() {
+        cancelAllTasks()
         screenManager.keepScreenOn = false
         ai?.release()
         audio.stop()
         
-        if vm.fatalError || ai == nil || !ai!.isReadyToGuess { router.navigateBack() }
-        else {
-            Task(priority: .userInitiated) {
+        if vm.fatalError || ai == nil || !ai!.isReadyToGuess {
+            router.navigateBack()
+        } else {
+            delayedNavTask?.cancel()
+            delayedNavTask = Task {
                 try? await Task.sleep(nanoseconds: 100_000_000)
+                guard guardVisible() else { return }
                 await MainActor.run { router.navigateBack() }
             }
         }
@@ -219,7 +276,7 @@ struct AIGameView<VM: WordViewModelForAI>: View {
             if correct {
                 Task(priority: .userInitiated) {
                     try? await Task.sleep(nanoseconds: 2_000_000_000)
-                    guard let email else { return }
+                    guard let email, guardVisible() else { return } // FIX: guard visibility
                     await vm.word(email: email)
                 }
                 return true
@@ -228,31 +285,40 @@ struct AIGameView<VM: WordViewModelForAI>: View {
         } else {
             guard let value = Turn(rawValue: 1 - turn.rawValue) else { return false }
             disabled = value == .ai
-            Task(priority: .high) {
+            delayedTurnTask?.cancel()
+            delayedTurnTask = Task {
                 try? await Task.sleep(nanoseconds: 1_000_000_000)
+                guard guardVisible() else { return }
                 await MainActor.run { animatedTurnSwitch(to: value) }
             }
             return false
         }
     }
     
-    private func makeHitOnPlayer(hitPoints: Int) { makeHit(hp: $playerHP, hpParams: $playerHpAnimation, hitPoints: hitPoints) }
-    private func makeHitOnAI(hitPoints: Int) { makeHit(hp: $aiHP, hpParams: $aiHpAnimation, hitPoints: hitPoints) }
-    private func makeHit(hp: Binding<Int>, hpParams: Binding<HpAnimationParams>, hitPoints: Int) {
+    private func makeHitOnPlayer(hitPoints: Int) { makeHit(hp: $playerHP, hpParams: $playerHpAnimation, token: &playerHitToken, hitPoints: hitPoints, assignTo: .player) }
+    private func makeHitOnAI(hitPoints: Int) { makeHit(hp: $aiHP, hpParams: $aiHpAnimation, token: &aiHitToken, hitPoints: hitPoints, assignTo: .ai) }
+    private enum HitTarget { case player, ai }
+    private func makeHit(hp: Binding<Int>, hpParams: Binding<HpAnimationParams>, token: inout UUID, hitPoints: Int, assignTo: HitTarget) {
         current = .max
         ai?.hidePhrase()
         
-        hpParams.wrappedValue.value = hitPoints
+        token = UUID() // new generation
+        let myToken = token
+        let currentToken = myToken // capture immutable snapshot for the Task
         
-        withAnimation(.linear(duration: 1.4)) {
-            hpParams.wrappedValue.offset = -30
-            hpParams.wrappedValue.opacity = 1
-            hpParams.wrappedValue.scale = 1.6
-        }
-        
-        Task(priority: .userInitiated) {
+        let taskRef = (assignTo == .player) ? \AIGameView.hitTaskPlayer : \AIGameView.hitTaskAI
+        self[keyPath: taskRef]?.cancel()
+        self[keyPath: taskRef] = Task {
+            await MainActor.run {
+                hpParams.wrappedValue.value = hitPoints
+                withAnimation(.linear(duration: 1.4)) {
+                    hpParams.wrappedValue.offset = -30
+                    hpParams.wrappedValue.opacity = 1
+                    hpParams.wrappedValue.scale = 1.6
+                }
+            }
             try? await Task.sleep(nanoseconds: 1_440_000_000)
-            guard hpParams.wrappedValue.opacity == 1 else { return }
+            guard guardVisible(), myToken == currentToken else { return }
             await MainActor.run {
                 withAnimation(.linear(duration: 0.4)) {
                     hpParams.wrappedValue.opacity = 0
@@ -261,8 +327,8 @@ struct AIGameView<VM: WordViewModelForAI>: View {
                     hp.wrappedValue = max(0, newHP)
                 }
             }
-            
             try? await Task.sleep(nanoseconds: 400_000_000)
+            guard guardVisible(), myToken == currentToken else { return }
             hpParams.wrappedValue.value = 0
             hpParams.wrappedValue.offset = 30
         }
@@ -342,11 +408,14 @@ struct AIGameView<VM: WordViewModelForAI>: View {
     }
     
     private func aiIntroToggle() {
-        Task.detached(priority: .userInitiated) {
+        aiIntroTask?.cancel()
+        aiIntroTask = Task {
             await MainActor.run { withAnimation(.easeInOut(duration: 2.5)) { showAiIntro = true } }
             try? await Task.sleep(nanoseconds: 3_000_000_000)
+            guard guardVisible() else { return }
             await MainActor.run { withAnimation(.easeInOut(duration: 1.5)) { showAiIntro = false } }
             try? await Task.sleep(nanoseconds: 1_500_000_000)
+            guard guardVisible() else { return }
             await MainActor.run { aiIntroDone = true }
         }
     }
@@ -406,8 +475,10 @@ struct AIGameView<VM: WordViewModelForAI>: View {
         guard let ai else { return }
         handleAiIntroToggle(oldValue: oldValue, newValue: newValue)
         
-        Task.detached(priority: .high) {
+        phraseTask?.cancel()
+        phraseTask = Task.detached(priority: .high) {
             try? await Task.sleep(nanoseconds: 9_000_000_000)
+            guard !Task.isCancelled else { return }
             await MainActor.run { ai.startShowingPhrase() }
         }
     }
@@ -423,13 +494,20 @@ struct AIGameView<VM: WordViewModelForAI>: View {
         let aiDifficulty = aiDifficulty
         var arr = [String](repeating: "", count: length)
         
-        Task.detached(priority: .high) {
+        aiTypeToken = UUID()
+        let aiTypeToken = aiTypeToken
+        let myToken = aiTypeToken
+        
+        aiTypeTask?.cancel()
+        aiTypeTask = Task.detached(priority: .high) {
             guard let aiWord = await ai.getFeedback(for: aiDifficulty)?.capitalizedFirst.toArray() else { return }
             try? await Task.sleep(nanoseconds: 500_000_000)
             for i in 0..<aiWord.count {
+                if Task.isCancelled || myToken != aiTypeToken { return }
                 arr[i] = aiWord[i].returnChar(isFinal: i == aiWord.count - 1)
                 try? await Task.sleep(nanoseconds: 500_000_000)
                 await MainActor.run {
+                    if Task.isCancelled || myToken != aiTypeToken || !guardVisible() { return } // FIX: visibility + token
                     if aiMatrix.indices.contains(row) {
                         aiMatrix[row] = arr
                     }
@@ -469,8 +547,10 @@ struct AIGameView<VM: WordViewModelForAI>: View {
             makeHitOnAI(hitPoints: rows * hitPoints - current * hitPoints)
         } else {
             if current == rows - 1 {
-                Task(priority: .high) {
+                delayedTurnTask?.cancel()
+                delayedTurnTask = Task {
                     try? await Task.sleep(nanoseconds: 1_000_000_000)
+                    guard guardVisible() else { return }
                     await MainActor.run { animatedTurnSwitch(to: .ai) }
                 }
             }
@@ -493,7 +573,7 @@ struct AIGameView<VM: WordViewModelForAI>: View {
             makeHitOnAI(hitPoints: noGuessHitPoints)
             Task(priority: .userInitiated) {
                 try? await Task.sleep(nanoseconds: 2_000_000_000)
-                guard let email else { return }
+                guard let email, guardVisible() else { return } // FIX: guard visibility
                 await vm.word(email: email)
             }
         }
@@ -506,12 +586,19 @@ struct AIGameView<VM: WordViewModelForAI>: View {
         endFetchAnimation = true
         disabled = false
         current = 0
+        aiTypeToken = UUID() // FIX: reset token on new word start
+        phraseTask?.cancel() // FIX: don’t carry previous phrase timer
         Task(priority: .high) { await ai?.addDetachedFirstGuess(with: firstGuess) }
     }
     
     var body: some View {
         bodyContant()
-            .onAppear { initializeAI() }
+            .onAppear { initializeAI(); isVisible = true }
+            .onDisappear {
+                isVisible = false
+                cancelAllTasks()
+                aiTypeToken = UUID() // FIX: invalidate any in-flight AI typing
+            }
             .onChange(of: vm.aiDownloaded, initializeAI)
             .onChange(of: ai?.showPhraseValue, handlePhrase)
     }
@@ -530,7 +617,6 @@ struct AIGameView<VM: WordViewModelForAI>: View {
                 game().padding(.top, 10)
                 overlayViews()
                 
-                // Turn-change overlay on top (NOW SYMMETRIC)
                 TurnChangeOverlay(isPresented: $turnFX.show,
                                   isAI: turnFX.next == .ai,
                                   language: language)
@@ -606,7 +692,7 @@ struct AIGameView<VM: WordViewModelForAI>: View {
                maxHeight: .infinity)
     }
     
-    @ViewBuilder private func topViews() -> some View {
+    @ViewBuilder private func gameTopView() -> some View {
         ZStack(alignment: .bottom) {
             ZStack(alignment: .top) {
                 ZStack(alignment: .trailing) {
@@ -687,80 +773,81 @@ struct AIGameView<VM: WordViewModelForAI>: View {
             }
             .shadow(radius: 4)
         }
+        .padding(.top, -10)
+        .padding(.bottom, -20)
+    }
+    
+    @ViewBuilder private func gameTable() -> some View {
+        ForEach(0..<rows, id: \.self) { i in
+            ZStack {
+                switch turn {
+                case .player:
+                    let hasPrevAIGuess = i > 0 && current == i && aiMatrix[current - 1].contains { !$0.isEmpty }
+                    let placeHolderData = hasPrevAIGuess ? allBestGuesses : nil
+                    let gainFocus = Binding(get: { !showAiIntro && aiIntroDone && current == i }, set: { _ in })
+                    WordView(
+                        cleanCells: $cleanCells,
+                        current: $current,
+                        length: length,
+                        placeHolderData: placeHolderData,
+                        word: $matrix[i],
+                        gainFocus: gainFocus,
+                        colors: $colors[i],
+                        done: { calculatePlayerTurn(i: i) }
+                    )
+                    .allowsHitTesting(!disabled && current == i)
+                    .disabled(disabled || current != i)
+                    .shadow(radius: 4)
+                    .cardFlip(degrees: turn == .ai ? 180 : 0)
+                    
+                case .ai:
+                    let isAIRowActive = current == i && matrix[current].contains { !$0.isEmpty }
+                    WordView(
+                        cleanCells: $cleanCells,
+                        isAI: true,
+                        current: $current,
+                        length: length,
+                        isCurrentRow: isAIRowActive,
+                        word: $aiMatrix[i],
+                        gainFocus: .constant(false),
+                        colors: $aiColors[i],
+                        done: { calculateAITurn(i: i) }
+                    )
+                    .allowsHitTesting(false)
+                    .disabled(true)
+                    .shadow(radius: 4)
+                    .cardFlip(degrees: 180)
+                }
+            }
+            .boardFlip(isAI: turn == .ai)
+        }
+    }
+    
+    @ViewBuilder private func gameBottom() -> some View {
+        if endFetchAnimation {
+            AppTitle(size: 50)
+                .padding(.top, UIDevice.isPad ? 130 : 95)
+                .padding(.bottom, UIDevice.isPad ? 190 : 145)
+                .shadow(radius: 4)
+        } else {
+            ZStack{}
+                .frame(height: UIDevice.isPad ? 81 : 86)
+                .padding(.top, UIDevice.isPad ? 130 : 95)
+                .padding(.bottom, UIDevice.isPad ? 190 : 140)
+                .shadow(radius: 4)
+        }
     }
     
     @ViewBuilder private func gameBody() -> some View {
-        if !vm.fatalError && didStart {
-            VStack(spacing: 8) {
-                topViews()
-                    .padding(.top, -10)
-                    .padding(.bottom, -20)
-                
-                ForEach(0..<rows, id: \.self) { i in
-                    ZStack {
-                        switch turn {
-                        case .player:
-                            let hasPrevAIGuess = i > 0 && current == i && aiMatrix[current - 1].contains { !$0.isEmpty }
-                            let placeHolderData = hasPrevAIGuess ? allBestGuesses : nil
-                            let gainFocus = Binding(get: { !showAiIntro && aiIntroDone && current == i }, set: { _ in })
-                            WordView(
-                                cleanCells: $cleanCells,
-                                current: $current,
-                                length: length,
-                                placeHolderData: placeHolderData,
-                                word: $matrix[i],
-                                gainFocus: gainFocus,
-                                colors: $colors[i],
-                                done: { calculatePlayerTurn(i: i) }
-                            )
-                            .allowsHitTesting(!disabled && current == i)
-                            .disabled(disabled || current != i)
-                            .shadow(radius: 4)
-                            // IMPROVED FLIP
-                            .cardFlip(degrees: turn == .ai ? 180 : 0)
-                            
-                        case .ai:
-                            let isAIRowActive = current == i && matrix[current].contains { !$0.isEmpty }
-                            WordView(
-                                cleanCells: $cleanCells,
-                                isAI: true,
-                                current: $current,
-                                length: length,
-                                isCurrentRow: isAIRowActive,
-                                word: $aiMatrix[i],
-                                gainFocus: .constant(false),
-                                colors: $aiColors[i],
-                                done: { calculateAITurn(i: i) }
-                            )
-                            .allowsHitTesting(false)
-                            .disabled(true)
-                            .shadow(radius: 4)
-                            // IMPROVED FLIP
-                            .cardFlip(degrees: 180)
-                        }
-                    }
-                    // Row container flip (board-level)
-                    .boardFlip(isAI: turn == .ai)
-                }
-                
-                if endFetchAnimation {
-                    AppTitle(size: 50)
-                        .padding(.top, UIDevice.isPad ? 130 : 95)
-                        .padding(.bottom, UIDevice.isPad ? 190 : 145)
-                        .shadow(radius: 4)
-                } else {
-                    ZStack{}
-                        .frame(height: UIDevice.isPad ? 81 : 86)
-                        .padding(.top, UIDevice.isPad ? 130 : 95)
-                        .padding(.bottom, UIDevice.isPad ? 190 : 140)
-                        .shadow(radius: 4)
-                }
-            }
-            .padding(.horizontal, 10)
-            .padding(.bottom, -10)
-            .frame(maxHeight: .infinity)
-            .ignoresSafeArea(.keyboard)
+        VStack(spacing: 8) {
+            gameTopView()
+            gameTable()
+            gameBottom()
         }
+        .padding(.horizontal, 10)
+        .padding(.bottom, -10)
+        .frame(maxHeight: .infinity)
+        .ignoresSafeArea(.keyboard)
     }
     
     @ViewBuilder private func game() -> some View {
@@ -768,13 +855,12 @@ struct AIGameView<VM: WordViewModelForAI>: View {
             ZStack(alignment: .topLeading) {
                 ZStack(alignment: .topLeading) { gameBody() }
                     .ignoresSafeArea(.keyboard)
-                    .onAppear { Task.detached(priority: .userInitiated, operation: { await handleStartup(email: email) } ) }
+                    .onAppear { onAppear(email: email) }
                     .onChange(of: vm.numberOfErrors, handleError)
                     .onChange(of: vm.word, handleWordChange)
-                    .ignoresSafeArea(.keyboard)
-                    .disabled(!endFetchAnimation)
-                    .opacity(endFetchAnimation ? 1 : 0.7)
-                    .grayscale(endFetchAnimation ? 0 : 1)
+                    .disabled(!endFetchAnimation || !didStart || vm.numberOfErrors > 0)
+                    .opacity(endFetchAnimation && didStart && vm.numberOfErrors == 0 ? 1 : 0.7)
+                    .grayscale(endFetchAnimation && didStart && vm.numberOfErrors == 0 ? 0 : 1)
             }
             .padding(.top, 44)
         }
@@ -1004,3 +1090,4 @@ fileprivate extension View {
         )
     }
 }
+

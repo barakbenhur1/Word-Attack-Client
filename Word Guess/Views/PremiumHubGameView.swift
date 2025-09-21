@@ -6,7 +6,6 @@ import SwiftUI
 import Combine
 import CoreHaptics
 
-// MARK: - VM that plugs into your existing ViewModel APIs
 @Observable
 final class PremiumHubGameVM: ViewModel {
     private let network: Network
@@ -26,15 +25,12 @@ final class PremiumHubGameVM: ViewModel {
     }
 }
 
-// EN + HE alphabets (non-generic container)
 private enum Alpha {
     static let enOrder: [Character] = Array("ABCDEFGHIJKLMNOPQRSTUVWXYZ".lowercased())
     static let heOrder: [Character] = Array("אבגדהוזחטיכלמנסעפצקרשת")
     static let enSet = Set(enOrder)
     static let heSet = Set(heOrder)
 }
-
-// MARK: - Game
 
 struct PremiumHubGameView<VM: PremiumHubGameVM>: View {
     @EnvironmentObject private var audio: AudioPlayer
@@ -45,14 +41,11 @@ struct PremiumHubGameView<VM: PremiumHubGameVM>: View {
     
     private let onForceEnd: ([[String]]?, Bool) -> Void
     
-    // Allowed letters passed via init (supports EN + HE)
     private let allowedUpper: Set<Character>
     
     private let rows = 5
-    private let difficulty: DifficultyType = .medium
     private let length: Int
     
-    // Matrix & colors
     private var initilizeHistory: [[String]]
     @State private var matrix: [[String]]
     @State private var colors: [[CharColor]]
@@ -61,43 +54,33 @@ struct PremiumHubGameView<VM: PremiumHubGameVM>: View {
     
     private var history: [[String]] { current > 0 ? Array(matrix.prefix(current)) : [] }
     
-    // Timer mirror to drive UI updates
+    // Timer mirror
     @State private var secondsLeftLocal: Int = 0
     @State private var isVisible = false
     @State private var localTicker = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
+    @State private var localTickerCancellable: AnyCancellable?
     
-    // “Allowed letters” belt feedback
     @State private var invalidPulse = false
     @State private var toastVisible = false
     
-    // Win / Lose banners
     @State private var wins: Int = UserDefaults.standard.integer(forKey: "wins_count")
     @State private var rank: Int = UserDefaults.standard.integer(forKey: "wins_rank")
     @State private var showWinBanner = false
     @State private var showLoseBanner = false
-    @State private var loseResetFlag = true  // true: reset board on close; false: keep (timeout)
+    @State private var loseResetFlag = true
     
     private var endBannerUp: Bool { showWinBanner || showLoseBanner }
-    
     private var email: String? { loginHandeler.model?.email }
-    
-    private var isHE: Bool {
-        local.locale.identifier.lowercased().hasPrefix("he")
-    }
+    private var isHE: Bool { local.locale.identifier.lowercased().hasPrefix("he") }
     private var scriptAlphabet: [Character] { isHE ? Alpha.heOrder : Alpha.enOrder }
     private var scriptSet: Set<Character> { isHE ? Alpha.heSet : Alpha.enSet }
     
-    // MARK: Init
-    
-    /// - Parameters:
-    ///   - allowedLetters: letters the user is allowed to type (case-insensitive).
     init(vm: VM, history: [[String]], allowedLetters: Set<Character>, onForceEnd: @escaping ([[String]]?, Bool) -> Void) {
         _vm = State(initialValue: vm)
         self.onForceEnd = onForceEnd
         self.length = vm.wordValue.count
         self.initilizeHistory = history
         
-        // Seed matrix/colors BEFORE first frame (prevents onAppear layout jump)
         var seedMatrix = Array(repeating: Array(repeating: "", count: vm.wordValue.count), count: rows)
         var seedColors = Array(repeating: Array(repeating: CharColor.noGuess, count: vm.wordValue.count), count: rows)
         for (rowIdx, guess) in history.enumerated() {
@@ -108,7 +91,6 @@ struct PremiumHubGameView<VM: PremiumHubGameVM>: View {
         _colors = State(initialValue: seedColors)
         _current = State(initialValue: history.count)
         
-        // Normalize allowed letters to current script set
         let he = Locale.current.identifier.lowercased().hasPrefix("he")
         let alphaSet = he ? Alpha.heSet : Alpha.enSet
         let normalized = allowedLetters
@@ -117,24 +99,15 @@ struct PremiumHubGameView<VM: PremiumHubGameVM>: View {
         self.allowedUpper = Set(normalized)
     }
     
-    // MARK: Body
-    
     var body: some View {
         GeometryReader { _ in
             background()
             
             ZStack {
                 VStack(spacing: 10) {
-                    topBar()
-                    
-                    gameArea()
-                        .opacity(endBannerUp ? 0.25 : 1)
-                        .padding(.horizontal, 10)
-                    
-                    AppTitle(size: 50)
-                        .padding(.top, UIDevice.isPad ? 140 : 100)
-                        .padding(.bottom, UIDevice.isPad ? 210 : 170)
-                        .shadow(radius: 4)
+                    gameTopView()
+                    gameTable()
+                    gameBottom()
                 }
                 .frame(maxHeight: .infinity)
                 .ignoresSafeArea(.keyboard)
@@ -155,46 +128,46 @@ struct PremiumHubGameView<VM: PremiumHubGameVM>: View {
         .ignoresSafeArea(.keyboard)
         .onAppear {
             isVisible = true
-            // Seed the timer progress with NO animation so bar doesn't "grow" on first frame.
             withTransaction(Transaction(animation: nil)) {
                 secondsLeftLocal = timer.secondsLeft
             }
             startAmbient()
+            
+            // Ensure only a single local ticker subscription and cancel on disappear
+            localTickerCancellable?.cancel()
+            localTickerCancellable = localTicker
+                .sink { _ in
+                    guard isVisible, !endBannerUp else { return }
+                    if timer.secondsLeft != secondsLeftLocal {
+                        secondsLeftLocal = timer.secondsLeft
+                        return
+                    }
+                    if secondsLeftLocal > 0 {
+                        secondsLeftLocal -= 1
+                        timer.set(secondsLeftLocal, total: timer.total)
+                    } else {
+                        loseResetFlag = false
+                        audio.stop()
+                        audio.playSound(sound: "fail", type: "wav")
+                        withAnimation(.spring(response: 0.55, dampingFraction: 0.75)) { showLoseBanner = true }
+                    }
+                }
         }
-        .onDisappear { isVisible = false }
-        
-        // Mirror hub timer while it's publishing
+        .onDisappear {
+            isVisible = false
+            localTickerCancellable?.cancel()
+            localTickerCancellable = nil
+        }
         .onReceive(timer.$secondsLeft.removeDuplicates()) { new in
             secondsLeftLocal = new
             guard isVisible, !endBannerUp else { return }
-            // If hub reset while we're here, end as fail (keep board if not reset)
             if new == timer.total && new > 0 { forceEnd(asFail: true, reset: false) }
         }
         .onReceive(timer.$total.removeDuplicates()) { _ in
             secondsLeftLocal = timer.secondsLeft
         }
-        
-        // Local fallback if hub stops
-        .onReceive(localTicker) { _ in
-            guard isVisible, !endBannerUp else { return }
-            if timer.secondsLeft != secondsLeftLocal {
-                secondsLeftLocal = timer.secondsLeft
-                return
-            }
-            if secondsLeftLocal > 0 {
-                secondsLeftLocal -= 1
-                timer.set(secondsLeftLocal, total: timer.total)
-            } else {
-                // TIMEOUT → lose animation (no reset)
-                loseResetFlag = false
-                audio.stop()
-                audio.playSound(sound: "fail", type: "wav")
-                withAnimation(.spring(response: 0.55, dampingFraction: 0.75)) { showLoseBanner = true }
-            }
-        }
         .toolbar {
             ToolbarItem(placement: .keyboard) {
-                // Full-width accessory content
                 AllowedBeltView(
                     letters: beltLetters(),
                     pulse: invalidPulse
@@ -211,13 +184,9 @@ struct PremiumHubGameView<VM: PremiumHubGameVM>: View {
         }
     }
     
-    // MARK: UI parts
+    private var toastText: String { "Use allowed letters only".localized }
     
-    private var toastText: String {
-        "Use allowed letters only".localized
-    }
-    
-    @ViewBuilder private func topBar() -> some View {
+    @ViewBuilder private func gameTopView() -> some View {
         HStack(spacing: 12) {
             BackButton(title: "Close" ,
                        icon: "xmark",
@@ -231,6 +200,13 @@ struct PremiumHubGameView<VM: PremiumHubGameVM>: View {
                 .padding(.trailing, 10)
         }
         .padding(.top, 4)
+    }
+    
+    @ViewBuilder private func gameBottom() -> some View {
+        AppTitle(size: 50)
+            .padding(.top, UIDevice.isPad ? 140 : 100)
+            .padding(.bottom, UIDevice.isPad ? 210 : 170)
+            .shadow(radius: 4)
     }
     
     @ViewBuilder private func timerView() -> some View {
@@ -253,7 +229,7 @@ struct PremiumHubGameView<VM: PremiumHubGameVM>: View {
         .frame(height: 32)
     }
     
-    @ViewBuilder private func gameArea() -> some View {
+    @ViewBuilder private func gameTable() -> some View {
         VStack(spacing: 8) {
             ForEach(0..<rows, id: \.self) { i in
                 WordView(
@@ -273,6 +249,8 @@ struct PremiumHubGameView<VM: PremiumHubGameVM>: View {
             }
         }
         .ignoresSafeArea(.keyboard)
+        .opacity(endBannerUp ? 0.25 : 1)
+        .padding(.horizontal, 10)
     }
     
     @ViewBuilder private func background() -> some View {
@@ -280,12 +258,8 @@ struct PremiumHubGameView<VM: PremiumHubGameVM>: View {
             .ignoresSafeArea()
     }
     
-    // MARK: - Logic
-    
     private func startAmbient() {
-        if difficulty != .tutorial {
-            audio.playSound(sound: "backround", type: "mp3", loop: true)
-        }
+        audio.playSound(sound: "backround", type: "mp3", loop: true)
     }
     
     private func forceEnd(asFail: Bool, reset: Bool, withHistory: Bool = false) {
@@ -309,13 +283,16 @@ struct PremiumHubGameView<VM: PremiumHubGameVM>: View {
             if correct {
                 wins += 1
                 if let email { Task.detached(priority: .high, operation: { await vm.score(email: email) }) }
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                Task { @MainActor in
+                    try? await Task.sleep(nanoseconds: 1_000_000_000)
+                    guard isVisible else { return }
                     audio.playSound(sound: "success", type: "wav")
                     withAnimation(.spring(response: 0.55, dampingFraction: 0.75)) { showWinBanner = true }
                 }
             } else {
-                // OUT OF TRIES → lose animation (reset after)
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                Task { @MainActor in
+                    try? await Task.sleep(nanoseconds: 1_000_000_000)
+                    guard isVisible else { return }
                     loseResetFlag = true
                     audio.playSound(sound: "fail", type: "wav")
                     withAnimation(.spring(response: 0.55, dampingFraction: 0.75)) { showLoseBanner = true }
@@ -325,8 +302,6 @@ struct PremiumHubGameView<VM: PremiumHubGameVM>: View {
             current = i + 1
         }
     }
-    
-    // MARK: - Allowed letters & filtering
     
     private var effectiveAllowedLetters: Set<Character> {
         allowedUpper
@@ -353,11 +328,14 @@ struct PremiumHubGameView<VM: PremiumHubGameVM>: View {
             toastVisible = true
         }
         
-        // let the belt finish its pulse before we drop it
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 600_000_000)
+            guard isVisible else { return }
             withAnimation(.easeOut(duration: 0.25)) { invalidPulse = false }
         }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.9) {
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 900_000_000)
+            guard isVisible else { return }
             withAnimation(.easeOut(duration: 0.20)) { toastVisible = false }
         }
     }

@@ -30,28 +30,42 @@ class WordViewModel: ViewModel {
         isError = false
     }
     
-    func initMoc() async {
+    func initMoc(diffculty: DifficultyType) async {
         await MainActor.run { [weak self] in
             guard let self else { return }
-            word = wordService.initMoc()
+            word = wordService.initMoc(diffculty: diffculty)
         }
     }
     
     func word(diffculty: DifficultyType, email: String) async {
-        let value  = await wordService.word(diffculty: diffculty, email: email)
-        await MainActor.run { [weak self] in
-            guard let self else { return }
-            guard let value else { isError = true; return }
-            Trace.log("🛟", "Word is \(value.word.value)", Fancy.mag)
-            word = value
+        switch diffculty {
+        case .tutorial:
+            let local = LanguageSetting()
+            let language = local.locale.identifier.components(separatedBy: "_").first
+            await MainActor.run { [weak self] in
+                guard let self else { return }
+                word = .init(word: .init(value: language == "he" ? "שלום" : "Cool", guesswork: []), number: 0, isTimeAttack: false)
+            }
+        default:
+            let value  = await wordService.word(diffculty: diffculty, email: email)
+            await MainActor.run { [weak self] in
+                guard let self else { return }
+                guard let value else { isError = true; return }
+                Trace.log("🛟", "Word is \(value.word.value)", Fancy.mag)
+                word = value
+            }
         }
     }
     
     func addGuess(diffculty: DifficultyType, email: String, guess: String) async {
-        let value: EmptyModel? = await wordService.addGuess(diffculty: diffculty, email: email, guess: guess)
-        await MainActor.run { [weak self] in
-            guard let self else { return }
-            guard value != nil else { isError = true; return }
+        switch diffculty {
+        case .tutorial: break
+        default:
+            let value: EmptyModel? = await wordService.addGuess(diffculty: diffculty, email: email, guess: guess)
+            await MainActor.run { [weak self] in
+                guard let self else { return }
+                guard value != nil else { isError = true; return }
+            }
         }
     }
     
@@ -64,11 +78,19 @@ class WordViewModel: ViewModel {
     }
     
     func getScore(diffculty: DifficultyType, email: String) async  {
-        let value: ScoreData? = await scoreService.getScore(diffculty: diffculty, email: email)
-        await MainActor.run { [weak self] in
-            guard let self else { return }
-            guard let value else { score = 0; return }
-            score = value.score
+        switch diffculty {
+        case .tutorial:
+            await MainActor.run { [weak self] in
+                guard let self else { return }
+                score = 0
+            }
+        default:
+            let value: ScoreData? = await scoreService.getScore(diffculty: diffculty, email: email)
+            await MainActor.run { [weak self] in
+                guard let self else { return }
+                guard let value else { score = 0; return }
+                score = value.score
+            }
         }
     }
 }
@@ -90,7 +112,6 @@ fileprivate class ScoreService: Service {
     }
     
     func getScore(diffculty: DifficultyType, email: String) async -> ScoreData? {
-        guard diffculty != .tutorial else { return .init(score: 0) }
         let value: ScoreData? = await network.send(route: .getScore,
                                                    parameters: ["diffculty": diffculty.rawValue.trimmingCharacters(in: .whitespacesAndNewlines),
                                                                  "email": email])
@@ -111,22 +132,14 @@ fileprivate class WordService: Service {
         network = Network(root: .words)
     }
     
-    func initMoc() -> WordData {
+    func initMoc(diffculty: DifficultyType) -> WordData {
         let local = LanguageSetting()
-        let language = local.locale.identifier.components(separatedBy: "_").first
-        return .init(word: .init(value: language == "he" ? "אבגדה" : "abcde", guesswork: []), number: 0, isTimeAttack: false)
+        guard let language = local.locale.identifier.components(separatedBy: "_").first else { return .init(word: .init(value: "abcde", guesswork: []), number: 0, isTimeAttack: false) }
+        guard let l: Language = .init(rawValue: language) else { return .init(word: .init(value: language == "he" ? "אבגדה" : "abcde", guesswork: []), number: 0, isTimeAttack: false) }
+        return .init(word: .init(value:  generateWord(for: l, length: diffculty.getLength()), guesswork: []), number: 0, isTimeAttack: false)
     }
     
     func word(diffculty: DifficultyType, email: String) async -> WordData? {
-        guard diffculty != .tutorial else {
-            let local = LanguageSetting()
-            let language = local.locale.identifier.components(separatedBy: "_").first
-            return .init(word: .init(value: language == "he" ? "שלום" : "Cool",
-                                     guesswork: []),
-                         number: 0,
-                         isTimeAttack: false)
-        }
-        
         let value: WordData? = await network.send(route: .getWord,
                                                   parameters: ["diffculty": diffculty.rawValue.trimmingCharacters(in: .whitespacesAndNewlines),
                                                                "email": email])

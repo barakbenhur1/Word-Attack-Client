@@ -53,12 +53,22 @@ struct GameView<VM: WordViewModel>: View {
     @State private var colors: [[CharColor]]
     @State private var vm = VM()
     @State private var keyboard = KeyboardHeightHelper()
+    @State private var didStart = false
     @State private var timeAttackAnimation = false
     @State private var timeAttackAnimationDone = true
     @State private var endFetchAnimation = false
     @State private var showError: Bool = false
     
     @State private var cleanCells = false
+    
+    // Task/cancel management
+    @State private var isVisible = false
+    @State private var appearTask: Task<Void, Never>?
+    @State private var delayedSoundTask: Task<Void, Never>?
+    @State private var newWordTask: Task<Void, Never>?
+    @State private var initConfigTask: Task<Void, Never>?
+    
+    private func guardVisible() -> Bool { isVisible && !Task.isCancelled }
     
     private var language: String? { return local.locale.identifier.components(separatedBy: "_").first }
     
@@ -69,30 +79,46 @@ struct GameView<VM: WordViewModel>: View {
     
     private func closeAfterError() {
         keyboard.show = true
-        audio.stop()
-        router.navigateBack()
+        navBack()
     }
     
     private func handleWordChange() {
         initMatrixState()
         guard interstitialAdManager == nil || !keyboard.show || vm.word.number == 0 || vm.word.number % InterstitialAdInterval != 0 else { interstitialAdManager?.loadInterstitialAd(); return }
         initalConfigirationForWord()
-        guard diffculty != .tutorial && diffculty != .ai else { return }
-        Task(priority: .utility) { await SharedStore.writeDifficultyStatsAsync(.init(answers: vm.word.number, score: vm.score), for: diffculty.liveValue) }
+        
+        switch diffculty {
+        case .tutorial, .ai: break
+        default: Task(priority: .utility) { await SharedStore.writeDifficultyStatsAsync(.init(answers: vm.word.number, score: vm.score), for: diffculty.liveValue) }
+        }
+    }
+    
+    private func handleInterstitial() {
+        guard interstitialAdManager?.interstitialAdLoaded ?? false else { initalConfigirationForWord(); return }
+        interstitialAdManager?.displayInterstitialAd { initalConfigirationForWord() }
     }
     
     private func handleTimeAttackIfNeeded() {
-        guard diffculty != .tutorial else { return }
-        guard endFetchAnimation && vm.word.isTimeAttack else { return }
-        timeAttackAnimationDone = false
-        withAnimation(.interpolatingSpring(.smooth)) { timeAttackAnimation = true }
-        queue.asyncAfter(deadline: .now() + 2) {
-            timeAttackAnimationDone = true
-            timeAttackAnimation = false
-            queue.asyncAfter(deadline: .now() + 0.3) {
-                audio.playSound(sound: "tick",
-                                type: "wav",
-                                loop: true)
+        switch diffculty {
+        case .tutorial: break
+        default:
+            guard endFetchAnimation && vm.word.isTimeAttack else { return }
+            timeAttackAnimationDone = false
+            withAnimation(.interpolatingSpring(.smooth)) { timeAttackAnimation = true }
+            // Replace chained asyncAfter with visibility-guarded tasks
+            delayedSoundTask?.cancel()
+            delayedSoundTask = Task {
+                do {
+                    try await Task.sleep(nanoseconds: 2_000_000_000)
+                    guard guardVisible() else { return }
+                    timeAttackAnimationDone = true
+                    timeAttackAnimation = false
+                    try await Task.sleep(nanoseconds: 300_000_000)
+                    guard guardVisible() else { return }
+                    audio.playSound(sound: "tick",
+                                    type: "wav",
+                                    loop: true)
+                } catch { /* cancelled */ }
             }
         }
     }
@@ -110,15 +136,14 @@ struct GameView<VM: WordViewModel>: View {
     }
     
     private func onAppear(email: String) {
-        if diffculty == .tutorial {
-            coreData.new()
-            Task(priority: .userInitiated) {
-                await handleNewWord(email: email)
-            }
-        } else {
-            Task.detached(priority: .userInitiated) {
-                await handleNewWord(email: email)
-            }
+        switch diffculty {
+        case .tutorial: coreData.new()
+        default: break
+        }
+        appearTask?.cancel()
+        appearTask = Task.detached(priority: .userInitiated) {
+            await handleNewWord(email: email)
+            await MainActor.run { didStart = vm.word != .empty }
         }
     }
     
@@ -148,9 +173,16 @@ struct GameView<VM: WordViewModel>: View {
     var body: some View {
         conatnet()
             .ignoresSafeArea(.keyboard)
-            .onChange(of: interstitialAdManager?.interstitialAdLoaded) {
-                guard interstitialAdManager?.interstitialAdLoaded ?? false else { initalConfigirationForWord(); return }
-                interstitialAdManager?.displayInterstitialAd { initalConfigirationForWord() }
+            .onAppear { isVisible = true }
+            .onDisappear {
+                isVisible = false
+                // stop audio that might be looping
+                audio.stop()
+                // cancel outstanding tasks
+                appearTask?.cancel(); appearTask = nil
+                delayedSoundTask?.cancel(); delayedSoundTask = nil
+                newWordTask?.cancel(); newWordTask = nil
+                initConfigTask?.cancel(); initConfigTask = nil
             }
             .customAlert("Network error",
                          type: .fail,
@@ -171,6 +203,8 @@ struct GameView<VM: WordViewModel>: View {
                 overlayViews(proxy: proxy)
             }
         }
+        .ignoresSafeArea(.keyboard)
+        .onChange(of: interstitialAdManager?.interstitialAdLoaded, handleInterstitial)
     }
     
     
@@ -188,178 +222,194 @@ struct GameView<VM: WordViewModel>: View {
             .ignoresSafeArea()
     }
     
-    @ViewBuilder private func gameBody() -> some View {
-        if !vm.isError && vm.word != .empty {
-            VStack(spacing: 8) {
-                ZStack(alignment: .bottom) {
-                    ZStack(alignment: .top) {
-                        if diffculty == .tutorial {
-                            VStack {
-                                // Title
-                                Text("Tutorial")
-                                    .font(.system(.largeTitle, design: .rounded).weight(.bold))
-                                    .themedText(.primary)
-                                    .softTextShadow()
-                                
-                                // Subtitle / hint
-                                let attr: AttributedString = {
-                                    if current < 3 || current == .max {
-                                        var a = AttributedString("Guess The 4 Letters Word".localized)
-                                        a.foregroundColor = .white.opacity(0.85)
-                                        return a
-                                    } else {
-                                        let theWord = vm.word.word.value
-                                        var a = AttributedString("\("the word is".localized) \"\(theWord)\" \("try it, or not ;)".localized)")
-                                        let range = a.range(of: theWord)!
-                                        a.foregroundColor = .white.opacity(0.8)
-                                        a[range].foregroundColor = .orange
-                                        return a
-                                    }
-                                }()
-                                
-                                Text(attr)
-                                    .font(.system(.callout, design: .rounded).weight(.semibold))
-                                    .softTextShadow()
-                            }
-                            .padding()
-                        } else {
-                            ZStack(alignment: .trailing) {
-                                HStack {
-                                    // Left: Difficulty
-                                    VStack {
-                                        Spacer()
-                                        Text(diffculty.stringValue)
-                                            .multilineTextAlignment(.center)
-                                            .font(.system(.title3, design: .rounded).weight(.semibold))
-                                            .themedText(.primary)
-                                            .softTextShadow()
-                                            .padding(.bottom, 8)
-                                            .padding(.leading, 10)
-                                    }
-                                    
-                                    Spacer()
-                                    
-                                    // Center: Score
-                                    VStack {
-                                        Text("Score")
-                                            .multilineTextAlignment(.center)
-                                            .font(.system(.headline, design: .rounded).weight(.medium))
-                                            .themedText(.secondary)
-                                            .softTextShadow()
-                                            .padding(.top, 5)
-                                        
-                                        ZStack(alignment: .top) {
-                                            Text("\(vm.score)")
-                                                .multilineTextAlignment(.center)
-                                                .font(.system(size: 36, weight: .black, design: .rounded))
-                                                .monospacedDigit()
-                                                .foregroundStyle(
-                                                    .angularGradient(
-                                                        colors: [
-                                                            Color(red: 0.98, green: 0.85, blue: 0.37), // Soft gold
-                                                            Color(red: 0.85, green: 0.65, blue: 0.18), // Rich amber
-                                                            Color(red: 0.98, green: 0.85, blue: 0.42), // Soft gold
-                                                            Color(red: 0.85, green: 0.65, blue: 0.22), // Rich amber
-                                                            Color(red: 0.98, green: 0.85, blue: 0.37), // Soft gold
-                                                        ],
-                                                        center: .center,
-                                                        startAngle: .zero,
-                                                        endAngle: .degrees(360)
-                                                    )
-                                                )
-                                                .softTextShadow()
-                                            
-                                            let value = vm.word.isTimeAttack ? scoreAnimation.value / 2 : scoreAnimation.value
-                                            let color: Color = value == 0 ? .red : value < 80 ? .yellow : .green
-                                            
-                                            Text("+ \(scoreAnimation.value)")
-                                                .font(.system(.title, design: .rounded).weight(.bold))
-                                                .monospacedDigit()
-                                                .multilineTextAlignment(.center)
-                                                .frame(maxWidth: .infinity)
-                                                .foregroundStyle(color)
-                                                .opacity(scoreAnimation.opticity)
-                                                .scaleEffect(.init(width: scoreAnimation.scale,
-                                                                   height: scoreAnimation.scale))
-                                                .offset(x: scoreAnimation.scale > 0 ? language == "he" ? 12 : -12 : 0,
-                                                        y: scoreAnimation.offset)
-                                                .blur(radius: 0.5)
-                                                .fixedSize()
-                                                .softTextShadow()
-                                        }
-                                    }
-                                    .padding(.top, -10)
-                                    .fixedSize(horizontal: false, vertical: true)
-                                    
-                                    Spacer()
-                                    
-                                    // Right: Words count
-                                    VStack {
-                                        Spacer()
-                                        Text("words: \(vm.word.number)")
-                                            .multilineTextAlignment(.center)
-                                            .font(.system(.title3, design: .rounded).weight(.semibold))
-                                            .monospacedDigit()
-                                            .themedText(.primary)
-                                            .softTextShadow()
-                                            .padding(.bottom, 8)
-                                            .padding(.trailing, 10)
-                                    }
-                                }
-                            }
-                            .padding(.vertical)
-                        }
-                    }
-                    .shadow(radius: 4)
-                }
-                .padding(.bottom, -10)
-                
-                // Rows
-                ForEach(0..<rows, id: \.self) { i in
-                    ZStack {
-                        let gainFocus = Binding(get: { current == i && endFetchAnimation && !timeAttackAnimation && timeAttackAnimationDone },
-                                                set: { _ in })
-                        WordView(cleanCells: $cleanCells,
-                                 current: $current,
-                                 length: length,
-                                 word: $matrix[i],
-                                 gainFocus: gainFocus,
-                                 colors: $colors[i]) {
-                            guard i == current else { return }
-                            nextLine(i: i)
-                        }
-                                 .disabled(current != i)
-                                 .shadow(radius: 4)
-                        
-                        if keyboard.show && vm.word.isTimeAttack && timeAttackAnimationDone && current == i {
-                            let start = Date()
-                            let end = start.addingTimeInterval(diffculty == .easy ? 20 : 15)
-                            ProgressBarView(length: length,
-                                            value: 0,
-                                            total: end.timeIntervalSinceNow - start.timeIntervalSinceNow,
-                                            done: { nextLine(i: i) })
-                            .opacity(0.2)
-                        }
-                    }
-                }
-                
-                if endFetchAnimation {
-                    AppTitle(size: 50)
-                        .padding(.top, UIDevice.isPad ? 130 : 90)
-                        .padding(.bottom, UIDevice.isPad ? 190 : 140)
-                        .shadow(radius: 4)
+    @ViewBuilder private func toturialTop() -> some View {
+        VStack {
+            // Title
+            Text("Tutorial")
+                .font(.system(.largeTitle, design: .rounded).weight(.bold))
+                .themedText(.primary)
+                .softTextShadow()
+            
+            // Subtitle / hint
+            let attr: AttributedString = {
+                if current < 3 || current == .max {
+                    var a = AttributedString("Guess The 4 Letters Word".localized)
+                    a.foregroundColor = .white.opacity(0.85)
+                    return a
                 } else {
-                    ZStack{}
-                        .frame(height: UIDevice.isPad ? 81 : 81)
-                        .padding(.top, UIDevice.isPad ? 130 : 90)
-                        .padding(.bottom, UIDevice.isPad ? 190 : 140)
-                        .shadow(radius: 4)
+                    let theWord = vm.wordValue
+                    var a = AttributedString("\("the word is".localized) \"\(theWord)\" \("try it, or not ;)".localized)")
+                    let range = a.range(of: theWord)!
+                    a.foregroundColor = .white.opacity(0.8)
+                    a[range].foregroundColor = .orange
+                    return a
+                }
+            }()
+            
+            Text(attr)
+                .font(.system(.callout, design: .rounded).weight(.semibold))
+                .softTextShadow()
+        }
+        .padding()
+    }
+    
+    @ViewBuilder private func gameTable() -> some View {
+        // Rows
+        ForEach(0..<rows, id: \.self) { i in
+            ZStack {
+                let gainFocus = Binding(get: { current == i && endFetchAnimation && !timeAttackAnimation && timeAttackAnimationDone },
+                                        set: { _ in })
+                WordView(cleanCells: $cleanCells,
+                         current: $current,
+                         length: length,
+                         word: $matrix[i],
+                         gainFocus: gainFocus,
+                         colors: $colors[i]) {
+                    guard i == current else { return }
+                    nextLine(i: i)
+                }
+                         .disabled(current != i)
+                         .shadow(radius: 4)
+                
+                if keyboard.show && vm.word.isTimeAttack && timeAttackAnimationDone && current == i {
+                    let start = Date()
+                    let end = start.addingTimeInterval(diffculty == .easy ? 20 : 15)
+                    ProgressBarView(length: length,
+                                    value: 0,
+                                    total: end.timeIntervalSinceNow - start.timeIntervalSinceNow,
+                                    done: { nextLine(i: i) })
+                    .opacity(0.2)
                 }
             }
-            .padding(.horizontal, 10)
-            .frame(maxHeight: .infinity)
-            .ignoresSafeArea(.keyboard)
         }
+    }
+    
+    @ViewBuilder private func gameTopView() -> some View {
+        ZStack(alignment: .bottom) {
+            ZStack(alignment: .top) {
+                switch diffculty {
+                case .tutorial: toturialTop()
+                default: gameTop()
+                }
+            }
+            .shadow(radius: 4)
+        }
+        .padding(.bottom, -10)
+    }
+    
+    @ViewBuilder private func gameTop() -> some View {
+        ZStack(alignment: .trailing) {
+            HStack {
+                // Left: Difficulty
+                VStack {
+                    Spacer()
+                    Text(diffculty.stringValue)
+                        .multilineTextAlignment(.center)
+                        .font(.system(.title3, design: .rounded).weight(.semibold))
+                        .themedText(.primary)
+                        .softTextShadow()
+                        .padding(.bottom, 8)
+                        .padding(.leading, 10)
+                }
+                
+                Spacer()
+                
+                // Center: Score
+                VStack {
+                    Text("Score")
+                        .multilineTextAlignment(.center)
+                        .font(.system(.headline, design: .rounded).weight(.medium))
+                        .themedText(.secondary)
+                        .softTextShadow()
+                        .padding(.top, 5)
+                    
+                    ZStack(alignment: .top) {
+                        Text("\(vm.score)")
+                            .multilineTextAlignment(.center)
+                            .font(.system(size: 36, weight: .black, design: .rounded))
+                            .monospacedDigit()
+                            .foregroundStyle(
+                                .angularGradient(
+                                    colors: [
+                                        Color(red: 0.98, green: 0.85, blue: 0.37), // Soft gold
+                                        Color(red: 0.85, green: 0.65, blue: 0.18), // Rich amber
+                                        Color(red: 0.98, green: 0.85, blue: 0.42), // Soft gold
+                                        Color(red: 0.85, green: 0.65, blue: 0.22), // Rich amber
+                                        Color(red: 0.98, green: 0.85, blue: 0.37), // Soft gold
+                                    ],
+                                    center: .center,
+                                    startAngle: .zero,
+                                    endAngle: .degrees(360)
+                                )
+                            )
+                            .softTextShadow()
+                        
+                        let value = vm.word.isTimeAttack ? scoreAnimation.value / 2 : scoreAnimation.value
+                        let color: Color = value == 0 ? .red : value < 80 ? .yellow : .green
+                        
+                        Text("+ \(scoreAnimation.value)")
+                            .font(.system(.title, design: .rounded).weight(.bold))
+                            .monospacedDigit()
+                            .multilineTextAlignment(.center)
+                            .frame(maxWidth: .infinity)
+                            .foregroundStyle(color)
+                            .opacity(scoreAnimation.opticity)
+                            .scaleEffect(.init(width: scoreAnimation.scale,
+                                               height: scoreAnimation.scale))
+                            .offset(x: scoreAnimation.scale > 0 ? language == "he" ? 12 : -12 : 0,
+                                    y: scoreAnimation.offset)
+                            .blur(radius: 0.5)
+                            .fixedSize()
+                            .softTextShadow()
+                    }
+                }
+                .padding(.top, -10)
+                .fixedSize(horizontal: false, vertical: true)
+                
+                Spacer()
+                
+                // Right: Words count
+                VStack {
+                    Spacer()
+                    Text("words: \(vm.word.number)")
+                        .multilineTextAlignment(.center)
+                        .font(.system(.title3, design: .rounded).weight(.semibold))
+                        .monospacedDigit()
+                        .themedText(.primary)
+                        .softTextShadow()
+                        .padding(.bottom, 8)
+                        .padding(.trailing, 10)
+                }
+            }
+        }
+        .padding(.vertical)
+    }
+    
+    @ViewBuilder private func gameBottom() -> some View {
+        if endFetchAnimation {
+            AppTitle(size: 50)
+                .padding(.top, UIDevice.isPad ? 130 : 90)
+                .padding(.bottom, UIDevice.isPad ? 190 : 140)
+                .shadow(radius: 4)
+        } else {
+            ZStack{}
+                .frame(height: UIDevice.isPad ? 81 : 81)
+                .padding(.top, UIDevice.isPad ? 130 : 90)
+                .padding(.bottom, UIDevice.isPad ? 190 : 140)
+                .shadow(radius: 4)
+        }
+    }
+    
+    @ViewBuilder private func gameBody() -> some View {
+        VStack(spacing: 8) {
+            gameTopView()
+            gameTable()
+            gameBottom()
+            
+        }
+        .padding(.horizontal, 10)
+        .frame(maxHeight: .infinity)
+        .ignoresSafeArea(.keyboard)
     }
     
     @ViewBuilder private func game() -> some View {
@@ -373,24 +423,29 @@ struct GameView<VM: WordViewModel>: View {
                     .onChange(of: vm.word.isTimeAttack, afterTimeAttack)
                     .onChange(of: endFetchAnimation, handleTimeAttackIfNeeded)
                     .onAppear { onAppear(email: email) }
-                    .disabled(!endFetchAnimation)
-                    .opacity(endFetchAnimation ? 1 : 0.7)
-                    .grayscale(endFetchAnimation ? 0 : 1)
+                    .disabled(!endFetchAnimation || !didStart || vm.isError)
+                    .opacity(endFetchAnimation && didStart && !vm.isError ? 1 : 0.7)
+                    .grayscale(endFetchAnimation && didStart && !vm.isError ? 0 : 1)
             }
             .padding(.top, 44)
         }
     }
     
     private func initalConfigirationForWord() {
-        guard diffculty != .tutorial else { return }
-        Task(priority: .high) {
-            try? await Task.sleep(nanoseconds: (keyboard.show ? 0 : 500_000_000))
-            audio.playSound(sound: "backround",
-                            type: "mp3",
-                            loop: true)
-            
-            //            try? await Task.sleep(nanoseconds: 1_500_000_000)
-            await MainActor.run { endFetchAnimation = true }
+        initConfigTask?.cancel()
+        initConfigTask = Task(priority: .high) {
+            do {
+                switch diffculty {
+                case .tutorial: break
+                default:
+                    try await Task.sleep(nanoseconds: (keyboard.show ? 0 : 500_000_000))
+                    guard guardVisible() else { return }
+                    audio.playSound(sound: "backround",
+                                    type: "mp3",
+                                    loop: true)
+                }
+                await MainActor.run { endFetchAnimation = true }
+            } catch { /* cancelled */ }
         }
         
         current = vm.word.word.guesswork.count
@@ -434,10 +489,11 @@ struct GameView<VM: WordViewModel>: View {
     }
     
     private func navBack() {
-        audio.stop()
-        if diffculty == .tutorial {
-            UIApplication.shared.hideKeyboard()
+        switch diffculty {
+        case .tutorial: UIApplication.shared.hideKeyboard()
+        default: break
         }
+        audio.stop()
         router.navigateBack()
     }
     
@@ -452,47 +508,51 @@ struct GameView<VM: WordViewModel>: View {
             
             let correct = guess.lowercased() == vm.word.word.value.lowercased()
             
-            guard diffculty != .tutorial else {
-                Task(priority: .userInitiated) {
-                    try? await Task.sleep(nanoseconds: 200_000_000)
-                    let sound = correct ? "success" : "fail"
-                    audio.playSound(sound: sound,
-                                    type: "wav")
-                    
-                    try? await Task.sleep(nanoseconds: 1_000_000_000)
-                    router.navigateBack()
+            switch diffculty {
+            case .tutorial:
+                // Replace chained sleeps with a single guarded Task
+                newWordTask?.cancel()
+                newWordTask = Task(priority: .userInitiated) {
+                    do {
+                        try await Task.sleep(nanoseconds: 200_000_000)
+                        guard guardVisible() else { return }
+                        let sound = correct ? "success" : "fail"
+                        audio.playSound(sound: sound,
+                                        type: "wav")
+                        try await Task.sleep(nanoseconds: 1_000_000_000)
+                        guard guardVisible() else { return }
+                        router.navigateBack()
+                    } catch { /* cancelled */ }
+                }
+            default:
+                if correct {
+                    let points = vm.word.isTimeAttack ? 40 : 20
+                    score(value: rows * points - i * points)
+                } else { score(value: 0) }
+                
+                // schedule sound with guard
+                delayedSoundTask?.cancel()
+                delayedSoundTask = Task {
+                    do {
+                        try await Task.sleep(nanoseconds: 800_000_000)
+                        guard guardVisible() else { return }
+                        let sound = correct ? "success" : "fail"
+                        audio.playSound(sound: sound,
+                                        type: "wav")
+                    } catch { /* cancelled */ }
                 }
                 
-                return
-            }
-            
-            if correct {
-                let points = vm.word.isTimeAttack ? 40 : 20
-                score(value: rows * points - i * points)
-            } else { score(value: 0) }
-            
-            //            Task.detached(priority: .userInitiated) {
-            //                try? await Task.sleep(nanoseconds: 1_000_000_000)
-            //                await MainActor.run { cleanCells = true }
-            //            }
-            
-            queue.asyncAfter(deadline: .now() + 0.8) {
-                let sound = correct ? "success" : "fail"
-                audio.playSound(sound: sound,
-                                type: "wav")
-            }
-            
-            guard let email else { return }
-            Task.detached(priority: .userInitiated) {
-                if !correct { await vm.addGuess(diffculty: diffculty, email: email, guess: guess) }
-                await vm.score(diffculty: diffculty, email: email)
-                try? await Task.sleep(nanoseconds: 500_000_000)
-                await handleNewWord(email: email)
+                guard let email else { return }
+                Task.detached(priority: .userInitiated) {
+                    if !correct { await vm.addGuess(diffculty: diffculty, email: email, guess: guess) }
+                    await vm.score(diffculty: diffculty, email: email)
+                    try? await Task.sleep(nanoseconds: 500_000_000)
+                    await handleNewWord(email: email)
+                }
             }
         } else if i == current && i + 1 > vm.word.word.guesswork.count {
             guard let email else { return }
             current = i + 1
-            guard diffculty != .tutorial else { return }
             Task(priority: .userInitiated) { await vm.addGuess(diffculty: diffculty, email: email, guess: guess) }
         }
     }
@@ -515,34 +575,25 @@ struct GameView<VM: WordViewModel>: View {
             scoreAnimation.scale = 0.9
         }
         
-        queue.asyncAfter(deadline: .now() + 1.44) {
-            guard scoreAnimation.opticity == 1 else { return }
-            withAnimation(.linear(duration: 0.2)) {
-                scoreAnimation.opticity = 0
-                scoreAnimation.scale = 0
-            }
-            
-            queue.asyncAfter(deadline: .now() + 0.2) {
+        // Replace nested asyncAfters with visibility-guarded scheduling
+        delayedSoundTask?.cancel()
+        delayedSoundTask = Task {
+            do {
+                try await Task.sleep(nanoseconds: 1_440_000_000)
+                guard guardVisible() else { return }
+                if scoreAnimation.opticity == 1 {
+                    withAnimation(.linear(duration: 0.2)) {
+                        scoreAnimation.opticity = 0
+                        scoreAnimation.scale = 0
+                    }
+                }
+                try await Task.sleep(nanoseconds: 200_000_000)
+                guard guardVisible() else { return }
                 vm.score += value
                 vm.word.number += 1
                 scoreAnimation.value = 0
                 scoreAnimation.offset = 30
-            }
-            
-//            await MainActor.run {
-//                withAnimation(.easeOut(duration: 0.5)) {
-//                    scoreAnimation.opticity = 0
-//                    scoreAnimation.scale = 0
-//                }
-//                queue.asyncAfter(wallDeadline: .now() + 0.5) {
-//                    Task.detached {
-//                        await MainActor.run {
-//                            scoreAnimation.value = 0
-//                            scoreAnimation.offset = 30
-//                        }
-//                    }
-//                }
-//            }
+            } catch { /* cancelled */ }
         }
     }
 }
@@ -678,6 +729,8 @@ struct ProgressBarView: View {
     
     private var every: CGFloat = 0.01
     private let timer: Publishers.Autoconnect<Timer.TimerPublisher>
+    // cancellation support
+    @State private var isActive = true
     
     init(length: Int, value: CGFloat, total: CGFloat, done: @escaping () -> Void) {
         self.length = length
@@ -716,14 +769,21 @@ struct ProgressBarView: View {
             }
         }
         .onReceive(timer) { _ in
+            guard isActive else { return }
             value += every
             current = Int(value / total * CGFloat(length))
             trigger += 1
             
             if value >= total {
+                isActive = false
                 timer.upstream.connect().cancel()
                 done()
             }
+        }
+        .onDisappear {
+            // ensure timer stops if view disappears
+            isActive = false
+            timer.upstream.connect().cancel()
         }
     }
     
@@ -781,3 +841,4 @@ extension Color {
                   opacity: Double(a) / 255)
     }
 }
+

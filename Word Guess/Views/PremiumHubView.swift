@@ -61,8 +61,21 @@ public struct PremiumHubView: View {
     @State private var activeSlot: MiniSlot?
     @State private var didResolveSheet = false
     
+    @State private var showError: Bool = false
+    
     // Tutorial
     @State private var showTutorial = false
+    
+    private func handleError() {
+        guard hub.vm.isError else { return }
+        showError = true
+    }
+    
+    private func closeView() {
+        PremiumCoplitionHandler.shared.onForceEndPremium = { _, _ in }
+        hub.stop()
+        router.navigateBack()
+    }
     
     public init(email: String?) {
         _hub = StateObject(wrappedValue: PremiumHubModel(email: email))
@@ -144,11 +157,7 @@ public struct PremiumHubView: View {
         .environmentObject(hub.vm)
         .safeAreaInset(edge: .top) {
             HStack(spacing: 12) {
-                BackPill {
-                    PremiumCoplitionHandler.shared.onForceEndPremium = { _, _ in }
-                    hub.stop()
-                    router.navigateBack()
-                }
+                BackPill { closeView() }
                 .padding(.trailing, 20)
                 SolvedCounterPill(count: hub.solvedWords,
                                   rank: hub.rank,
@@ -207,6 +216,7 @@ public struct PremiumHubView: View {
                 $0.presentationBackgroundInteraction(.disabled)
             }
         }
+        .onChange(of: hub.vm.isError, handleError)
         .onChange(of: hub.mainSecondsLeft) { old, new in
             // Only bump identity on a RESET (seconds increasing). Prevents bump every second.
             let isReset = new > old
@@ -238,6 +248,12 @@ public struct PremiumHubView: View {
                 .transition(.opacity)
             }
         }
+        .customAlert("Network error",
+                     type: .fail,
+                     isPresented: $showError,
+                     actionText: "OK",
+                     action: closeView,
+                     message: { Text("something went wrong") })
     }
     
     @ViewBuilder private func timerView(secondsLeft: Int, timer: HubTimerBridge, skipProgressAnimation: Bool) -> some View {
@@ -354,6 +370,7 @@ extension LinearGradient {
 // MARK: - Model
 
 final public class PremiumHubModel: ObservableObject {
+    typealias VM = PremiumHubViewModel
     // Alphabets
     private static let englishAlphabet: [Character] = Array("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
     private static let hebrewAlphabet: [Character] = Array("אבגדהוזחטיכלמנסעפצקרשת")
@@ -393,7 +410,7 @@ final public class PremiumHubModel: ObservableObject {
     // Provider
     private let catalog = MiniGameCatalog()
     
-    let vm = PremiumHubViewModel()
+    let vm = VM()
     
     init(email: String?) {
         self.email = email

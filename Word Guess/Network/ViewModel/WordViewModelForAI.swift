@@ -33,8 +33,9 @@ class WordViewModelForAI: ViewModel {
         await MainActor.run { [weak self] in
             guard let self else { return }
             let local = LanguageSetting()
-            let language = local.locale.identifier.components(separatedBy: "_").first
-            word = .init(value: language == "he" ? "אבגדה" : "abcde")
+            guard let language = local.locale.identifier.components(separatedBy: "_").first else { word = .init(value: "abcde"); return }
+            guard let l: Language = .init(rawValue: language) else { word = .init(value: language == "he" ? "אבגדה" : "abcde"); return }
+            word = .init(value: generateWord(for: l))
         }
     }
     

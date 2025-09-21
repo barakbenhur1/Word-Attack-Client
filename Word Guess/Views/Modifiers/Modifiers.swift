@@ -468,13 +468,12 @@ private struct PremiumAttention: ViewModifier {
     @Binding var isActive: Bool
     var duration: UInt64? = nil
     
-    // Animation state
-    @State private var t: CGFloat = 0            // 0...1 oscillator
+    @State private var t: CGFloat = 0
     @State private var startedAt: Date? = nil
+    @State private var autoStopTask: Task<Void, Never>?
     
-    // Tuning
     private let baseScale: CGFloat = 1.0
-    private let scaleAmplitude: CGFloat = 0.05    // ±5% breathing
+    private let scaleAmplitude: CGFloat = 0.05
     private let haloColor = Color.yellow
     private let bloomColor = Color.yellow.opacity(0.65)
     
@@ -487,21 +486,23 @@ private struct PremiumAttention: ViewModifier {
                 .animation(reduceMotion ? nil : .easeInOut(duration: 0.9), value: t)
                 .animation(reduceMotion ? nil : .spring(response: 0.5, dampingFraction: 0.9), value: isActive)
         }
-        .compositingGroup() // prevent clipping of glow
+        .compositingGroup()
         .onChange(of: isActive) { _, newValue in
             if newValue { start() } else { stop() }
         }
         .onAppear {
             if isActive { start() }
         }
+        .onDisappear {
+            stop()
+        }
     }
     
-    // Radiating halo ring
     private var halo: some View {
         GeometryReader { geo in
             let size = min(geo.size.width, geo.size.height)
             let ringScale = 1.0 + (reduceMotion ? 0.0 : 0.2 * CGFloat(sin(.pi * Double(t*2))))
-            let ringOpacity = 0.25 + 0.35 * Double((sin(.pi * Double(t*2)) + 1) / 2) // 0.25...0.60
+            let ringOpacity = 0.25 + 0.35 * Double((sin(.pi * Double(t*2)) + 1) / 2)
             
             Circle()
                 .strokeBorder(
@@ -517,25 +518,27 @@ private struct PremiumAttention: ViewModifier {
         }
     }
     
-    // MARK: - Control
-    
     private func start() {
         if startedAt == nil { startedAt = Date() }
         guard !reduceMotion else { return }
         withAnimation(.linear(duration: 0.9).repeatForever(autoreverses: true)) {
             t = 1
         }
-        
-        guard let duration else { return }
-        Task(priority: .medium) {
-            try? await Task.sleep(nanoseconds: duration)
-            isActive = false
+        if let duration {
+            autoStopTask?.cancel()
+            autoStopTask = Task {
+                try? await Task.sleep(nanoseconds: duration)
+                guard !Task.isCancelled else { return }
+                await MainActor.run { isActive = false }
+            }
         }
     }
     
     private func stop() {
         t = 0
         startedAt = nil
+        autoStopTask?.cancel()
+        autoStopTask = nil
     }
 }
 

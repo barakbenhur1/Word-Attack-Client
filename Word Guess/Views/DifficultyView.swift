@@ -351,7 +351,7 @@ private struct GlassContainer<Content: View>: View {
     var body: some View {
         ZStack {
             RoundedRectangle(cornerRadius: corner, style: .continuous)
-                .fill(.ultraThinMaterial)
+                .fill(.ultraThinMaterial.opacity(0.98))
                 .overlay(
                     RoundedRectangle(cornerRadius: corner, style: .continuous)
                         .strokeBorder(LinearGradient(

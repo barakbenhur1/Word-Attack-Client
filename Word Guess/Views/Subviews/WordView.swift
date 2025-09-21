@@ -151,7 +151,6 @@ struct WordView<VM: ViewModel>: View {
         _word = word
     }
     
-    // Allow typing in whichever cell is currently focused (or tapped) in the active row.
     private func onDidType(text: String, index: Int) {
         let process = wordBakup.contains(where: { c in c.isEmpty })
         guard process else { return }
@@ -233,15 +232,13 @@ struct WordView<VM: ViewModel>: View {
         .frame(maxHeight: .infinity)
         .textInputAutocapitalization(i == 0 ? .sentences : .never)
         .autocorrectionDisabled()
-        .focused($fieldFocus, equals: FieldFocus(rawValue: i)!)
+        .focused($fieldFocus, equals: FieldFocus(rawValue: i))
         .onSubmit {
-            // Move focus to next tile (bounded); dimensions unchanged.
             let next = min(i + 1, length - 1)
-            fieldFocus = FieldFocus(rawValue: next)!
+            fieldFocus = FieldFocus(rawValue: next)
         }
         .onTapGesture {
-            // Tap to focus any tile in the active row.
-            fieldFocus = FieldFocus(rawValue: i)!
+            fieldFocus = FieldFocus(rawValue: i)
         }
         .clipShape(RoundedRectangle(cornerRadius: 4))
         .animation(.easeOut(duration: 0.8), value: cleanCells)
@@ -264,6 +261,8 @@ struct WordView<VM: ViewModel>: View {
             .multilineTextAlignment(.center)
             .textInputAutocapitalization(isFirst ? .sentences : .never)
             .autocorrectionDisabled()
+            .keyboardType(.default)
+            .disabled(true)
             .background(
                 ZStack {
                     guess.color.color.opacity(0.38)
@@ -275,7 +274,6 @@ struct WordView<VM: ViewModel>: View {
             )
             .clipShape(RoundedRectangle(cornerRadius: 4))
             .hideSystemInputAssistant()
-            .disabled(true)
             .opacity(0.28)
             .premiumTile(cornerRadius: 4)
     }
@@ -324,11 +322,11 @@ struct WordView<VM: ViewModel>: View {
                     }
                 }
                 
-                fieldFocus = FieldFocus(rawValue: next - 1)!
+                fieldFocus = FieldFocus(rawValue: next - 1)
             }
         } else {
             if current > 0 && fieldFocus != .one && !word[current - 1].isEmpty {
-                fieldFocus = FieldFocus(rawValue: current - 1)!
+                fieldFocus = FieldFocus(rawValue: current - 1)
             }
         }
     }

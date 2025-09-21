@@ -12,6 +12,7 @@ import Alamofire
 class PremiumHubViewModel: ViewModel {
     private let scoreProvider: PremiumScoreProvider
     private let wordProvider: WordProvider
+    var isError: Bool
     var word: SimpleWord
     
     override var wordValue: String { word.value }
@@ -19,6 +20,7 @@ class PremiumHubViewModel: ViewModel {
     required override init() {
         scoreProvider = .init()
         wordProvider = .init()
+        isError = false
         word = .empty
     }
     
@@ -26,8 +28,9 @@ class PremiumHubViewModel: ViewModel {
         await MainActor.run { [weak self] in
             guard let self else { return }
             let local = LanguageSetting()
-            let language = local.locale.identifier.components(separatedBy: "_").first
-            word = .init(value: language == "he" ? "אבגדה" : "abcde")
+            guard let language = local.locale.identifier.components(separatedBy: "_").first else { word = .init(value: "abcde"); return }
+            guard let l: Language = .init(rawValue: language) else { word = .init(value: language == "he" ? "אבגדה" : "abcde"); return }
+            word = .init(value: generateWord(for: l))
         }
     }
     
@@ -35,7 +38,7 @@ class PremiumHubViewModel: ViewModel {
         word = .empty
         let value: SimpleWord? = await wordProvider.word(email: email)
         
-        guard let value else { await initMoc(); return }
+        guard let value else { isError = true; return }
         await MainActor.run { [weak self] in
             guard let self else { return }
             Trace.log("🛟", "word is \(value.value)", Fancy.mag)
