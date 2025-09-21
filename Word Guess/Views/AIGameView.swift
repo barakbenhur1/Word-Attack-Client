@@ -190,8 +190,7 @@ struct AIGameView<VM: WordViewModelForAI>: View {
     
     private func closeView() {
         screenManager.keepScreenOn = false
-        ai?.hidePhrase()
-        ai?.deassign()
+        ai?.release()
         audio.stop()
         
         if vm.fatalError || ai == nil || !ai!.isReadyToGuess { router.navigateBack() }
@@ -425,13 +424,15 @@ struct AIGameView<VM: WordViewModelForAI>: View {
         var arr = [String](repeating: "", count: length)
         
         Task.detached(priority: .high) {
-            let aiWord = await ai.getFeedback(for: aiDifficulty).capitalizedFirst.toArray()
+            guard let aiWord = await ai.getFeedback(for: aiDifficulty)?.capitalizedFirst.toArray() else { return }
             try? await Task.sleep(nanoseconds: 500_000_000)
             for i in 0..<aiWord.count {
                 arr[i] = aiWord[i].returnChar(isFinal: i == aiWord.count - 1)
                 try? await Task.sleep(nanoseconds: 500_000_000)
                 await MainActor.run {
-                    if aiMatrix.indices.contains(row) { aiMatrix[row] = arr }
+                    if aiMatrix.indices.contains(row) {
+                        aiMatrix[row] = arr
+                    }
                 }
             }
         }
@@ -771,20 +772,20 @@ struct AIGameView<VM: WordViewModelForAI>: View {
                     .onChange(of: vm.numberOfErrors, handleError)
                     .onChange(of: vm.word, handleWordChange)
                     .ignoresSafeArea(.keyboard)
+                    .disabled(!endFetchAnimation)
+                    .opacity(endFetchAnimation ? 1 : 0.7)
+                    .grayscale(endFetchAnimation ? 0 : 1)
             }
             .padding(.top, 44)
         }
     }
     
     @ViewBuilder private func overlayViews() -> some View {
-        if !vm.fatalError && !endFetchAnimation && !keyboard.show { FetchingView(word: vm.wordValue) }
-        else { aiIntro() }
+        if endFetchAnimation { aiIntro() }
     }
     
     @ViewBuilder func backButton() -> some View {
-        HStack {
-            BackButton(action: backButtonTap)
-        }
+        BackButton(action: backButtonTap)
     }
 }
 

@@ -373,6 +373,9 @@ struct GameView<VM: WordViewModel>: View {
                     .onChange(of: vm.word.isTimeAttack, afterTimeAttack)
                     .onChange(of: endFetchAnimation, handleTimeAttackIfNeeded)
                     .onAppear { onAppear(email: email) }
+                    .disabled(!endFetchAnimation)
+                    .opacity(endFetchAnimation ? 1 : 0.7)
+                    .grayscale(endFetchAnimation ? 0 : 1)
             }
             .padding(.top, 44)
         }
@@ -394,8 +397,7 @@ struct GameView<VM: WordViewModel>: View {
     }
     
     @ViewBuilder private func overlayViews(proxy: GeometryProxy) -> some View {
-        if diffculty != .tutorial && !vm.isError && !endFetchAnimation && !keyboard.show { FetchingView(word: vm.wordValue) }
-        else if vm.word.isTimeAttack { timeAttackView(proxy: proxy) }
+        if endFetchAnimation && vm.word.isTimeAttack { timeAttackView(proxy: proxy) }
     }
     
     @ViewBuilder private func timeAttackView(proxy: GeometryProxy) -> some View {
@@ -427,10 +429,8 @@ struct GameView<VM: WordViewModel>: View {
     }
     
     @ViewBuilder func backButton() -> some View {
-        HStack {
-            BackButton(title: diffculty == .tutorial ? "skip" : "back",
-                       action: navBack)
-        }
+        BackButton(title: diffculty == .tutorial ? "skip" : "back",
+                   action: navBack)
     }
     
     private func navBack() {
@@ -637,6 +637,8 @@ class KeyboardHeightHelper: ObservableObject {
     var show: Bool = false
     
     init() { listenForKeyboardNotifications() }
+    
+    deinit { NotificationCenter.default.removeObserver(self) }
     
     private func listenForKeyboardNotifications() {
         NotificationCenter.default.addObserver(forName: UIResponder.keyboardDidShowNotification,

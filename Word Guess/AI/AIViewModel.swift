@@ -20,12 +20,11 @@ class AIViewModel {
     private typealias BossProvider = (() -> String?)
     private let lang: Language
     private let phraseProvider: PhraseProvider
+    private var solver: WordZapAI?
     private var history: [GuessHistory]
     private var solverWarmedup: Bool = false
     private var bossProvider: BossProvider = { nil } {
-        didSet {
-            installBossEnhancementProvider(bossProvider: bossProvider)
-        }
+        didSet { installBossEnhancementProvider(bossProvider: bossProvider) }
     }
     
     // MARK: - Public Parameters
@@ -34,56 +33,67 @@ class AIViewModel {
     var showPhraseValue: Bool { phraseProvider.showPhraseValue }
     
     init(language: Language, startingHistory: [GuessHistory] = []) {
-        lang = language
-        history = startingHistory
+        lang           = language
+        history        = startingHistory
         phraseProvider = PhraseProvider()
-        solverWarmedup = WordZapAIProvider.shared.aiWarmedup
-        Task(priority: .high) { [weak self] in
-            guard let self else { return }
-            guard !solverWarmedup  else { return }
-            await solver().warmUp()
+        handleSolver()
+    }
+    
+    private func handleSolver() {
+        let provider = WordZapAIProvider.shared
+        solverWarmedup = provider.aiReady
+        guard !solverWarmedup else { solver = provider.fetch(); return }
+        // Warm-up off the main actor; hop back only to update state.
+        Task.detached(priority: .high) {
+            guard let s = provider.fetch() else { return }
+            s.warmUp()
             await MainActor.run { [weak self] in
                 guard let self else { return }
-                solverWarmedup = true
+                solver = s
+                solverWarmedup = provider.aiReady
             }
         }
     }
 }
 
 // MARK: - Public
-@MainActor
 extension AIViewModel {
     func saveToHistory(guess: GuessHistory) { history.append(guess) }
-    func deassign() { WordZapAIProvider.shared.deassign() }
     func startShowingPhrase() { phraseProvider.startShowingPhrase() }
     func hidePhrase() { phraseProvider.hidePhrase() }
+    
     func manageMemory(with guessHistory: [GuessHistory] = [], provider: @escaping (() -> String?) = { nil }) {
         bossProvider = provider
         history = guessHistory
     }
+    
     func addDetachedFirstGuess(with formatter: @escaping (_ value: String) -> GuessHistory?) async {
-        guard let guess = try? await solver().pickFirstGuessFromModel(lang: lang) else { return }
-        guard let formattedGuess = formatter(guess.map { String($0).returnChar(isFinal: $0 == guess.last) }.joined()) else { return }
-        saveToHistory(guess: formattedGuess)
+        guard let solver else { return }
+        guard let guess = try? solver.pickFirstGuessFromModel(lang: lang) else { return }
+        let animated = guess.map { String($0).returnChar(isFinal: $0 == guess.last) }.joined()
+        guard let formatted = formatter(animated) else { return }
+        saveToHistory(guess: formatted)
+    }
+    
+    func getFeedback(for difficulty: AIDifficulty) async -> String? {
+        guard let solver else { return nil }
+        do { return try solver.guessNext(history: history, lang: lang, difficulty: difficulty) }
+        catch { fatalError(error.localizedDescription) }
+    }
+    
+    @MainActor
+    func release() {
+        phraseProvider.hidePhrase()
+        phraseProvider.stop()
+        solver = nil
+        WordZapAIProvider.shared.release()
     }
 }
 
 // MARK: - Private
-extension AIViewModel {
-    private func solver() async -> WordZapAI { await WordZapAIProvider.shared.sharedAsync() }
-    private func fallbackGuess() -> String { return generateWord(for: lang, length: 5) }
-    func getFeedback(for difficulty: AIDifficulty) async -> String {
-        do {
-            return try await solver().guessNext(history: history,
-                                                lang: lang,
-                                                difficulty: difficulty)
-        } catch { fatalError("Solver Faild Return Word!!!") /*return generateWord(for: lang)*/ }
-    }
+private extension AIViewModel {
+    private func fallbackGuess() -> String { generateWord(for: lang, length: 5) }
     private func installBossEnhancementProvider(bossProvider: @escaping BossProvider) {
-        Task.detached(priority: .high) { [weak self] in
-            guard let self else { return }
-            await solver().installBossEnhancementProvider(bossProvider)
-        }
+        solver?.installBossEnhancementProvider(bossProvider)
     }
 }
-

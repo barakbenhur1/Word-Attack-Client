@@ -240,7 +240,7 @@ final class BPETokenizer {
 
 // MARK: - WordZapAI
 
-final class WordZapAI: Singleton {
+final class WordZapAI {
     public var useLangTags = true
     
     private let tokenizer: BPETokenizer
@@ -277,7 +277,7 @@ final class WordZapAI: Singleton {
     
     private var warmedUp = false
     
-    fileprivate var needWarmup: Bool { !warmedUp }
+    fileprivate var isWarmedup: Bool { warmedUp }
     
     // MARK: Boss cheat source (internal & optional)
     
@@ -319,13 +319,12 @@ final class WordZapAI: Singleton {
             let idsHE = WordZapAI.buildWordTokenIDs(tokenizer: tokenizer, lang: .he, length: 5)
             let setEN = Set(idsEN.map { WordZapAI.decodeWord($0, with: tokenizer) }.filter { $0.count == 5 })
             let setHE = Set(idsHE.map { WordZapAI.decodeWord($0, with: tokenizer) }.filter { $0.count == 5 })
-            Self.markAsInitializedFromOtherSource()
             return WordZapAI(tokenizer: tokenizer, prefill: nil, decode: nil, fallback: nil,
-                            spec: spec, idsMA: ids, maskMA: mask, tok1x1: tok11,
-                            letterMapEN: mapEN, candidateEN: candEN,
-                            letterMapHE: mapHE, candidateHE: candHE,
-                            wordStringSetEN: setEN, wordStringSetHE: setHE,
-                            T_prefill: nil, T_decode: nil, T_fallback: nil)
+                             spec: spec, idsMA: ids, maskMA: mask, tok1x1: tok11,
+                             letterMapEN: mapEN, candidateEN: candEN,
+                             letterMapHE: mapHE, candidateHE: candHE,
+                             wordStringSetEN: setEN, wordStringSetHE: setHE,
+                             T_prefill: nil, T_decode: nil, T_fallback: nil)
         }
         
         let tokURL = try WordZapAI.findTokenizerJSON(near: anchor)
@@ -386,13 +385,12 @@ final class WordZapAI: Singleton {
         let setEN = Set(idsEN.map { WordZapAI.decodeWord($0, with: tokenizer) }.filter { $0.count == 5 })
         let setHE = Set(idsHE.map { WordZapAI.decodeWord($0, with: tokenizer) }.filter { $0.count == 5 })
         
-        Self.markAsInitializedFromOtherSource()
         return WordZapAI(tokenizer: tokenizer, prefill: pre, decode: dec, fallback: fb,
-                        spec: spec, idsMA: ids, maskMA: mask, tok1x1: tok11,
-                        letterMapEN: mapEN, candidateEN: candEN,
-                        letterMapHE: mapHE, candidateHE: candHE,
-                        wordStringSetEN: setEN, wordStringSetHE: setHE,
-                        T_prefill: tPre, T_decode: tDec, T_fallback: tFb)
+                         spec: spec, idsMA: ids, maskMA: mask, tok1x1: tok11,
+                         letterMapEN: mapEN, candidateEN: candEN,
+                         letterMapHE: mapHE, candidateHE: candHE,
+                         wordStringSetEN: setEN, wordStringSetHE: setHE,
+                         T_prefill: tPre, T_decode: tDec, T_fallback: tFb)
     }
     
     private init(tokenizer: BPETokenizer, prefill: MLModel?, decode: MLModel?, fallback: MLModel?,
@@ -432,7 +430,7 @@ final class WordZapAI: Singleton {
             var c = MaskedConstraints(lang: lang, length: 5)
             c.reset(wordLength: 5, lang: lang)
             c.ingest(history: history, lang: lang)
-            if let forced = obviousAnswerIfAny(constraints: c, lang: lang, difficulty: difficulty) {
+            if let forced = self.obviousAnswerIfAny(constraints: c, lang: lang, difficulty: difficulty) {
                 Trace.log("✅", "Obvious answer from constraints → \(forced)", Fancy.green)
                 return forced
             }
@@ -442,23 +440,23 @@ final class WordZapAI: Singleton {
         if difficulty == .boss {
             let cheatAnswer = resolveCheatAnswer(lang: lang)
             if prefill != nil && decode != nil {
-                return try guessWithKV(history: history, lang: lang, difficulty: difficulty,
-                                       cheatAnswer: cheatAnswer, turnIndex: turnIndex)
-            }
-            if prefill == nil, decode != nil, let service = try? LLMService() {
-                return try guessWithService(svc: service, history: history, lang: lang, difficulty: difficulty,
+                return try self.guessWithKV(history: history, lang: lang, difficulty: difficulty,
                                             cheatAnswer: cheatAnswer, turnIndex: turnIndex)
             }
+            if prefill == nil, decode != nil, let service = try? LLMService() {
+                return try self.guessWithService(svc: service, history: history, lang: lang, difficulty: difficulty,
+                                                 cheatAnswer: cheatAnswer, turnIndex: turnIndex)
+            }
             if fallbackModel != nil {
-                return try guessWithFallback(history: history, lang: lang, difficulty: difficulty,
-                                             cheatAnswer: cheatAnswer, turnIndex: turnIndex)
+                return try self.guessWithFallback(history: history, lang: lang, difficulty: difficulty,
+                                                  cheatAnswer: cheatAnswer, turnIndex: turnIndex)
             }
         }
         
         // 3) Non-boss opener
         if history.isEmpty {
-            var opener = try pickFirstGuessFromModel(lang: lang)
-            opener = maybeMutateFirstGuess(opener, lang: lang, probability: 0.15, maxChanges: 2)
+            var opener = try self.pickFirstGuessFromModel(lang: lang)
+            opener = self.maybeMutateFirstGuess(opener, lang: lang, probability: 0.15, maxChanges: 2)
             Trace.log("🎯", "opener → \(opener)", Fancy.cyan)
             return opener
         }
@@ -466,18 +464,18 @@ final class WordZapAI: Singleton {
         // 4) Normal paths
         if prefill != nil && decode != nil {
             Trace.log("⚡️", "KV path", Fancy.blue)
-            return try guessWithKV(history: history, lang: lang, difficulty: difficulty,
-                                   cheatAnswer: nil, turnIndex: turnIndex)
+            return try self.guessWithKV(history: history, lang: lang, difficulty: difficulty,
+                                        cheatAnswer: nil, turnIndex: turnIndex)
         }
         if prefill == nil, decode != nil, let service = try? LLMService() {
             Trace.log("🤖", "Decoder-only via LLMService", Fancy.blue)
-            return try guessWithService(svc: service, history: history, lang: lang, difficulty: difficulty,
-                                        cheatAnswer: nil, turnIndex: turnIndex)
+            return try self.guessWithService(svc: service, history: history, lang: lang, difficulty: difficulty,
+                                             cheatAnswer: nil, turnIndex: turnIndex)
         }
         if fallbackModel != nil {
             Trace.log("🛟", "Fallback path", Fancy.yellow)
-            return try guessWithFallback(history: history, lang: lang, difficulty: difficulty,
-                                         cheatAnswer: nil, turnIndex: turnIndex)
+            return try self.guessWithFallback(history: history, lang: lang, difficulty: difficulty,
+                                              cheatAnswer: nil, turnIndex: turnIndex)
         }
         throw NSError(domain: "WordZapAI", code: -100, userInfo: [NSLocalizedDescriptionKey: "No Core ML model loaded"])
     }
@@ -487,12 +485,12 @@ final class WordZapAI: Singleton {
         
         let logitsRaw: [Float]
         if prefill != nil {
-            let (lg, _, _, _) = try prefillOnce(prompt: (lang == .en ? "<|en|>\n" : "<|he|>\n"))
+            let (lg, _, _, _) = try self.prefillOnce(prompt: (lang == .en ? "<|en|>\n" : "<|he|>\n"))
             logitsRaw = lg
         } else if let fb = fallbackModel {
             let prompt = (lang == .en ? "<|en|>\n" : "<|he|>\n")
-            let ids = encodePromptFallback(prompt)
-            logitsRaw = try predictLogitsFallback(inputIds: ids, model: fb)
+            let ids = self.encodePromptFallback(prompt)
+            logitsRaw = try self.predictLogitsFallback(inputIds: ids, model: fb)
         } else { return lang == .en ? "adieu" : "מגניב" }
         
         let vocabCap = logitsRaw.count
@@ -514,16 +512,16 @@ final class WordZapAI: Singleton {
         var adjusted = logitsRaw
         for tid in eligible where tid < adjusted.count {
             let w = Self.decodeWord(tid, with: tokenizer)
-            if w.count == 5 { adjusted[tid] = logitsRaw[tid] + openerBias(for: w, lang: lang) }
+            if w.count == 5 { adjusted[tid] = logitsRaw[tid] + self.openerBias(for: w, lang: lang) }
         }
         
         var word = ""
         for _ in 0..<12 {
-            let id = sampleRestricted(logits: adjusted, candidates: eligible,
+            let id = self.sampleRestricted(logits: adjusted, candidates: eligible,
                                       temperature: 0.85, topK: max(300, min(eligible.count, 1024)))
             if id >= 0 && id < adjusted.count {
                 let w = Self.decodeWord(id, with: tokenizer)
-                if w.count == 5, isGoodFirstOpener(w, lang: lang), !isMonotonicSequence(w, lang: lang) {
+                if w.count == 5, self.isGoodFirstOpener(w, lang: lang), !self.isMonotonicSequence(w, lang: lang) {
                     word = w; recent.append(id); break
                 }
             }
@@ -531,7 +529,7 @@ final class WordZapAI: Singleton {
         if word.isEmpty {
             if let id = eligible.first(where: {
                 let w = Self.decodeWord($0, with: tokenizer)
-                return w.count == 5 && isGoodFirstOpener(w, lang: lang) && !isMonotonicSequence(w, lang: lang)
+                return w.count == 5 && self.isGoodFirstOpener(w, lang: lang) && !self.isMonotonicSequence(w, lang: lang)
             }) { word = Self.decodeWord(id, with: tokenizer); recent.append(id) }
         }
         if word.isEmpty { word = lang == .en ? "house" : "מגניב" }
@@ -542,11 +540,11 @@ final class WordZapAI: Singleton {
     }
     
     public func warmUp() {
-        if prefill != nil { _ = try? prefillOnce(prompt: "<|en|>\n") }
+        if prefill != nil { _ = try? self.prefillOnce(prompt: "<|en|>\n") }
         else if fallbackModel != nil {
             let T = T_fallback ?? spec.maxT
             let ids = Array(repeating: tokenizer.bos() ?? 0, count: T)
-            _ = try? predictLogitsFallback(inputIds: ids, model: fallbackModel!)
+            _ = try? self.predictLogitsFallback(inputIds: ids, model: fallbackModel!)
         }
         
         warmedUp = true
@@ -580,7 +578,7 @@ final class WordZapAI: Singleton {
         let vowelCount = chars.reduce(0) { $0 + (V.contains($1) ? 1 : 0) }
         let vowelNudge: Float = (vowelCount >= 2 ? 0.7 : (vowelCount == 1 ? -0.4 : -0.8))
         
-        let freq = unigramFreq(lang: lang)
+        let freq = self.unigramFreq(lang: lang)
         var coverage: Float = 0
         for c in Set(chars) {
             let f = Float(freq[c] ?? 0.0005); coverage += min(f * 4.0, 1.2)
@@ -605,7 +603,7 @@ final class WordZapAI: Singleton {
         if counts.values.filter({ $0 == 2 }).count > 1 { return false }
         if counts.count < 4 { return false }
         
-        if shannonEntropy(s) < openerMinEntropy { return false }
+        if self.shannonEntropy(s) < openerMinEntropy { return false }
         
         if lang == .en {
             for h in "qjxz" { if (counts[h] ?? 0) >= 2 { return false } }
@@ -703,7 +701,7 @@ private extension WordZapAI {
         : Array("אבגדהוזחטיכלמנסעפצקרשת")
         
         let base = word.lowercased()
-        let baseScore = openerBias(for: base, lang: lang)
+        let baseScore = self.openerBias(for: base, lang: lang)
         
         for _ in 0..<32 {
             var c = Array(base)
@@ -714,12 +712,13 @@ private extension WordZapAI {
             
             if m != base,
                pool.contains(m),
-               isGoodFirstOpener(m, lang: lang),
-               !isMonotonicSequence(m, lang: lang) {
+               self.isGoodFirstOpener(m, lang: lang),
+               !self.isMonotonicSequence(m, lang: lang) {
                 
-                let score = openerBias(for: m, lang: lang)
+                let score = self.openerBias(for: m, lang: lang)
                 if score > baseScore {
-                    Trace.log("🎲", "mutated \(base) → \(m) (Δ=\(String(format: "%.2f", score - baseScore)))", Fancy.mag)
+                    let deltaStr = String(format: "%.2f", Double(score - baseScore)) // Double to satisfy CVarArg
+                    Trace.log("🎲", "mutated \(base) → \(m) (Δ=\(deltaStr))", Fancy.mag)
                     return m
                 }
             }
@@ -740,142 +739,107 @@ private extension WordZapAI {
     }
     
     // MARK: Obvious-answer fast path
-    /// Returns a word if (and only if) the constraints force a SINGLE unique solution.
-    /// 1) Try fast dictionary pool (if present) — same behaviour as before but safer.
-    /// 2) Fall back to a tiny exact solver that works without any dictionary.
     func obviousAnswerIfAny(constraints: MaskedConstraints, lang: Language, difficulty: AIDifficulty) -> String? {
         guard ObviousAnswerPolicy.resume(difficulty) else { return nil }
-        if let fromDict = obviousFromDictionary(constraints: constraints, lang: lang) {
+        if let fromDict = self.obviousFromDictionary(constraints: constraints, lang: lang) {
             return fromDict
         }
-        return solveUniqueUnderConstraints(constraints: constraints, lang: lang)
+        return self.solveUniqueUnderConstraints(constraints: constraints, lang: lang)
     }
     
-    // ---- 1) Fast path: dictionary (token-derived) if available
-     func obviousFromDictionary(constraints: MaskedConstraints, lang: Language) -> String? {
-         let pool: Set<String> = (lang == .en) ? wordStringSetEN : wordStringSetHE
-         guard !pool.isEmpty else { return nil }
-
-         var seen = 0
-         var candidate: String? = nil
-         for w in pool {
-             if satisfies(word: w, constraints: constraints) {
-                 seen += 1
-                 if seen == 1 { candidate = w }
-                 if seen > 1 { return nil } // more than one → not obvious
-             }
-         }
-         return (seen == 1) ? candidate : nil
-     }
-    
-    // ---- 2) Exact solver without dictionary
-        /// Backtracks positions with pruning based on bannedAt/fixed/min/max counts.
-        /// Returns a word iff there is exactly one solution.
-        func solveUniqueUnderConstraints(constraints c0: MaskedConstraints, lang: Language) -> String? {
-            let c = c0 // local mutable copy
-
-            // Alphabet derived from the tokenizer’s single-letter tokens (includes Hebrew finals)
-            let alphaSet: Set<Character> = (lang == .en)
-                ? Set(letterMapEN.values)
-                : Set(letterMapHE.values)
-
-            // Allowed letters per position after hard bans and fixed positions
-            var slots: [Set<Character>] = Array(repeating: alphaSet, count: c.length)
-            for i in 0..<c.length {
-                if let fx = c.fixed[i] {
-                    slots[i] = [fx]
-                } else {
-                    var s = alphaSet
-                    // global disallow
-                    for ch in c.disallow { s.remove(ch) }
-                    // position bans
-                    for ch in c.bannedAt[i] { s.remove(ch) }
-                    slots[i] = s
-                }
-                if slots[i].isEmpty { return nil } // impossible immediately
+    func obviousFromDictionary(constraints: MaskedConstraints, lang: Language) -> String? {
+        let pool: Set<String> = (lang == .en) ? wordStringSetEN : wordStringSetHE
+        guard !pool.isEmpty else { return nil }
+        
+        var seen = 0
+        var candidate: String? = nil
+        for w in pool {
+            if self.satisfies(word: w, constraints: constraints) {
+                seen += 1
+                if seen == 1 { candidate = w }
+                if seen > 1 { return nil }
             }
-            
-            // Order positions small→large domain for faster pruning
-            let order = (0..<c.length).sorted { slots[$0].count < slots[$1].count }
-            
-            // Upper bound map (letters without explicit bound get +∞ via Int.max)
-            func maxAllowed(_ ch: Character) -> Int {
-                return c.maxCount[ch] ?? Int.max
-            }
-            
-            // Feasibility check: can we still meet minCount for every letter?
-            func feasibleMinCounts(_ used: [Character:Int], _ idx: Int) -> Bool {
-                // remaining positions:
-                let remainingPositions = order[idx...]
-                // quick capacity check for each ch with a positive deficit
-                for (ch, need) in c.minCount where need > 0 {
-                    let have = used[ch, default: 0]
-                    let deficit = need - have
-                    if deficit <= 0 { continue }
-                    
-                    // Count how many remaining slots allow this ch (and are not already over max)
-                    var capacity = 0
-                    if have < maxAllowed(ch) {
-                        for pos in remainingPositions {
-                            if slots[pos].contains(ch) {
-                                capacity += 1
-                            }
-                        }
-                    }
-                    if capacity < deficit { return false }
-                }
-                return true
-            }
-            
-            // Backtracking state
-            var used: [Character:Int] = [:]
-            var solutionCount = 0
-            var theSolution = Array(repeating: Character(" "), count: c.length)
-            
-            func dfs(_ k: Int, _ acc: inout [Character]) {
-                if solutionCount > 1 { return } // early exit if already ambiguous
-                if k == order.count {
-                    // verify all minCounts met
-                    for (ch, need) in c.minCount {
-                        if used[ch, default: 0] < need { return }
-                    }
-                    solutionCount += 1
-                    if solutionCount == 1 { theSolution = acc }
-                    return
-                }
-                
-                let pos = order[k]
-                // Try letters that are still allowed here
-                for ch in slots[pos] {
-                    // max bound
-                    if used[ch, default: 0] >= maxAllowed(ch) { continue }
-                    
-                    // place ch
-                    used[ch, default: 0] += 1
-                    acc[pos] = ch
-                    
-                    // prune: minCount feasibility for the remainder
-                    if feasibleMinCounts(used, k + 1) {
-                        dfs(k + 1, &acc)
-                    }
-                    
-                    // undo
-                    used[ch]! -= 1
-                    if used[ch] == 0 { used.removeValue(forKey: ch) }
-                    
-                    if solutionCount > 1 { return } // early stop if already ambiguous
-                }
-            }
-            
-            var acc = Array(repeating: Character(" "), count: c.length)
-            // quick global sanity: if any slot is huge and bans are light, this could explode;
-            // guard against pathological cases to avoid work (rare in practice for WordZap)
-            let roughSpace = slots.reduce(1) { min(Int.max, $0 * max(1, $1.count)) }
-            if roughSpace > 500_000 { return nil } // too unconstrained → not "obvious"
-            
-            dfs(0, &acc)
-            return (solutionCount == 1) ? String(theSolution) : nil
         }
+        return (seen == 1) ? candidate : nil
+    }
+    
+    func solveUniqueUnderConstraints(constraints c0: MaskedConstraints, lang: Language) -> String? {
+        let c = c0
+        
+        let alphaSet: Set<Character> = (lang == .en)
+        ? Set(letterMapEN.values)
+        : Set(letterMapHE.values)
+        
+        var slots: [Set<Character>] = Array(repeating: alphaSet, count: c.length)
+        for i in 0..<c.length {
+            if let fx = c.fixed[i] {
+                slots[i] = [fx]
+            } else {
+                var s = alphaSet
+                for ch in c.disallow { s.remove(ch) }
+                for ch in c.bannedAt[i] { s.remove(ch) }
+                slots[i] = s
+            }
+            if slots[i].isEmpty { return nil }
+        }
+        
+        let order = (0..<c.length).sorted { slots[$0].count < slots[$1].count }
+        
+        func maxAllowed(_ ch: Character) -> Int {
+            return c.maxCount[ch] ?? Int.max
+        }
+        
+        func feasibleMinCounts(_ used: [Character:Int], _ idx: Int) -> Bool {
+            let remainingPositions = order[idx...]
+            for (ch, need) in c.minCount where need > 0 {
+                let have = used[ch, default: 0]
+                let deficit = need - have
+                if deficit <= 0 { continue }
+                var capacity = 0
+                if have < maxAllowed(ch) {
+                    for pos in remainingPositions {
+                        if slots[pos].contains(ch) { capacity += 1 }
+                    }
+                }
+                if capacity < deficit { return false }
+            }
+            return true
+        }
+        
+        var used: [Character:Int] = [:]
+        var solutionCount = 0
+        var theSolution = Array(repeating: Character(" "), count: c.length)
+        
+        func dfs(_ k: Int, _ acc: inout [Character]) {
+            if solutionCount > 1 { return }
+            if k == order.count {
+                for (ch, need) in c.minCount {
+                    if used[ch, default: 0] < need { return }
+                }
+                solutionCount += 1
+                if solutionCount == 1 { theSolution = acc }
+                return
+            }
+            
+            let pos = order[k]
+            for ch in slots[pos] {
+                if used[ch, default: 0] >= maxAllowed(ch) { continue }
+                used[ch, default: 0] += 1
+                acc[pos] = ch
+                if feasibleMinCounts(used, k + 1) { dfs(k + 1, &acc) }
+                used[ch]! -= 1
+                if used[ch] == 0 { used.removeValue(forKey: ch) }
+                if solutionCount > 1 { return }
+            }
+        }
+        
+        var acc = Array(repeating: Character(" "), count: c.length)
+        let roughSpace = slots.reduce(1) { min(Int.max, $0 * max(1, $1.count)) }
+        if roughSpace > 500_000 { return nil }
+        
+        dfs(0, &acc)
+        return (solutionCount == 1) ? String(theSolution) : nil
+    }
     
     func satisfies(word: String, constraints: MaskedConstraints) -> Bool {
         let w = word.lowercased()
@@ -1051,10 +1015,10 @@ private extension WordZapAI {
     func guessWithKV(history: [GuessHistory], lang: Language, difficulty: AIDifficulty,
                      cheatAnswer: String?, turnIndex: Int) throws -> String
     {
-        let prompt = buildPrompt(history: history, lang: lang)
-        let (logits0, k0, v0, usedLen) = try prefillOnce(prompt: prompt)
+        let prompt = self.buildPrompt(history: history, lang: lang)
+        let (logits0, k0, v0, usedLen) = try self.prefillOnce(prompt: prompt)
         
-        let (kAligned, vAligned, alignedLen) = alignKVsForDecode(ks: k0, vs: v0)
+        let (kAligned, vAligned, alignedLen) = self.alignKVsForDecode(ks: k0, vs: v0)
         pastK = kAligned; pastV = vAligned
         curLen = min(usedLen, alignedLen)
         let pastK = pastK, pastV = pastV
@@ -1064,20 +1028,20 @@ private extension WordZapAI {
         constraints.reset(wordLength: 5, lang: lang)
         constraints.ingest(history: history, lang: lang)
         
-        if let forced = obviousAnswerIfAny(constraints: constraints, lang: lang, difficulty: difficulty) {
+        if let forced = self.obviousAnswerIfAny(constraints: constraints, lang: lang, difficulty: difficulty) {
             Trace.log("✅", "Obvious answer from constraints → \(forced)", Fancy.green)
             return forced
         }
         
         if difficulty == .boss, let ans = cheatAnswer {
-            _ = updateBossMemoryForTurn(lang: lang, solution: ans, turnIndex: turnIndex, constraints: &constraints)
+            _ = self.updateBossMemoryForTurn(lang: lang, solution: ans, turnIndex: turnIndex, constraints: &constraints)
         }
         
         let (temp, topK) = difficulty.params
-        let id2c = filteredId2c((lang == .en) ? letterMapEN : letterMapHE, vocab: logits0.count)
-        let inv  = invert(id2c)
+        let id2c = self.filteredId2c((lang == .en) ? letterMapEN : letterMapHE, vocab: logits0.count)
+        let inv  = self.invert(id2c)
         let clean = ((lang == .en) ? candidateEN : candidateHE)
-            .filter { $0 >= 0 && $0 < logits0.count && !tokenStartsWithSpace(tokenId: $0) }
+            .filter { $0 >= 0 && $0 < logits0.count && !self.tokenStartsWithSpace(tokenId: $0) }
         
         var result: [Character] = []
         var used: [Character: Int] = [:]
@@ -1087,38 +1051,37 @@ private extension WordZapAI {
             var masked = logits
             for tid in 0..<masked.count where !clean.contains(tid) { masked[tid] = -1e30 }
             constraints.apply(at: pos, used: used, id2c: id2c, logits: &masked, negInf: -1e30)
-            applySoftRepeatPenalty(at: pos, used: used, result: result, constraints: constraints, id2c: id2c, logits: &masked)
-            forceDeficitIfNeeded(at: pos, constraints: constraints, used: used, invMap: inv, logits: &masked)
-            avoidExtraCopiesWhileDeficit(at: pos, constraints: constraints, used: used, id2c: id2c, logits: &masked)
-            applyEarlyTurnDuplicateCap(turnIndex: turnIndex, used: used, constraints: constraints, id2c: id2c, logits: &masked) // early turn anti-spam
-            maskDuplicatesUnlessRequired(at: pos, constraints: constraints, used: used, id2c: id2c, logits: &masked)
+            self.applySoftRepeatPenalty(at: pos, used: used, result: result, constraints: constraints, id2c: id2c, logits: &masked)
+            self.forceDeficitIfNeeded(at: pos, constraints: constraints, used: used, invMap: inv, logits: &masked)
+            self.avoidExtraCopiesWhileDeficit(at: pos, constraints: constraints, used: used, id2c: id2c, logits: &masked)
+            self.applyEarlyTurnDuplicateCap(turnIndex: turnIndex, used: used, constraints: constraints, id2c: id2c, logits: &masked)
+            self.maskDuplicatesUnlessRequired(at: pos, constraints: constraints, used: used, id2c: id2c, logits: &masked)
             
-            var nextId = sampleRestricted(logits: masked, candidates: clean, temperature: temp, topK: topK)
+            var nextId = self.sampleRestricted(logits: masked, candidates: clean, temperature: temp, topK: topK)
             var ch = id2c[nextId]
             
-            // Post-sample guard: enforce early duplicate cap even if sampler chose a masked token.
             if let picked = ch,
-               exceedsEarlyCap(picked, used: used, constraints: constraints, turnIndex: turnIndex) {
-                if let alt = bestAltUnderEarlyCap(logits: masked, candidates: clean, id2c: id2c,
+               self.exceedsEarlyCap(picked, used: used, constraints: constraints, turnIndex: turnIndex) {
+                if let alt = self.bestAltUnderEarlyCap(logits: masked, candidates: clean, id2c: id2c,
                                                   used: used, constraints: constraints, turnIndex: turnIndex) {
                     nextId = alt.id
                     ch = alt.ch
                 } else {
-                    let fb = pickFallbackChar(position: pos, used: used, constraints: constraints, lang: lang)
+                    let fb = self.pickFallbackChar(position: pos, used: used, constraints: constraints, lang: lang)
                     ch = fb; if let forced = inv[fb]?.first { nextId = forced }
                 }
             }
             
-            if ch == nil || !isAllowed(ch!, at: pos, used: used, constraints: constraints) {
-                let fb = pickFallbackChar(position: pos, used: used, constraints: constraints, lang: lang)
+            if ch == nil || !self.isAllowed(ch!, at: pos, used: used, constraints: constraints) {
+                let fb = self.pickFallbackChar(position: pos, used: used, constraints: constraints, lang: lang)
                 ch = fb; if let forced = inv[fb]?.first { nextId = forced }
             }
             
             if let c = ch { result.append(c); used[c, default: 0] += 1 }
-            do { logits = try decodeOnce(nextId: nextId) }
+            do { logits = try self.decodeOnce(nextId: nextId) }
             catch {
                 Trace.log("🛟", "Decode failed @\(pos) — sliding fallback", Fancy.yellow)
-                return try guessWithFallback(history: history, lang: lang, difficulty: difficulty,
+                return try self.guessWithFallback(history: history, lang: lang, difficulty: difficulty,
                                              cheatAnswer: cheatAnswer, turnIndex: turnIndex)
             }
         }
@@ -1134,26 +1097,26 @@ private extension WordZapAI {
         constraints.reset(wordLength: 5, lang: lang)
         constraints.ingest(history: history, lang: lang)
         
-        if let forced = obviousAnswerIfAny(constraints: constraints, lang: lang, difficulty: difficulty) {
+        if let forced = self.obviousAnswerIfAny(constraints: constraints, lang: lang, difficulty: difficulty) {
             Trace.log("✅", "Obvious answer from constraints → \(forced)", Fancy.green)
             return forced
         }
         
         if difficulty == .boss, let ans = cheatAnswer {
-            _ = updateBossMemoryForTurn(lang: lang, solution: ans, turnIndex: turnIndex, constraints: &constraints)
+            _ = self.updateBossMemoryForTurn(lang: lang, solution: ans, turnIndex: turnIndex, constraints: &constraints)
         }
         
-        let prompt = buildPrompt(history: history, lang: lang)
+        let prompt = self.buildPrompt(history: history, lang: lang)
         let ids = tokenizer.encode(prompt, addBOS: true)
         try svc.resetSequence()
         var logits: [Float] = []
         for id in ids { logits = try svc.step(tokenId: Int32(id), expectedVocab: spec.vocab) }
         
         let (temp, topK) = difficulty.params
-        let id2c = filteredId2c((lang == .en) ? letterMapEN : letterMapHE, vocab: logits.count)
-        let inv  = invert(id2c)
+        let id2c = self.filteredId2c((lang == .en) ? letterMapEN : letterMapHE, vocab: logits.count)
+        let inv  = self.invert(id2c)
         let clean = ((lang == .en) ? candidateEN : candidateHE)
-            .filter { $0 >= 0 && $0 < logits.count && !tokenStartsWithSpace(tokenId: $0) }
+            .filter { $0 >= 0 && $0 < logits.count && !self.tokenStartsWithSpace(tokenId: $0) }
         
         var result: [Character] = []
         var used: [Character:Int] = [:]
@@ -1162,30 +1125,29 @@ private extension WordZapAI {
             var masked = logits
             for tid in 0..<masked.count where !clean.contains(tid) { masked[tid] = -1e30 }
             constraints.apply(at: pos, used: used, id2c: id2c, logits: &masked, negInf: -1e30)
-            applySoftRepeatPenalty(at: pos, used: used, result: result, constraints: constraints, id2c: id2c, logits: &masked)
-            forceDeficitIfNeeded(at: pos, constraints: constraints, used: used, invMap: inv, logits: &masked)
-            avoidExtraCopiesWhileDeficit(at: pos, constraints: constraints, used: used, id2c: id2c, logits: &masked)
-            applyEarlyTurnDuplicateCap(turnIndex: turnIndex, used: used, constraints: constraints, id2c: id2c, logits: &masked) // early turn anti-spam
-            maskDuplicatesUnlessRequired(at: pos, constraints: constraints, used: used, id2c: id2c, logits: &masked)
+            self.applySoftRepeatPenalty(at: pos, used: used, result: result, constraints: constraints, id2c: id2c, logits: &masked)
+            self.forceDeficitIfNeeded(at: pos, constraints: constraints, used: used, invMap: inv, logits: &masked)
+            self.avoidExtraCopiesWhileDeficit(at: pos, constraints: constraints, used: used, id2c: id2c, logits: &masked)
+            self.applyEarlyTurnDuplicateCap(turnIndex: turnIndex, used: used, constraints: constraints, id2c: id2c, logits: &masked)
+            self.maskDuplicatesUnlessRequired(at: pos, constraints: constraints, used: used, id2c: id2c, logits: &masked)
             
-            var nextId = sampleRestricted(logits: masked, candidates: clean, temperature: temp, topK: topK)
+            var nextId = self.sampleRestricted(logits: masked, candidates: clean, temperature: temp, topK: topK)
             var ch = id2c[nextId]
             
-            // Post-sample guard
             if let picked = ch,
-               exceedsEarlyCap(picked, used: used, constraints: constraints, turnIndex: turnIndex) {
-                if let alt = bestAltUnderEarlyCap(logits: masked, candidates: clean, id2c: id2c,
+               self.exceedsEarlyCap(picked, used: used, constraints: constraints, turnIndex: turnIndex) {
+                if let alt = self.bestAltUnderEarlyCap(logits: masked, candidates: clean, id2c: id2c,
                                                   used: used, constraints: constraints, turnIndex: turnIndex) {
                     nextId = alt.id
                     ch = alt.ch
                 } else {
-                    let fb = pickFallbackChar(position: pos, used: used, constraints: constraints, lang: lang)
+                    let fb = self.pickFallbackChar(position: pos, used: used, constraints: constraints, lang: lang)
                     ch = fb; if let forced = inv[fb]?.first { nextId = forced }
                 }
             }
             
-            if ch == nil || !isAllowed(ch!, at: pos, used: used, constraints: constraints) {
-                let fb = pickFallbackChar(position: pos, used: used, constraints: constraints, lang: lang)
+            if ch == nil || !self.isAllowed(ch!, at: pos, used: used, constraints: constraints) {
+                let fb = self.pickFallbackChar(position: pos, used: used, constraints: constraints, lang: lang)
                 ch = fb; if let forced = inv[fb]?.first { nextId = forced }
             }
             
@@ -1234,14 +1196,14 @@ private extension WordZapAI {
             "input_ids": MLFeatureValue(multiArray: tok1x1),
             "attention_mask": MLFeatureValue(multiArray: maskMA)
         ]
-        let (kOK, vOK, _) = alignKVsForDecode(ks: pastK, vs: pastV)
+        let (kOK, vOK, _) = self.alignKVsForDecode(ks: pastK, vs: pastV)
         for i in 0..<kOK.count { dict[String(format: "past_k_%02d", i)] = MLFeatureValue(multiArray: kOK[i]) }
         for i in 0..<vOK.count { dict[String(format: "past_v_%02d", i)] = MLFeatureValue(multiArray: vOK[i]) }
         
         let out = try decode.prediction(from: MLDictionaryFeatureProvider(dictionary: dict))
         guard let (logits, ks, vs) = Self.extractKVOutputs(from: out, vocab: spec.vocab, L: spec.numL)
         else { throw NSError(domain: "WordZapAI", code: -211, userInfo: [NSLocalizedDescriptionKey: "Bad decode outputs"]) }
-        let (kAligned, vAligned, _) = alignKVsForDecode(ks: ks, vs: vs)
+        let (kAligned, vAligned, _) = self.alignKVsForDecode(ks: ks, vs: vs)
         pastK = kAligned; pastV = vAligned
         return logits
     }
@@ -1257,28 +1219,28 @@ private extension WordZapAI {
             throw NSError(domain: "WordZapAI", code: -300, userInfo: [NSLocalizedDescriptionKey: "No fallback model"])
         }
         
-        let prompt = buildPrompt(history: history, lang: lang)
-        var ids = encodePromptFallback(prompt)
+        let prompt = self.buildPrompt(history: history, lang: lang)
+        var ids = self.encodePromptFallback(prompt)
         
         var constraints = MaskedConstraints(lang: lang, length: 5)
         constraints.reset(wordLength: 5, lang: lang)
         constraints.ingest(history: history, lang: lang)
         
-        if let forced = obviousAnswerIfAny(constraints: constraints, lang: lang, difficulty: difficulty) {
+        if let forced = self.obviousAnswerIfAny(constraints: constraints, lang: lang, difficulty: difficulty) {
             Trace.log("✅", "Obvious answer from constraints → \(forced)", Fancy.green)
             return forced
         }
         
         if difficulty == .boss, let ans = cheatAnswer {
-            _ = updateBossMemoryForTurn(lang: lang, solution: ans, turnIndex: turnIndex, constraints: &constraints)
+            _ = self.updateBossMemoryForTurn(lang: lang, solution: ans, turnIndex: turnIndex, constraints: &constraints)
         }
         
         let (temp, topK) = difficulty.params
-        var logits = try predictLogitsFallback(inputIds: ids, model: model)
-        let id2c = filteredId2c((lang == .en) ? letterMapEN : letterMapHE, vocab: logits.count)
-        let inv  = invert(id2c)
+        var logits = try self.predictLogitsFallback(inputIds: ids, model: model)
+        let id2c = self.filteredId2c((lang == .en) ? letterMapEN : letterMapHE, vocab: logits.count)
+        let inv  = self.invert(id2c)
         let clean = ((lang == .en) ? candidateEN : candidateHE)
-            .filter { $0 >= 0 && $0 < logits.count && !tokenStartsWithSpace(tokenId: $0) }
+            .filter { $0 >= 0 && $0 < logits.count && !self.tokenStartsWithSpace(tokenId: $0) }
         
         var result: [Character] = []
         var used: [Character:Int] = [:]
@@ -1287,37 +1249,36 @@ private extension WordZapAI {
             var masked = logits
             for tid in 0..<masked.count where !clean.contains(tid) { masked[tid] = -1e30 }
             constraints.apply(at: pos, used: used, id2c: id2c, logits: &masked, negInf: -1e30)
-            applySoftRepeatPenalty(at: pos, used: used, result: result, constraints: constraints, id2c: id2c, logits: &masked)
-            forceDeficitIfNeeded(at: pos, constraints: constraints, used: used, invMap: inv, logits: &masked)
-            avoidExtraCopiesWhileDeficit(at: pos, constraints: constraints, used: used, id2c: id2c, logits: &masked)
-            applyEarlyTurnDuplicateCap(turnIndex: turnIndex, used: used, constraints: constraints, id2c: id2c, logits: &masked) // early turn anti-spam
-            maskDuplicatesUnlessRequired(at: pos, constraints: constraints, used: used, id2c: id2c, logits: &masked)
+            self.applySoftRepeatPenalty(at: pos, used: used, result: result, constraints: constraints, id2c: id2c, logits: &masked)
+            self.forceDeficitIfNeeded(at: pos, constraints: constraints, used: used, invMap: inv, logits: &masked)
+            self.avoidExtraCopiesWhileDeficit(at: pos, constraints: constraints, used: used, id2c: id2c, logits: &masked)
+            self.applyEarlyTurnDuplicateCap(turnIndex: turnIndex, used: used, constraints: constraints, id2c: id2c, logits: &masked)
+            self.maskDuplicatesUnlessRequired(at: pos, constraints: constraints, used: used, id2c: id2c, logits: &masked)
             
-            var nextId = sampleRestricted(logits: masked, candidates: clean, temperature: temp, topK: topK)
+            var nextId = self.sampleRestricted(logits: masked, candidates: clean, temperature: temp, topK: topK)
             var ch = id2c[nextId]
             
-            // Post-sample guard
             if let picked = ch,
-               exceedsEarlyCap(picked, used: used, constraints: constraints, turnIndex: turnIndex) {
-                if let alt = bestAltUnderEarlyCap(logits: masked, candidates: clean, id2c: id2c,
+               self.exceedsEarlyCap(picked, used: used, constraints: constraints, turnIndex: turnIndex) {
+                if let alt = self.bestAltUnderEarlyCap(logits: masked, candidates: clean, id2c: id2c,
                                                   used: used, constraints: constraints, turnIndex: turnIndex) {
                     nextId = alt.id
                     ch = alt.ch
                 } else {
                     Trace.log("🚫", "over-masked @\(pos) → fallback char", Fancy.gray)
-                    let fb = pickFallbackChar(position: pos, used: used, constraints: constraints, lang: lang)
+                    let fb = self.pickFallbackChar(position: pos, used: used, constraints: constraints, lang: lang)
                     ch = fb; if let forced = inv[fb]?.first { nextId = forced }
                 }
             }
             
-            if ch == nil || !isAllowed(ch!, at: pos, used: used, constraints: constraints) {
-                let fb = pickFallbackChar(position: pos, used: used, constraints: constraints, lang: lang)
+            if ch == nil || !self.isAllowed(ch!, at: pos, used: used, constraints: constraints) {
+                let fb = self.pickFallbackChar(position: pos, used: used, constraints: constraints, lang: lang)
                 ch = fb; if let forced = inv[fb]?.first { nextId = forced }
             }
             
             if let c = ch { result.append(c); used[c, default: 0] += 1 }
             ids.removeFirst(); ids.append(nextId)
-            logits = try predictLogitsFallback(inputIds: ids, model: model)
+            logits = try self.predictLogitsFallback(inputIds: ids, model: model)
         }
         let out = String(result)
         Trace.log("🛟", "guess → \(out)", Fancy.yellow)
@@ -1464,7 +1425,6 @@ private extension WordZapAI {
         }
     }
     
-    /// While any min-count is unmet, ban extra copies of letters already at their minimum.
     func avoidExtraCopiesWhileDeficit(
         at pos: Int,
         constraints: MaskedConstraints,
@@ -1485,18 +1445,14 @@ private extension WordZapAI {
         }
     }
     
-    // EARLY DUPLICATE CAP POLICY
-    // Apply until history.count > 3, i.e., active for history.count ∈ {0,1,2,3}.
     private enum EarlyDupCapPolicy {
-        static let applyWhileHistoryCountAtMost = 3  // extend/shorten the phase here
-        static var maxCopiesPerLetter: (_ index: Int) -> (Int) { { index in return index < applyWhileHistoryCountAtMost ? 1 : 2 } } // tighten/loosen the cap here
+        static let applyWhileHistoryCountAtMost = 3
+        static var maxCopiesPerLetter: (_ index: Int) -> (Int) { { index in return index < applyWhileHistoryCountAtMost ? 1 : 2 } }
     }
     
     @inline(__always)
-    func normChar(_ ch: Character) -> Character { return String(ch).lowercased().first ?? ch }  // English needs lowercasing; Hebrew finals are treated as distinct glyphs elsewhere.
+    func normChar(_ ch: Character) -> Character { return String(ch).lowercased().first ?? ch }
     
-    /// Early-game hard cap: while history.count ≤ 3, do not allow >2 copies of the same
-    /// letter unless history has proven minCount[ch] ≥ 3.
     func applyEarlyTurnDuplicateCap(
         turnIndex: Int,
         used: [Character:Int],
@@ -1507,7 +1463,6 @@ private extension WordZapAI {
         guard turnIndex <= EarlyDupCapPolicy.applyWhileHistoryCountAtMost else { return }
         let cap = EarlyDupCapPolicy.maxCopiesPerLetter(turnIndex)
         
-        // Normalize "used" to lowercase keys.
         var usedN: [Character:Int] = [:]
         for (k, v) in used { usedN[normChar(k), default: 0] += v }
         
@@ -1590,13 +1545,12 @@ private extension WordZapAI {
         let cap = EarlyDupCapPolicy.maxCopiesPerLetter(turnIndex)
         let c = normChar(ch)
         let required = constraints.minCount[c, default: 0]
-        if required >= cap + 1 { return false } // proven need for triple+
+        if required >= cap + 1 { return false }
         var usedN: [Character:Int] = [:]
         for (k, v) in used { usedN[normChar(k), default: 0] += v }
         return usedN[c, default: 0] >= cap
     }
     
-    /// Best legal alternative under the early-cap (highest logit among allowed letters).
     func bestAltUnderEarlyCap(
         logits: [Float],
         candidates: [Int],
@@ -1726,33 +1680,19 @@ extension WordZapAI {
 // MARK: - Convenience Provider
 
 final class WordZapAIProvider: Singleton {
-    private var loadTask: Task<WordZapAI, Error>?
     private var ai: WordZapAI?
     
-    var aiWarmedup: Bool { ai != nil ? !ai!.needWarmup : false }
+    var aiReady: Bool { ai != nil ? ai!.isWarmedup : false }
     
     private override init() {}
     
-    func sharedAsync() async -> WordZapAI {
+    func fetch() -> WordZapAI? {
         if let ai { return ai }
-        do {
-            if let t = loadTask { return try await t.value }
-            let t = Task(priority: .high) { () throws -> WordZapAI in
-                let built = try WordZapAI.make()
-                await MainActor.run {
-                    self.ai = built
-                }
-                return built
-            }
-            loadTask = t
-            defer { loadTask = nil }
-            return try await t.value
-        } catch { fatalError("-- AI can not be initialize --") }
+        ai = try? WordZapAI.make()
+        return ai
     }
     
-    @MainActor
-    func deassign() {
-        loadTask = nil
+    func release() {
         ai = nil
     }
 }

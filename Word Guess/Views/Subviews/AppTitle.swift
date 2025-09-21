@@ -13,9 +13,9 @@ struct AppTitle: View {
     var isWidget: Bool = false
     
     let wordZapColors: [CharColor] = [
-        .exactMatch,  // Emerald Green (Correct)
-        .partialMatch,   // Amber Yellow (Present)
-        .noMatch,  // Graphite Gray (Absent)
+        .exactMatch,
+        .partialMatch,
+        .noMatch,
     ]
     
     var body: some View {
@@ -30,6 +30,7 @@ struct AppTitle: View {
                             wordZapColors[i % wordZapColors.count].color
                             Text(c.wrappedValue)
                                 .font(.largeTitle)
+                                .accessibilityHidden(true)
                         }
                         .frame(width: size)
                         .clipShape(RoundedRectangle(cornerRadius: 4))
@@ -51,6 +52,7 @@ struct AppTitle: View {
                             wordZapColors[i % wordZapColors.count].color
                             Text(c.wrappedValue)
                                 .font(.largeTitle)
+                                .accessibilityHidden(true)
                         }
                         .frame(width: size)
                         .clipShape(RoundedRectangle(cornerRadius: 4))
@@ -66,6 +68,10 @@ struct AppTitle: View {
         }
         .fixedSize()
         .scaleEffect(.init(width: !isWidget && UIDevice.isPad ? 1.6 : 1, height: !isWidget && UIDevice.isPad ? 1.6 : 1))
+        // Provide a single concise accessibility label
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text("Word Guess".localized))
+        .accessibilityAddTraits(.isHeader)
     }
 }
 
@@ -150,39 +156,29 @@ extension String {
 extension CharacterSet {
     static let hebrewLetters: CharacterSet = {
         var characterSet = CharacterSet()
-        
-        // Unicode values for Hebrew letters Aleph (א) to Tav (ת)
         let hebrewRange = 0x05D0...0x05EA
-        
-        // Add each Unicode scalar to the CharacterSet
         for unicodeValue in hebrewRange {
             if let scalar = UnicodeScalar(unicodeValue) {
                 characterSet.insert(scalar)
             }
         }
-        
         return characterSet
     }()
     
     static let englishLetters: CharacterSet = {
         var characterSet = CharacterSet()
-        
-        // Add uppercase English letters (A-Z)
-        let upperCaseRange = 0x41...0x5A  // Unicode for 'A' to 'Z'
+        let upperCaseRange = 0x41...0x5A
         for unicodeValue in upperCaseRange {
             if let scalar = UnicodeScalar(unicodeValue) {
                 characterSet.insert(scalar)
             }
         }
-        
-        // Add lowercase English letters (a-z)
-        let lowerCaseRange = 0x61...0x7A  // Unicode for 'a' to 'z'
+        let lowerCaseRange = 0x61...0x7A
         for unicodeValue in lowerCaseRange {
             if let scalar = UnicodeScalar(unicodeValue) {
                 characterSet.insert(scalar)
             }
         }
-        
         return characterSet
     }()
 }
@@ -238,3 +234,4 @@ extension UIDevice {
         UIDevice.current.userInterfaceIdiom == .pad
     }
 }
+
