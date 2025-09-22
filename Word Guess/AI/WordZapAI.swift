@@ -1692,6 +1692,7 @@ final class WordZapAIProvider: Singleton {
         return ai
     }
     
+    @MainActor
     func release() {
         ai = nil
     }

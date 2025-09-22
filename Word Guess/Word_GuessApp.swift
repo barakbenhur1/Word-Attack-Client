@@ -139,6 +139,20 @@ struct BackgroundHandlerModifier: ViewModifier {
     }
 }
 
+struct SymbolGuard: ViewModifier {
+    func body(content: Content) -> some View {
+        #if targetEnvironment(simulator)
+        if #available(iOS 18.0, *) {
+            content.symbolRenderingMode(.monochrome)      // avoids hierarchical/palette layering
+        } else {
+            content
+        }
+        #else
+        content
+        #endif
+    }
+}
+
 extension View {
     /// Attach this once (e.g., on your root view) to auto-pause/resume audio on background/foreground.
     func handleBackground() -> some View { modifier(BackgroundHandlerModifier()) }

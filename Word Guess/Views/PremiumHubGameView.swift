@@ -74,6 +74,7 @@ struct PremiumHubGameView<VM: PremiumHubGameVM>: View {
     private var isHE: Bool { local.locale.identifier.lowercased().hasPrefix("he") }
     private var scriptAlphabet: [Character] { isHE ? Alpha.heOrder : Alpha.enOrder }
     private var scriptSet: Set<Character> { isHE ? Alpha.heSet : Alpha.enSet }
+    private var toastText: String { "Use allowed letters only".localized }
     
     init(vm: VM, history: [[String]], allowedLetters: Set<Character>, onForceEnd: @escaping ([[String]]?, Bool) -> Void) {
         _vm = State(initialValue: vm)
@@ -100,17 +101,72 @@ struct PremiumHubGameView<VM: PremiumHubGameVM>: View {
     }
     
     var body: some View {
+        contant()
+            .onAppear {
+                isVisible = true
+                withTransaction(Transaction(animation: nil)) {
+                    secondsLeftLocal = timer.secondsLeft
+                }
+                startAmbient()
+                
+                // Ensure only a single local ticker subscription and cancel on disappear
+                localTickerCancellable?.cancel()
+                localTickerCancellable = localTicker
+                    .sink { _ in
+                        guard isVisible, !endBannerUp else { return }
+                        if timer.secondsLeft != secondsLeftLocal {
+                            secondsLeftLocal = timer.secondsLeft
+                            return
+                        }
+                        if secondsLeftLocal > 0 {
+                            secondsLeftLocal -= 1
+                            timer.set(secondsLeftLocal, total: timer.total)
+                        } else {
+                            loseResetFlag = false
+                            audio.stop()
+                            audio.playSound(sound: "fail", type: "wav")
+                            withAnimation(.spring(response: 0.55, dampingFraction: 0.75)) { showLoseBanner = true }
+                        }
+                    }
+            }
+            .onDisappear {
+                isVisible = false
+                localTickerCancellable?.cancel()
+                localTickerCancellable = nil
+            }
+            .onReceive(timer.$secondsLeft.removeDuplicates()) { new in
+                secondsLeftLocal = new
+                guard isVisible, !endBannerUp else { return }
+                if new == timer.total && new > 0 { forceEnd(asFail: true, reset: false) }
+            }
+            .onReceive(timer.$total.removeDuplicates()) { _ in
+                secondsLeftLocal = timer.secondsLeft
+            }
+            .toolbar {
+                ToolbarItem(placement: .keyboard) {
+                    AllowedBeltView(
+                        letters: beltLetters(),
+                        pulse: invalidPulse
+                    )
+                    .overlay {
+                        if toastVisible {
+                            CapsuleToast(text: toastText)
+                                .transition(.move(edge: .top).combined(with: .opacity))
+                        }
+                    }
+                    .background(.ultraThinMaterial)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .frame(height: 30)
+                }
+            }
+    }
+    
+    @ViewBuilder private func contant() -> some View {
         GeometryReader { _ in
             background()
-            
             ZStack {
-                VStack(spacing: 10) {
-                    gameTopView()
-                    gameTable()
-                    gameBottom()
-                }
-                .frame(maxHeight: .infinity)
-                .ignoresSafeArea(.keyboard)
+                game()
+                    .frame(maxHeight: .infinity)
                 
                 if showWinBanner {
                     WinCelebrationView(wins: wins) { forceEnd(asFail: false, reset: true) }
@@ -126,65 +182,20 @@ struct PremiumHubGameView<VM: PremiumHubGameVM>: View {
             }
         }
         .ignoresSafeArea(.keyboard)
-        .onAppear {
-            isVisible = true
-            withTransaction(Transaction(animation: nil)) {
-                secondsLeftLocal = timer.secondsLeft
-            }
-            startAmbient()
-            
-            // Ensure only a single local ticker subscription and cancel on disappear
-            localTickerCancellable?.cancel()
-            localTickerCancellable = localTicker
-                .sink { _ in
-                    guard isVisible, !endBannerUp else { return }
-                    if timer.secondsLeft != secondsLeftLocal {
-                        secondsLeftLocal = timer.secondsLeft
-                        return
-                    }
-                    if secondsLeftLocal > 0 {
-                        secondsLeftLocal -= 1
-                        timer.set(secondsLeftLocal, total: timer.total)
-                    } else {
-                        loseResetFlag = false
-                        audio.stop()
-                        audio.playSound(sound: "fail", type: "wav")
-                        withAnimation(.spring(response: 0.55, dampingFraction: 0.75)) { showLoseBanner = true }
-                    }
-                }
-        }
-        .onDisappear {
-            isVisible = false
-            localTickerCancellable?.cancel()
-            localTickerCancellable = nil
-        }
-        .onReceive(timer.$secondsLeft.removeDuplicates()) { new in
-            secondsLeftLocal = new
-            guard isVisible, !endBannerUp else { return }
-            if new == timer.total && new > 0 { forceEnd(asFail: true, reset: false) }
-        }
-        .onReceive(timer.$total.removeDuplicates()) { _ in
-            secondsLeftLocal = timer.secondsLeft
-        }
-        .toolbar {
-            ToolbarItem(placement: .keyboard) {
-                AllowedBeltView(
-                    letters: beltLetters(),
-                    pulse: invalidPulse
-                )
-                .overlay {
-                    if toastVisible {
-                        CapsuleToast(text: toastText)
-                            .transition(.move(edge: .top).combined(with: .opacity))
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .center)
-                .padding(.vertical, 6)
-            }
-        }
     }
     
-    private var toastText: String { "Use allowed letters only".localized }
+    @ViewBuilder private func game() -> some View {
+        ZStack(alignment: .topLeading) { gameBody() }
+    }
+    
+    @ViewBuilder private func gameBody() -> some View {
+        VStack(spacing: 8) {
+            gameTopView()
+            gameTable()
+            gameBottom()
+        }
+        .frame(maxHeight: .infinity)
+    }
     
     @ViewBuilder private func gameTopView() -> some View {
         HStack(spacing: 12) {
@@ -204,7 +215,7 @@ struct PremiumHubGameView<VM: PremiumHubGameVM>: View {
     
     @ViewBuilder private func gameBottom() -> some View {
         AppTitle(size: 50)
-            .padding(.top, UIDevice.isPad ? 140 : 100)
+            .padding(.top, UIDevice.isPad ? 144 : 104)
             .padding(.bottom, UIDevice.isPad ? 210 : 170)
             .shadow(radius: 4)
     }
@@ -248,7 +259,6 @@ struct PremiumHubGameView<VM: PremiumHubGameVM>: View {
                 .shadow(radius: 4)
             }
         }
-        .ignoresSafeArea(.keyboard)
         .opacity(endBannerUp ? 0.25 : 1)
         .padding(.horizontal, 10)
     }

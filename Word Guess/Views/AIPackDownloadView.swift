@@ -54,10 +54,10 @@ struct AIPackDownloadView: View {
     var body: some View {
         VStack {
             VStack(spacing: 24) {
-                Image(systemName: "icloud.and.arrow.down.fill")
+                SafeSymbol("icloud.and.arrow.down.fill")
                     .font(.system(size: 56, weight: .semibold))
                     .foregroundStyle(LinearGradient(colors: [.yellow, .green], startPoint: .top, endPoint: .bottom))
-                    .symbolRenderingMode(.hierarchical)
+                    .symbolRenderingMode(.multicolor)
                     .shadow(radius: 6, y: 2)
                 
                 Text(isLoadingModel ? "Saving AI Model" : "Downloading AI Pack")
@@ -122,6 +122,15 @@ struct AIPackDownloadView: View {
             guard ready else { return }
             validateThenPersistAll(forceReplaceFrom: nil)
         }
+    }
+    
+    private func SafeSymbol(_ name: String) -> Image {
+      #if targetEnvironment(simulator)
+      if #available(iOS 18.1, *) {
+        return Image(systemName: name).renderingMode(.template).symbolRenderingMode(.multicolor)
+      }
+      #endif
+      return Image(systemName: name)
     }
     
     /// Final check after downloader says ready; we only validate and set the install root.

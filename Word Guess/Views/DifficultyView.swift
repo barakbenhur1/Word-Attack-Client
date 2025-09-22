@@ -92,7 +92,8 @@ struct DifficultyView: View {
                         SubscriptionPaywallView(isPresented: $showPaywall)
                     }
                 
-                SideMenu(isOpen: $isMenuOpen, content: { SettingsView(fromSideMenu: true) })
+                SideMenu(isOpen: $isMenuOpen,
+                         content: { SettingsView(fromSideMenu: true) })
             }
         }
     }
