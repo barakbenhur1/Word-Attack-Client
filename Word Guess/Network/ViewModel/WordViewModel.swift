@@ -1,167 +1,43 @@
 //
-//  VIewModel.swift
-//  WordGuess
+//  VM.swift
+//  Word Guess
 //
-//  Created by Barak Ben Hur on 11/10/2024.
+//  Created by Barak Ben Hur on 17/08/2025.
 //
 
-import SwiftUI
-import Alamofire
-
-enum WordLanguage: String {
-    case en, he
-}
+import Foundation
 
 @Observable
-class WordViewModel: ViewModel {
-    private let wordService: WordService
-    private let scoreService: ScoreService
-    var word: WordData
-    var score: Int
-    var isError: Bool
+class WordViewModel: ObservableObject {
+    var wordValue: String { return "" }
     
-    override var wordValue: String { word.word.value }
-    
-    required override init() {
-        wordService = .init()
-        scoreService = .init()
-        word = .empty
-        score = 0
-        isError = false
-    }
-    
-    func initMoc(diffculty: DifficultyType) async {
-        await MainActor.run { [weak self] in
-            guard let self else { return }
-            word = wordService.initMoc(diffculty: diffculty)
+    internal func calculateColors(with guess: [String]) -> [CharColor] {
+        var colors = [CharColor](repeating: .noMatch,
+                                 count: guess.count)
+        
+        var containd = [String: Int]()
+        
+        for char in wordValue.lowercased() {
+            let key = String(char).returnChar(isFinal: false)
+            if containd[key] == nil { containd[key] = 1 }
+            else { containd[key]! += 1 }
         }
-    }
-    
-    func word(diffculty: DifficultyType, email: String) async {
-        switch diffculty {
-        case .tutorial:
-            let local = LanguageSetting()
-            let language = local.locale.identifier.components(separatedBy: "_").first
-            await MainActor.run { [weak self] in
-                guard let self else { return }
-                word = .init(word: .init(value: language == "he" ? "שלום" : "Cool", guesswork: []), number: 0, isTimeAttack: false)
-            }
-        default:
-            let value  = await wordService.word(diffculty: diffculty, email: email)
-            await MainActor.run { [weak self] in
-                guard let self else { return }
-                guard let value else { isError = true; return }
-                Trace.log("🛟", "Word is \(value.word.value)", Fancy.mag)
-                word = value
+        
+        for i in 0..<min(guess.count ,wordValue.count) {
+            if guess[i].lowercased().isEquel(wordValue[i].lowercased()) {
+                containd[guess[i].lowercased().returnChar(isFinal: false)]! -= 1
+                colors[i] = .exactMatch
             }
         }
-    }
-    
-    func addGuess(diffculty: DifficultyType, email: String, guess: String) async {
-        switch diffculty {
-        case .tutorial: break
-        default:
-            let value: EmptyModel? = await wordService.addGuess(diffculty: diffculty, email: email, guess: guess)
-            await MainActor.run { [weak self] in
-                guard let self else { return }
-                guard value != nil else { isError = true; return }
-            }
+        
+        for i in 0..<min(guess.count ,wordValue.count) {
+            guard !guess[i].lowercased().isEquel(wordValue[i].lowercased()) else { continue }
+            if wordValue.lowercased().toSuffixChars().contains(guess[i].lowercased().returnChar(isFinal: true)) && containd[guess[i].lowercased().returnChar(isFinal: false)]! > 0 {
+                containd[guess[i].lowercased().returnChar(isFinal: false)]! -= 1
+                colors[i] = .partialMatch
+            } else { colors[i] = .noMatch }
         }
-    }
-    
-    func score(diffculty: DifficultyType, email: String) async {
-        let value: EmptyModel? = await scoreService.score(diffculty: diffculty, email: email)
-        await MainActor.run { [weak self] in
-            guard let self else { return }
-            guard value != nil else { return isError = true }
-        }
-    }
-    
-    func getScore(diffculty: DifficultyType, email: String) async  {
-        switch diffculty {
-        case .tutorial:
-            await MainActor.run { [weak self] in
-                guard let self else { return }
-                score = 0
-            }
-        default:
-            let value: ScoreData? = await scoreService.getScore(diffculty: diffculty, email: email)
-            await MainActor.run { [weak self] in
-                guard let self else { return }
-                guard let value else { score = 0; return }
-                score = value.score
-            }
-        }
-    }
-}
-
-fileprivate protocol Service { var network: Network { get } }
-
-fileprivate class ScoreService: Service {
-    fileprivate let network: Network
-    
-    required init() {
-        network = Network(root: .score)
-    }
-    
-    func score(diffculty: DifficultyType, email: String) async -> EmptyModel? {
-        let value: EmptyModel? = await network.send(route: .score,
-                                                    parameters: ["diffculty": diffculty.rawValue.trimmingCharacters(in: .whitespacesAndNewlines),
-                                                                 "email": email])
-        return value
-    }
-    
-    func getScore(diffculty: DifficultyType, email: String) async -> ScoreData? {
-        let value: ScoreData? = await network.send(route: .getScore,
-                                                   parameters: ["diffculty": diffculty.rawValue.trimmingCharacters(in: .whitespacesAndNewlines),
-                                                                 "email": email])
-        return value
-    }
-    
-    func getPlaceInLeaderboard(email: String) async -> LeaderboaredPlaceData? {
-        let value: LeaderboaredPlaceData? = await network.send(route: .place,
-                                                               parameters: ["email": email])
-        return value
-    }
-}
-
-fileprivate class WordService: Service {
-    fileprivate let network: Network
-   
-    required init() {
-        network = Network(root: .words)
-    }
-    
-    func initMoc(diffculty: DifficultyType) -> WordData {
-        let local = LanguageSetting()
-        guard let language = local.locale.identifier.components(separatedBy: "_").first else { return .init(word: .init(value: "abcde", guesswork: []), number: 0, isTimeAttack: false) }
-        guard let l: Language = .init(rawValue: language) else { return .init(word: .init(value: language == "he" ? "אבגדה" : "abcde", guesswork: []), number: 0, isTimeAttack: false) }
-        return .init(word: .init(value:  generateWord(for: l, length: diffculty.getLength()), guesswork: []), number: 0, isTimeAttack: false)
-    }
-    
-    func word(diffculty: DifficultyType, email: String) async -> WordData? {
-        let value: WordData? = await network.send(route: .getWord,
-                                                  parameters: ["diffculty": diffculty.rawValue.trimmingCharacters(in: .whitespacesAndNewlines),
-                                                               "email": email])
-        return value
-    }
-    
-    func addGuess(diffculty: DifficultyType, email: String, guess: String) async -> EmptyModel? {
-        let value: EmptyModel? = await network.send(route: .addGuess,
-                                                    parameters: ["diffculty": diffculty.rawValue.trimmingCharacters(in: .whitespacesAndNewlines),
-                                                                 "email": email,
-                                                                 "guess": guess])
-        return value
-    }
-}
-
-extension String {
-    func removingEmojis() -> String {
-        return self.unicodeScalars.filter {
-            // Exclude characters that are emojis or emoji components
-            !$0.properties.isEmojiPresentation &&
-            !$0.properties.isEmoji &&
-            $0 != "\u{200D}" // Zero Width Joiner
-        }.reduce(into: "") { $0.append(String($1)) }
+        
+        return colors
     }
 }

@@ -13,7 +13,7 @@ import QuartzCore
 
 typealias HpAnimationParams =  (value: Int, opacity: CGFloat, scale: CGFloat, offset: CGFloat)
 
-struct AIGameView<VM: WordViewModelForAI>: View {
+struct AIGameView<VM: AIWordViewModel>: View {
     @EnvironmentObject private var coreData: PersistenceController
     @EnvironmentObject private var loginHandeler: LoginHandeler
     @EnvironmentObject private var screenManager: ScreenManager
@@ -26,14 +26,12 @@ struct AIGameView<VM: WordViewModelForAI>: View {
     fileprivate enum Turn: Int { case player = 0, ai = 1 }
     private enum GameState { case inProgress, lose, win }
     
-    private let InterstitialAdInterval: Int = 7
-    
     private let rows: Int = 5
     private var length: Int { DifficultyType.ai.getLength() }
     
     private var email: String? { loginHandeler.model?.email }
     private var gender: String? { loginHandeler.model?.gender }
-    private var interstitialAdManager: InterstitialAdsManager? { adProvider.interstitialAdsManager(id: "GameInterstitial") }
+    private var interstitialAdManager: InterstitialAdsManager? = AdProvider.interstitialAdsManager(id: "GameInterstitial")
     
     private let fullHP :Int = 100
     private let hitPoints = 10
@@ -46,7 +44,7 @@ struct AIGameView<VM: WordViewModelForAI>: View {
     
     @State private var aiHpAnimation: HpAnimationParams = (0, CGFloat(0), CGFloat(0), CGFloat(30))
     @State private var playerHpAnimation: HpAnimationParams = (0, CGFloat(0), CGFloat(0), CGFloat(30))
-    
+   
     @State private var disabled: Bool = false
     @State private var showGameEndPopup: Bool
     @State private var showExitPopup: Bool
@@ -176,13 +174,12 @@ struct AIGameView<VM: WordViewModelForAI>: View {
     }
     
     private func handleWordChange() {
-        // FIX: cancel tasks tied to previous word and reset tokens/state
         cancelAllTasks()
         aiTypeToken = UUID()
         ai?.hidePhrase()
         initMatrixState()
         wordNumber += 1
-        guard interstitialAdManager == nil || wordNumber % InterstitialAdInterval != 0 else {
+        guard interstitialAdManager == nil || !interstitialAdManager!.shouldShowiInterstitial(for: wordNumber) else {
             disabled = true
             interstitialAdManager?.loadInterstitialAd()
             return
@@ -204,6 +201,7 @@ struct AIGameView<VM: WordViewModelForAI>: View {
     }
     
     private func onAppear(email: String) {
+        guard !didStart else { return }
         aiIntroTask?.cancel()
         aiTypeTask?.cancel()
         hitTaskPlayer?.cancel()
@@ -449,7 +447,7 @@ struct AIGameView<VM: WordViewModelForAI>: View {
     }
     
     private func handleInterstitial() {
-        guard interstitialAdManager?.interstitialAdLoaded ?? false else { initalConfigirationForWord(); return }
+        guard interstitialAdManager?.interstitialAdLoaded == true else { return }
         interstitialAdManager?.displayInterstitialAd { initalConfigirationForWord() }
     }
     
@@ -586,8 +584,8 @@ struct AIGameView<VM: WordViewModelForAI>: View {
         endFetchAnimation = true
         disabled = false
         current = 0
-        aiTypeToken = UUID() // FIX: reset token on new word start
-        phraseTask?.cancel() // FIX: don’t carry previous phrase timer
+        aiTypeToken = UUID()
+        phraseTask?.cancel()
         Task(priority: .high) { await ai?.addDetachedFirstGuess(with: firstGuess) }
     }
     
@@ -597,7 +595,7 @@ struct AIGameView<VM: WordViewModelForAI>: View {
             .onDisappear {
                 isVisible = false
                 cancelAllTasks()
-                aiTypeToken = UUID() // FIX: invalidate any in-flight AI typing
+                aiTypeToken = UUID()
             }
             .onChange(of: vm.aiDownloaded, initializeAI)
             .onChange(of: ai?.showPhraseValue, handlePhrase)

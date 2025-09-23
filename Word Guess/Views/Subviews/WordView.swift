@@ -98,7 +98,7 @@ enum FieldFocus: Int {
     case six
 }
 
-struct WordView<VM: ViewModel>: View {
+struct WordView<VM: WordViewModel>: View {
     @EnvironmentObject private var local: LanguageSetting
     
     private let length: Int

@@ -9,7 +9,7 @@ import SwiftUI
 import Alamofire
 
 @Observable
-class WordViewModelForAI: ViewModel {
+class AIWordViewModel: WordViewModel {
     private let provider: WordProvider
     var word: SimpleWord
     var aiDownloaded: Bool = false

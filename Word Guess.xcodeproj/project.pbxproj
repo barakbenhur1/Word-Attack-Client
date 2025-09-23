@@ -14,7 +14,6 @@
 		4FC1113C2E636F30007D1E2B /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4FC1113B2E636F30007D1E2B /* SwiftUI.framework */; };
 		4FC1114B2E636F33007D1E2B /* WordZapWidgetExtensionExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 4FC111372E636F30007D1E2B /* WordZapWidgetExtensionExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		4FCDAC372E53E416001A758F /* SwiftUITooltip in Frameworks */ = {isa = PBXBuildFile; productRef = 4FCDAC362E53E416001A758F /* SwiftUITooltip */; };
-		4FD6D2882CB9A2C000755D03 /* FirebaseAnalyticsOnDeviceConversion in Frameworks */ = {isa = PBXBuildFile; productRef = 4FD6D2872CB9A2C000755D03 /* FirebaseAnalyticsOnDeviceConversion */; };
 		4FD6D28A2CB9A2C000755D03 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 4FD6D2892CB9A2C000755D03 /* FirebaseAuth */; };
 		4FD6D28C2CB9A2C000755D03 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = 4FD6D28B2CB9A2C000755D03 /* FirebaseCore */; };
 		4FD6D28E2CB9A2C000755D03 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 4FD6D28D2CB9A2C000755D03 /* FirebaseFirestore */; };
@@ -22,6 +21,8 @@
 		4FD6D2942CB9A2F200755D03 /* FacebookCore in Frameworks */ = {isa = PBXBuildFile; productRef = 4FD6D2932CB9A2F200755D03 /* FacebookCore */; };
 		4FD6D2962CB9A2F200755D03 /* FacebookLogin in Frameworks */ = {isa = PBXBuildFile; productRef = 4FD6D2952CB9A2F200755D03 /* FacebookLogin */; };
 		4FEC01B92CC2F6990086EFEC /* Alamofire in Frameworks */ = {isa = PBXBuildFile; productRef = 4FEC01B82CC2F6990086EFEC /* Alamofire */; };
+		4FFD7DB82E81F2DB00A01BAD /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = 4FFD7DB72E81F2DB00A01BAD /* FirebaseAnalytics */; };
+		4FFD7DBA2E81F2DB00A01BAD /* FirebaseRemoteConfig in Frameworks */ = {isa = PBXBuildFile; productRef = 4FFD7DB92E81F2DB00A01BAD /* FirebaseRemoteConfig */; };
 		4FFF87412E3F289500D612F0 /* Transformers in Frameworks */ = {isa = PBXBuildFile; productRef = 4FFF87402E3F289500D612F0 /* Transformers */; };
 /* End PBXBuildFile section */
 
@@ -141,14 +142,15 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				4FFD7DB82E81F2DB00A01BAD /* FirebaseAnalytics in Frameworks */,
 				4FD6D2912CB9A2DA00755D03 /* GoogleSignIn in Frameworks */,
 				4FEC01B92CC2F6990086EFEC /* Alamofire in Frameworks */,
 				4F370C8D2CC6A72F00632E10 /* GoogleMobileAds in Frameworks */,
 				4FD6D2942CB9A2F200755D03 /* FacebookCore in Frameworks */,
 				4FCDAC372E53E416001A758F /* SwiftUITooltip in Frameworks */,
-				4FD6D2882CB9A2C000755D03 /* FirebaseAnalyticsOnDeviceConversion in Frameworks */,
 				4FD6D28E2CB9A2C000755D03 /* FirebaseFirestore in Frameworks */,
 				4FD6D28C2CB9A2C000755D03 /* FirebaseCore in Frameworks */,
+				4FFD7DBA2E81F2DB00A01BAD /* FirebaseRemoteConfig in Frameworks */,
 				4FFF87412E3F289500D612F0 /* Transformers in Frameworks */,
 				4FD6D2962CB9A2F200755D03 /* FacebookLogin in Frameworks */,
 				4F370C872CC6A5BF00632E10 /* GoogleUserMessagingPlatform in Frameworks */,
@@ -252,7 +254,6 @@
 			);
 			name = WordZap;
 			packageProductDependencies = (
-				4FD6D2872CB9A2C000755D03 /* FirebaseAnalyticsOnDeviceConversion */,
 				4FD6D2892CB9A2C000755D03 /* FirebaseAuth */,
 				4FD6D28B2CB9A2C000755D03 /* FirebaseCore */,
 				4FD6D28D2CB9A2C000755D03 /* FirebaseFirestore */,
@@ -265,6 +266,8 @@
 				4FFF87402E3F289500D612F0 /* Transformers */,
 				4FCDAC362E53E416001A758F /* SwiftUITooltip */,
 				4FA2D2D02E66F3A900C687D0 /* ZIPFoundation */,
+				4FFD7DB72E81F2DB00A01BAD /* FirebaseAnalytics */,
+				4FFD7DB92E81F2DB00A01BAD /* FirebaseRemoteConfig */,
 			);
 			productName = "Word Guess";
 			productReference = 4FD6D2382CB9A1F400755D03 /* WordZap.app */;
@@ -468,7 +471,7 @@
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
 				CODE_SIGN_ENTITLEMENTS = WordZapWidgetExtensionExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = WordZapWidgetExtension/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = WordZapWidgetExtension;
@@ -496,7 +499,7 @@
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
 				CODE_SIGN_ENTITLEMENTS = WordZapWidgetExtensionExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = WordZapWidgetExtension/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = WordZapWidgetExtension;
@@ -656,7 +659,7 @@
 				CODE_SIGN_ENTITLEMENTS = "Word Guess/Word Guess.entitlements";
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_ASSET_PATHS = "\"Word Guess/Preview Content\"";
 				DEVELOPMENT_TEAM = D6DN86P8S8;
 				EMBED_ASSET_PACKS_IN_PRODUCT_BUNDLE = YES;
@@ -699,7 +702,7 @@
 				CODE_SIGN_ENTITLEMENTS = "Word Guess/Word Guess.entitlements";
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_ASSET_PATHS = "\"Word Guess/Preview Content\"";
 				DEVELOPMENT_TEAM = D6DN86P8S8;
 				EMBED_ASSET_PACKS_IN_PRODUCT_BUNDLE = NO;
@@ -947,11 +950,6 @@
 			package = 4FCDAC352E53E416001A758F /* XCRemoteSwiftPackageReference "SwiftUI-Tooltip" */;
 			productName = SwiftUITooltip;
 		};
-		4FD6D2872CB9A2C000755D03 /* FirebaseAnalyticsOnDeviceConversion */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 4FD6D2862CB9A2C000755D03 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
-			productName = FirebaseAnalyticsOnDeviceConversion;
-		};
 		4FD6D2892CB9A2C000755D03 /* FirebaseAuth */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 4FD6D2862CB9A2C000755D03 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
@@ -986,6 +984,16 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 4FEC01B72CC2F6990086EFEC /* XCRemoteSwiftPackageReference "Alamofire" */;
 			productName = Alamofire;
+		};
+		4FFD7DB72E81F2DB00A01BAD /* FirebaseAnalytics */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4FD6D2862CB9A2C000755D03 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAnalytics;
+		};
+		4FFD7DB92E81F2DB00A01BAD /* FirebaseRemoteConfig */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4FD6D2862CB9A2C000755D03 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseRemoteConfig;
 		};
 		4FFF87402E3F289500D612F0 /* Transformers */ = {
 			isa = XCSwiftPackageProductDependency;

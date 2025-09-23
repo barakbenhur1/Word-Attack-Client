@@ -29,7 +29,7 @@ private extension View {
     }
 }
 
-struct GameView<VM: WordViewModel>: View {
+struct GameView<VM: DifficultyWordViewModel>: View {
     @EnvironmentObject private var coreData: PersistenceController
     @EnvironmentObject private var loginHandeler: LoginHandeler
     @EnvironmentObject private var audio: AudioPlayer
@@ -39,13 +39,13 @@ struct GameView<VM: WordViewModel>: View {
     @EnvironmentObject private var adProvider: AdProvider
     
     private let queue = DispatchQueue.main
-    private let InterstitialAdInterval: Int = 7
     private let rows: Int = 5
     private let diffculty: DifficultyType
     private var length: Int { return diffculty.getLength() }
     private var email: String? { return loginHandeler.model?.email }
-    private var interstitialAdManager: InterstitialAdsManager? { adProvider.interstitialAdsManager(id: "GameInterstitial") }
-    
+
+    private var interstitialAdManager: InterstitialAdsManager? = AdProvider.interstitialAdsManager(id: "GameInterstitial")
+   
     @State private var current: Int = 0
     @State private var score: Int = 0
     @State private var scoreAnimation: (value: Int, opticity: CGFloat, scale: CGFloat, offset: CGFloat) = (0, CGFloat(0), CGFloat(0), CGFloat(30))
@@ -66,7 +66,6 @@ struct GameView<VM: WordViewModel>: View {
     @State private var appearTask: Task<Void, Never>?
     @State private var delayedSoundTask: Task<Void, Never>?
     @State private var newWordTask: Task<Void, Never>?
-    @State private var initConfigTask: Task<Void, Never>?
     
     private func guardVisible() -> Bool { isVisible && !Task.isCancelled }
     
@@ -84,8 +83,11 @@ struct GameView<VM: WordViewModel>: View {
     
     private func handleWordChange() {
         initMatrixState()
-        guard interstitialAdManager == nil || !keyboard.show || vm.word.number == 0 || vm.word.number % InterstitialAdInterval != 0 else { interstitialAdManager?.loadInterstitialAd(); return }
-        initalConfigirationForWord()
+        guard interstitialAdManager == nil || !interstitialAdManager!.shouldShowiInterstitial(for: vm.word.number) else { interstitialAdManager?.loadInterstitialAd(); return }
+        Task {
+            try? await Task.sleep(nanoseconds: 1_000_000)
+            initalConfigirationForWord()
+        }
         
         switch diffculty {
         case .tutorial, .ai: break
@@ -94,18 +96,21 @@ struct GameView<VM: WordViewModel>: View {
     }
     
     private func handleInterstitial() {
-        guard interstitialAdManager?.interstitialAdLoaded ?? false else { initalConfigirationForWord(); return }
-        interstitialAdManager?.displayInterstitialAd { initalConfigirationForWord() }
+        guard interstitialAdManager?.interstitialAdLoaded == true else { initalConfigirationForWord(); return }
+        interstitialAdManager?.displayInterstitialAd {
+            initalConfigirationForWord()
+            handleTimeAttackIfNeeded()
+        }
     }
     
     private func handleTimeAttackIfNeeded() {
+        guard interstitialAdManager?.interstitialAdLoaded == false else { return }
         switch diffculty {
         case .tutorial: break
         default:
             guard endFetchAnimation && vm.word.isTimeAttack else { return }
             timeAttackAnimationDone = false
             withAnimation(.interpolatingSpring(.smooth)) { timeAttackAnimation = true }
-            // Replace chained asyncAfter with visibility-guarded tasks
             delayedSoundTask?.cancel()
             delayedSoundTask = Task {
                 do {
@@ -130,12 +135,13 @@ struct GameView<VM: WordViewModel>: View {
             colors[i] = vm.calculateColors(with: matrix[i])
         }
         
-        guard !keyboard.show || vm.word.number == 0 || vm.word.number % InterstitialAdInterval != 0 else { return }
+        guard interstitialAdManager == nil || !interstitialAdManager!.shouldShowiInterstitial(for: vm.word.number) else { return }
         guard vm.word.isTimeAttack else { return }
         current = guesswork.count
     }
     
     private func onAppear(email: String) {
+        guard !didStart else { return }
         switch diffculty {
         case .tutorial: coreData.new()
         default: break
@@ -154,7 +160,7 @@ struct GameView<VM: WordViewModel>: View {
     
     private func afterTimeAttack() {
         guard !vm.word.isTimeAttack else { return }
-        guard !keyboard.show || vm.word.number == 0 || vm.word.number % InterstitialAdInterval != 0 else { return }
+        guard interstitialAdManager == nil || !interstitialAdManager!.shouldShowiInterstitial(for: vm.word.number) else { return }
         initalConfigirationForWord()
     }
     
@@ -182,7 +188,6 @@ struct GameView<VM: WordViewModel>: View {
                 appearTask?.cancel(); appearTask = nil
                 delayedSoundTask?.cancel(); delayedSoundTask = nil
                 newWordTask?.cancel(); newWordTask = nil
-                initConfigTask?.cancel(); initConfigTask = nil
             }
             .customAlert("Network error",
                          type: .fail,
@@ -432,22 +437,15 @@ struct GameView<VM: WordViewModel>: View {
     }
     
     private func initalConfigirationForWord() {
-        initConfigTask?.cancel()
-        initConfigTask = Task(priority: .high) {
-            do {
-                switch diffculty {
-                case .tutorial: break
-                default:
-                    try await Task.sleep(nanoseconds: (keyboard.show ? 0 : 500_000_000))
-                    guard guardVisible() else { return }
-                    audio.playSound(sound: "backround",
-                                    type: "mp3",
-                                    loop: true)
-                }
-                await MainActor.run { endFetchAnimation = true }
-            } catch { /* cancelled */ }
+        switch diffculty {
+        case .tutorial: break
+        default:
+            guard guardVisible() else { return }
+            audio.playSound(sound: "backround",
+                            type: "mp3",
+                            loop: true)
         }
-        
+        endFetchAnimation = true
         current = vm.word.word.guesswork.count
     }
     
@@ -489,10 +487,7 @@ struct GameView<VM: WordViewModel>: View {
     }
     
     private func navBack() {
-        switch diffculty {
-        case .tutorial: UIApplication.shared.hideKeyboard()
-        default: break
-        }
+        UIApplication.shared.hideKeyboard()
         audio.stop()
         router.navigateBack()
     }

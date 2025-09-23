@@ -7,7 +7,7 @@ import Combine
 import CoreHaptics
 
 @Observable
-final class PremiumHubGameVM: ViewModel {
+final class PremiumHubGameVM: WordViewModel {
     private let network: Network
     private let word: String
     override var wordValue: String { word }
@@ -277,6 +277,7 @@ struct PremiumHubGameView<VM: PremiumHubGameVM>: View {
         audio.stop()
         if asFail { audio.playSound(sound: "fail", type: "wav") }
         onForceEnd(withHistory ? history : nil, reset)
+        UIApplication.shared.hideKeyboard()
         router.navigateBack()
     }
     

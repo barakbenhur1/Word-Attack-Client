@@ -16,12 +16,24 @@ class InterstitialAdsManager: NSObject, GADFullScreenContentDelegate, Observable
     var interstitialAdLoaded: Bool = false
     private var interstitialAd: GADInterstitialAd?
     
+    private let firebaseFlags: FirebaseFlagManager
     private let adUnitID: String
     private var didDismiss: () -> () = {}
     
+    private var InterstitialAdInterval: Int { firebaseFlags.remoteConfig.adFrequency }
+    
     init(adUnitID: String) {
         self.adUnitID = adUnitID.toKey()
+        self.firebaseFlags = FirebaseFlagManager()
         super.init()
+    }
+    
+    func refashRemoteConfig() {
+        firebaseFlags.refashRemoteConfig()
+    }
+    
+    func shouldShowiInterstitial(for number: Int) -> Bool {
+        return number > 0 && number % firebaseFlags.remoteConfig.adFrequency == 0
     }
     
     // Load InterstitialAd
@@ -48,9 +60,9 @@ class InterstitialAdsManager: NSObject, GADFullScreenContentDelegate, Observable
             .first?.windows
             .filter({$0.isKeyWindow}).first?.rootViewController else { return }
         
-        if let add = interstitialAd {
+        if let ad = interstitialAd {
             self.didDismiss = didDismiss
-            add.present(fromRootViewController: root)
+            ad.present(fromRootViewController: root)
             self.interstitialAdLoaded = false
         }else{
             print("🔵: Ad wasn't ready")

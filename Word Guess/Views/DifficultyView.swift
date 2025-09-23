@@ -70,7 +70,6 @@ struct DifficultyView: View {
     
     private func onAppear() {
         audio.stopAudio(true)
-        UIApplication.shared.hideKeyboard()
         task()
     }
     private func onDisappear() { audio.stopAudio(false) }

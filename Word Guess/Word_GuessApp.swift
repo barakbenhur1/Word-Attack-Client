@@ -31,7 +31,7 @@ struct WordGuessApp: App {
     private let router = Router.shared
     private let deepLinker = DeepLinker.shared
     private let login = LoginViewModel()
-    private let adProvider = AdProvider(premium: PremiumManager.shared)
+    private let adProvider = AdProvider()
     
     var body: some Scene {
         WindowGroup {
@@ -111,8 +111,8 @@ struct WordGuessApp: App {
         let lastName  = parts.count > 1 ? String(parts[1]) : ""
         
         return .init(givenName: givenName,
-                                   lastName: lastName,
-                                   email: email)
+                     lastName: lastName,
+                     email: email)
     }
 }
 
@@ -132,28 +132,13 @@ struct BackgroundHandlerModifier: ViewModifier {
                     Task(priority: .medium) {
                         await premium.loadProducts()
                     }
-                default:
-                    break
+                default: break
                 }
             }
     }
 }
 
-struct SymbolGuard: ViewModifier {
-    func body(content: Content) -> some View {
-        #if targetEnvironment(simulator)
-        if #available(iOS 18.0, *) {
-            content.symbolRenderingMode(.monochrome)      // avoids hierarchical/palette layering
-        } else {
-            content
-        }
-        #else
-        content
-        #endif
-    }
-}
-
-extension View {
+private extension View {
     /// Attach this once (e.g., on your root view) to auto-pause/resume audio on background/foreground.
     func handleBackground() -> some View { modifier(BackgroundHandlerModifier()) }
 }
