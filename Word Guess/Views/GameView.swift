@@ -83,20 +83,22 @@ struct GameView<VM: DifficultyWordViewModel>: View {
     
     private func handleWordChange() {
         initMatrixState()
-        guard interstitialAdManager == nil || !interstitialAdManager!.shouldShowiInterstitial(for: vm.word.number) else { interstitialAdManager?.loadInterstitialAd(); return }
-        Task {
-            try? await Task.sleep(nanoseconds: 1_000_000)
-            initalConfigirationForWord()
-        }
         
         switch diffculty {
         case .tutorial, .ai: break
         default: Task(priority: .utility) { await SharedStore.writeDifficultyStatsAsync(.init(answers: vm.word.number, score: vm.score), for: diffculty.liveValue) }
         }
+        
+        guard interstitialAdManager == nil || !interstitialAdManager!.shouldShowInterstitial(for: vm.word.number) else { interstitialAdManager?.loadInterstitialAd(); return }
+        Task {
+            try? await Task.sleep(nanoseconds: 1_000_000)
+            initalConfigirationForWord()
+            handleTimeAttackIfNeeded()
+        }
     }
     
     private func handleInterstitial() {
-        guard interstitialAdManager?.interstitialAdLoaded == true else { initalConfigirationForWord(); return }
+        guard interstitialAdManager?.interstitialAdLoaded == true else { return }
         interstitialAdManager?.displayInterstitialAd {
             initalConfigirationForWord()
             handleTimeAttackIfNeeded()
@@ -135,7 +137,7 @@ struct GameView<VM: DifficultyWordViewModel>: View {
             colors[i] = vm.calculateColors(with: matrix[i])
         }
         
-        guard interstitialAdManager == nil || !interstitialAdManager!.shouldShowiInterstitial(for: vm.word.number) else { return }
+        guard interstitialAdManager == nil || !interstitialAdManager!.shouldShowInterstitial(for: vm.word.number) else { return }
         guard vm.word.isTimeAttack else { return }
         current = guesswork.count
     }
@@ -160,7 +162,7 @@ struct GameView<VM: DifficultyWordViewModel>: View {
     
     private func afterTimeAttack() {
         guard !vm.word.isTimeAttack else { return }
-        guard interstitialAdManager == nil || !interstitialAdManager!.shouldShowiInterstitial(for: vm.word.number) else { return }
+        guard interstitialAdManager == nil || !interstitialAdManager!.shouldShowInterstitial(for: vm.word.number) else { return }
         initalConfigirationForWord()
     }
     
@@ -185,6 +187,7 @@ struct GameView<VM: DifficultyWordViewModel>: View {
                 // stop audio that might be looping
                 audio.stop()
                 // cancel outstanding tasks
+                scoreAnimation = (0, CGFloat(0), CGFloat(0), CGFloat(30))
                 appearTask?.cancel(); appearTask = nil
                 delayedSoundTask?.cancel(); delayedSoundTask = nil
                 newWordTask?.cancel(); newWordTask = nil
@@ -426,7 +429,6 @@ struct GameView<VM: DifficultyWordViewModel>: View {
                     .onChange(of: vm.word.word, handleWordChange)
                     .onChange(of: vm.word.word.guesswork, handleGuessworkChage)
                     .onChange(of: vm.word.isTimeAttack, afterTimeAttack)
-                    .onChange(of: endFetchAnimation, handleTimeAttackIfNeeded)
                     .onAppear { onAppear(email: email) }
                     .disabled(!endFetchAnimation || !didStart || vm.isError)
                     .opacity(endFetchAnimation && didStart && !vm.isError ? 1 : 0.7)
@@ -571,11 +573,10 @@ struct GameView<VM: DifficultyWordViewModel>: View {
         }
         
         // Replace nested asyncAfters with visibility-guarded scheduling
-        delayedSoundTask?.cancel()
-        delayedSoundTask = Task {
+        Task {
             do {
                 try await Task.sleep(nanoseconds: 1_440_000_000)
-                guard guardVisible() else { return }
+                guard guardVisible() else { scoreAnimation = (0, CGFloat(0), CGFloat(0), CGFloat(30)); return }
                 if scoreAnimation.opticity == 1 {
                     withAnimation(.linear(duration: 0.2)) {
                         scoreAnimation.opticity = 0
@@ -583,7 +584,7 @@ struct GameView<VM: DifficultyWordViewModel>: View {
                     }
                 }
                 try await Task.sleep(nanoseconds: 200_000_000)
-                guard guardVisible() else { return }
+                guard guardVisible() else { scoreAnimation = (0, CGFloat(0), CGFloat(0), CGFloat(30)); return }
                 vm.score += value
                 vm.word.number += 1
                 scoreAnimation.value = 0

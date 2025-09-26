@@ -7,7 +7,14 @@
 
 import SwiftUI
 
-// MARK: - Models (unchanged)
+@Observable
+class MenuManager: ObservableObject {
+    var id = UUID()
+    
+    func refresh() {
+        id = UUID()
+    }
+}
 
 struct DifficultyButton: Identifiable {
     var id = UUID()
@@ -59,6 +66,7 @@ struct DifficultyView: View {
     @State private var isMenuOpen: Bool = false
     @State private var showPaywall = false
     
+    private let menuManager: MenuManager = .init()
     private var tutorialItem: TutorialItem? { tutorialItems.first }
     private let auth = Authentication()
     
@@ -93,6 +101,8 @@ struct DifficultyView: View {
                 
                 SideMenu(isOpen: $isMenuOpen,
                          content: { SettingsView(fromSideMenu: true) })
+                .id(menuManager.id)
+                .environmentObject(menuManager)
             }
         }
     }

@@ -24,6 +24,7 @@ struct SettingsView: View {
     @EnvironmentObject private var router: Router
     @EnvironmentObject private var adProvider: AdProvider
     @EnvironmentObject private var premium: PremiumManager
+    @EnvironmentObject private var menuManager: MenuManager
     
     @State private var items: [SettingsOptionButton] = [.init(type: .premium),
                                                         .init(type: .sound),
@@ -34,9 +35,9 @@ struct SettingsView: View {
     
     @State private var showPaywall = false
     
-    @State private var difficulty: String?
-    
     @State private var language: String?
+    
+    @State private var difficulty: String? = UserDefaults.standard.string(forKey: "aiDifficulty")
     
     var fromSideMenu = false
     
@@ -60,9 +61,11 @@ struct SettingsView: View {
     }
     
     private func resetAI() {
-        UserDefaults.standard.set(nil, forKey: "aiDifficulty")
+        difficulty = AIDifficulty.easy.name
+        UserDefaults.standard.set(AIDifficulty.easy.name, forKey: "aiDifficulty")
         UserDefaults.standard.set(nil, forKey: "playerHP")
         Task(priority: .utility) { await SharedStore.writeAIStatsAsync(.init(name: AIDifficulty.easy.name, imageName: AIDifficulty.easy.image)) }
+//        menuManager.refresh()
     }
     
     var body: some View {
@@ -81,6 +84,7 @@ struct SettingsView: View {
                      cancelButtonText: "Cancel",
                      action: resetAI,
                      message: { Text("Are you sure you want to reset AI difficulty process is unreversible") })
+        .onChange(of: premium.isPremium, menuManager.refresh)
         .fullScreenCover(isPresented: $showPaywall) {
             SubscriptionPaywallView(isPresented: $showPaywall)
         }
@@ -174,9 +178,10 @@ struct SettingsView: View {
                         .font(.headline)
                         .foregroundStyle(.black)
                     
-                    Text(difficulty?.localized ?? "not downloaded yet".localized)
+                    Text(difficulty?.localized ?? (ModelStorage.localHasUsableModels() ? "Not Discoverd".localized : "Not downloaded yet".localized))
                         .font(.subheadline)
                         .foregroundStyle(.black)
+                        .animation(.easeInOut, value: difficulty)
                     
                     Spacer()
                     
@@ -191,6 +196,6 @@ struct SettingsView: View {
 }
 
 extension Color {
-    static let darkTurquoise = Color(red: 0.0, green: 0.81, blue: 0.82) // HEX #00CED1
+    static let darkTurquoise = Color(red: 0.0, green: 0.81, blue: 0.82)
     static let premiumPurple = Color(red: 0.30, green: 0.29, blue: 0.49)
 }

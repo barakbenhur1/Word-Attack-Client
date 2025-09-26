@@ -18,6 +18,8 @@ public struct AIPackLoadingView: View {
     public var showsCancel: Bool = false
     public var onCancel: (() -> Void)? = nil
     
+    @EnvironmentObject private var screenManager: ScreenManager
+    
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.colorScheme) private var scheme
     
@@ -100,6 +102,7 @@ public struct AIPackLoadingView: View {
         }
         .padding(20)
         .onAppear {
+            screenManager.keepScreenOn = true
             appeared = true
             appearDate = Date()
             let h = UIImpactFeedbackGenerator(style: .soft)
@@ -109,7 +112,10 @@ public struct AIPackLoadingView: View {
                 show = true
             }
         }
-        .onDisappear { appeared = false }
+        .onDisappear {
+            screenManager.keepScreenOn = false
+            appeared = false
+        }
     }
 }
 

@@ -44,7 +44,7 @@ struct AIGameView<VM: AIWordViewModel>: View {
     
     @State private var aiHpAnimation: HpAnimationParams = (0, CGFloat(0), CGFloat(0), CGFloat(30))
     @State private var playerHpAnimation: HpAnimationParams = (0, CGFloat(0), CGFloat(0), CGFloat(30))
-   
+    
     @State private var disabled: Bool = false
     @State private var showGameEndPopup: Bool
     @State private var showExitPopup: Bool
@@ -179,7 +179,7 @@ struct AIGameView<VM: AIWordViewModel>: View {
         ai?.hidePhrase()
         initMatrixState()
         wordNumber += 1
-        guard interstitialAdManager == nil || !interstitialAdManager!.shouldShowiInterstitial(for: wordNumber) else {
+        guard interstitialAdManager == nil || !interstitialAdManager!.shouldShowInterstitial(for: wordNumber) else {
             disabled = true
             interstitialAdManager?.loadInterstitialAd()
             return
@@ -401,18 +401,18 @@ struct AIGameView<VM: AIWordViewModel>: View {
         case AIDifficulty.medium.name: aiDifficulty = .medium
         case AIDifficulty.hard.name:   aiDifficulty = .hard
         case AIDifficulty.boss.name:   aiDifficulty = .boss
-        default: fatalError()
+        default:                       fatalError()
         }
     }
     
     private func aiIntroToggle() {
         aiIntroTask?.cancel()
         aiIntroTask = Task {
-            await MainActor.run { withAnimation(.easeInOut(duration: 2.5)) { showAiIntro = true } }
-            try? await Task.sleep(nanoseconds: 3_000_000_000)
+            await MainActor.run { withAnimation(.easeInOut(duration: 0.9)) { showAiIntro = true } }
+            try? await Task.sleep(nanoseconds: 2_200_000_000)
             guard guardVisible() else { return }
-            await MainActor.run { withAnimation(.easeInOut(duration: 1.5)) { showAiIntro = false } }
-            try? await Task.sleep(nanoseconds: 1_500_000_000)
+            await MainActor.run { withAnimation(.easeInOut(duration: 0.6)) { showAiIntro = false } }
+            try? await Task.sleep(nanoseconds: 600_000_000)
             guard guardVisible() else { return }
             await MainActor.run { aiIntroDone = true }
         }
@@ -666,28 +666,74 @@ struct AIGameView<VM: AIWordViewModel>: View {
             .ignoresSafeArea()
     }
     
+    // MARK: - Sleek AI Intro (centered with tuned timing)
     @ViewBuilder private func aiIntro() -> some View {
+        let accent = aiDifficulty.color
         ZStack {
-            Color.white
-                .circleReveal(trigger: $showAiIntro)
-                .ignoresSafeArea()
+            RadialGradient(
+                colors: [Color.black.opacity(0.86), Color.black.opacity(0.95)],
+                center: .center, startRadius: 24, endRadius: 700
+            )
+            .overlay(NoiseOverlay(opacity: 0.06))
+            .circleReveal(trigger: $showAiIntro)
+            .ignoresSafeArea()
             
-            VStack {
-                Text(aiDifficulty.name.localized)
-                    .font(.system(.largeTitle, design: .rounded).weight(.bold))
-                    .foregroundStyle(aiDifficulty.color)
+            ZStack {
+                // Stage 1: bokeh
+                BokehField(accent: accent, isActive: showAiIntro)
+                    .opacity(showAiIntro ? 1 : 0)
+                    .animation(IntroAnim.bokeh, value: showAiIntro)
+                    .allowsHitTesting(false)
                 
-                Image(aiDifficulty.image)
-                    .resizable()
-                    .scaledToFill()
-                    .shadow(radius: 4)
-                    .frame(width: 240,
-                           height: 240)
+                VStack(spacing: 20) {
+                    // Stage 2: title
+                    ShimmerText(
+                        aiDifficulty.name.localized,
+                        accent: accent,
+                        font: .system(.largeTitle, design: .rounded).weight(.heavy),
+                        baseOpacity: 0.9,
+                        isActive: showAiIntro
+                    )
+                    .foregroundStyle(.white)
+                    .opacity(showAiIntro ? 1 : 0)
+                    .animation(IntroAnim.title, value: showAiIntro)
+                    
+                    // Stage 3: avatar + ring settle
+                    ZStack {
+                        AnimatedAccentRing(accent: accent,
+                                           diameter: 260,
+                                           lineWidth: 12,
+                                           rotationDuration: IntroAnim.ringRotateDuration)
+                        .opacity(0.92)
+                        .blur(radius: 0.25)
+                        
+                        OrbitingDots(accent: accent,
+                                     radius: 145,
+                                     dotSize: 6,
+                                     count: 5,
+                                     rotationDuration: IntroAnim.orbitRotateDuration)
+                        
+                        Image(aiDifficulty.image)
+                            .resizable()
+                            .scaledToFill()
+                            .frame(width: 220, height: 220)
+                            .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 28, style: .continuous)
+                                    .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                            )
+                            .shadow(color: .black.opacity(0.55), radius: 18, y: 8)
+                    }
+                }
+                .padding(.horizontal, 24)
+                .padding(.vertical, 18)
+                .glassCard()
+                .opacity(showAiIntro ? 1 : 0)
+                .scaleEffect(showAiIntro ? 1.0 : 0.96)
+                .animation(IntroAnim.card, value: showAiIntro)
             }
-            .opacity(showAiIntro ? 1 : 0)
         }
-        .frame(maxWidth: .infinity,
-               maxHeight: .infinity)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
     
     @ViewBuilder private func gameTopView() -> some View {
@@ -1089,3 +1135,262 @@ fileprivate extension View {
     }
 }
 
+// MARK: - Intro animation constants
+fileprivate enum IntroAnim {
+    static let bokeh  = Animation.easeOut(duration: 0.60).delay(0.05)
+    static let title  = Animation.easeOut(duration: 0.50).delay(0.12)
+    static let card   = Animation.spring(response: 0.55, dampingFraction: 0.88, blendDuration: 0.15)
+    
+    static let ringRotateDuration: Double  = 12  // slower, premium
+    static let orbitRotateDuration: Double = 10  // slower, premium
+}
+
+// MARK: - Visual helpers used by AI Intro
+
+fileprivate struct NoiseOverlay: View {
+    var opacity: Double = 0.05
+    var body: some View {
+        Canvas { ctx, size in
+            let count = Int((size.width * size.height) / 1400)
+            for _ in 0..<count {
+                let x = Double.random(in: 0...size.width)
+                let y = Double.random(in: 0...size.height)
+                let r = Double.random(in: 0.3...0.9)
+                let p = Path(ellipseIn: CGRect(x: x, y: y, width: r, height: r))
+                ctx.fill(p, with: .color(.white.opacity(opacity)))
+            }
+        }
+        .allowsHitTesting(false)
+        .blendMode(.softLight)
+        .opacity(opacity)
+    }
+}
+
+fileprivate struct AnimatedAccentRing: View {
+    var accent: Color
+    var diameter: CGFloat = 240
+    var lineWidth: CGFloat = 10
+    var rotationDuration: Double = IntroAnim.ringRotateDuration
+    
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var t: CGFloat = 0
+    
+    var body: some View {
+        Circle()
+            .strokeBorder(
+                AngularGradient(
+                    gradient: Gradient(colors: [
+                        accent.opacity(0.2),
+                        accent.opacity(0.85),
+                        accent.opacity(0.2)
+                    ]),
+                    center: .center
+                ),
+                lineWidth: lineWidth
+            )
+            .frame(width: diameter, height: diameter)
+            .overlay { Circle().stroke(Color.white.opacity(0.07), lineWidth: 1) }
+            .rotationEffect(.degrees(Double(t) * 360))
+            .shadow(color: accent.opacity(0.35), radius: 18, y: 8)
+            .onAppear {
+                guard !reduceMotion else { return }
+                withAnimation(.linear(duration: rotationDuration).repeatForever(autoreverses: false)) {
+                    t = 1
+                }
+            }
+    }
+}
+
+fileprivate struct OrbitingDots: View {
+    var accent: Color
+    var radius: CGFloat = 130
+    var dotSize: CGFloat = 6
+    var count: Int = 4
+    var rotationDuration: Double = IntroAnim.orbitRotateDuration
+    
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var phase: CGFloat = 0
+    
+    var body: some View {
+        TimelineView(.animation) { _ in
+            ZStack {
+                ForEach(0..<count, id: \.self) { i in
+                    let p = (CGFloat(i) / CGFloat(count)) * .pi * 2 + phase
+                    Circle()
+                        .fill(accent.opacity(0.75))
+                        .frame(width: dotSize, height: dotSize)
+                        .shadow(color: accent.opacity(0.5), radius: 6)
+                        .offset(x: cos(p) * radius, y: sin(p) * radius)
+                        .blur(radius: 0.2)
+                }
+            }
+        }
+        .onAppear {
+            guard !reduceMotion else { return }
+            withAnimation(.linear(duration: rotationDuration).repeatForever(autoreverses: false)) {
+                phase = .pi * 2
+            }
+        }
+    }
+}
+
+fileprivate struct BokehField: View {
+    var accent: Color
+    var isActive: Bool = true
+    
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var seed: CGFloat = 0
+    
+    var body: some View {
+        TimelineView(.animation) { _ in
+            Canvas { ctx, size in
+                let count = 16
+                for i in 0..<count {
+                    let p = CGFloat(i) / CGFloat(count)
+                    let r = CGFloat.lerp(24, 56, p) * (UIDevice.isPad ? 1.2 : 1.0)
+                    let x = (CGFloat.hash(seed + p * 13).truncatingRemainder(dividingBy: 1)) * size.width
+                    let y = (CGFloat.hash(seed + p * 29).truncatingRemainder(dividingBy: 1)) * size.height
+                    let alpha = CGFloat.lerp(0.06, 0.22, abs(sin((seed + p) * 2)))
+                    let rect = CGRect(x: x, y: y, width: r, height: r)
+                    let path = Path(ellipseIn: rect)
+                    ctx.fill(path, with: .radialGradient(
+                        .init(colors: [accent.opacity(alpha), .clear]),
+                        center: .init(x: rect.midX, y: rect.midY),
+                        startRadius: 0, endRadius: r
+                    ))
+                }
+            }
+        }
+        .opacity(0.9)
+        .onAppear { startIfNeeded() }
+        .onChange(of: isActive) { startIfNeeded() }
+    }
+    
+    private func startIfNeeded() {
+        guard !reduceMotion else { return }
+        if isActive {
+            withAnimation(.linear(duration: 12).repeatForever(autoreverses: false)) {
+                seed = 1000 // advances hashes to “move”
+            }
+        } else {
+            seed = 0
+        }
+    }
+}
+
+// (Optional) Kept for reference — not used now, but safe to keep.
+// Parallax is NOT applied anywhere so intro stays centered.
+fileprivate struct IntroParallax<C: View>: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var x: CGFloat = 0
+    @State private var y: CGFloat = 0
+    let content: C
+    init(@ViewBuilder content: () -> C) { self.content = content() }
+    
+    var body: some View {
+        content
+            .modifier(Parallax(x: x, y: y))
+            .gesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { v in
+                        guard !reduceMotion else { return }
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                            x = (v.location.x / UIScreen.main.bounds.width - 0.5) * 12
+                            y = (v.location.y / UIScreen.main.bounds.height - 0.5) * 12
+                        }
+                    }
+                    .onEnded { _ in
+                        guard !reduceMotion else { return }
+                        withAnimation(.spring(response: 0.5, dampingFraction: 0.9)) {
+                            x = 0; y = 0
+                        }
+                    }
+            )
+    }
+    
+    struct Parallax: ViewModifier {
+        var x: CGFloat; var y: CGFloat
+        func body(content: Content) -> some View {
+            content
+                .rotation3DEffect(.degrees(Double(x) * 0.4), axis: (x: 0, y: 1, z: 0))
+                .rotation3DEffect(.degrees(Double(-y) * 0.4), axis: (x: 1, y: 0, z: 0))
+                .offset(x: x * 0.3, y: y * 0.3)
+        }
+    }
+}
+
+fileprivate struct ShimmerText: View {
+    var text: String
+    var accent: Color
+    var font: Font
+    var baseOpacity: Double = 0.9
+    var isActive: Bool = true
+    
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var phase: CGFloat = -1
+    
+    init(_ text: String, accent: Color, font: Font, baseOpacity: Double = 0.9, isActive: Bool = true) {
+        self.text = text
+        self.accent = accent
+        self.font = font
+        self.baseOpacity = baseOpacity
+        self.isActive = isActive
+    }
+    
+    var body: some View {
+        Text(text)
+            .font(font)
+            .foregroundStyle(accent)
+            .overlay {
+                GeometryReader { geo in
+                    let w = geo.size.width
+                    LinearGradient(
+                        colors: [.clear, Color.white.opacity(0.8), .clear],
+                        startPoint: .leading, endPoint: .trailing
+                    )
+                    .frame(width: w * 0.35)
+                    .offset(x: phase * (w + w * 0.35))
+                    .blendMode(.screen)
+                }
+                .mask(Text(text).font(font))
+            }
+            .opacity(baseOpacity)
+            .onAppear { runIfNeeded() }
+            .onChange(of: isActive) { runIfNeeded() }
+    }
+    
+    private func runIfNeeded() {
+        guard !reduceMotion else { return }
+        if isActive {
+            withAnimation(.easeInOut(duration: 1.6).delay(0.18).repeatForever(autoreverses: false)) {
+                phase = 1.2
+            }
+        } else {
+            phase = -1
+        }
+    }
+}
+
+fileprivate extension View {
+    func glassCard(cornerRadius: CGFloat = 28) -> some View {
+        self
+            .padding(20)
+            .background(
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .fill(.ultraThinMaterial)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                            .stroke(.white.opacity(0.08), lineWidth: 1)
+                    )
+                    .shadow(color: .black.opacity(0.35), radius: 24, y: 12)
+            )
+    }
+}
+
+fileprivate extension CGFloat {
+    static func lerp(_ a: CGFloat, _ b: CGFloat, _ t: CGFloat) -> CGFloat { a + (b - a) * t }
+    static func hash(_ v: CGFloat) -> CGFloat {
+        let s = sin(v * 12.9898) * 43758.5453
+        return CGFloat(s - floor(s))
+    }
+}

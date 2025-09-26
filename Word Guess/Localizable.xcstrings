@@ -2737,7 +2737,18 @@
         }
       }
     },
-    "not downloaded yet" : {
+    "Not Discoverd" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "לא התגלה"
+          }
+        }
+      }
+    },
+    "Not downloaded yet" : {
       "extractionState" : "manual",
       "localizations" : {
         "he" : {

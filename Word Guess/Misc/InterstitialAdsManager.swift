@@ -20,8 +20,6 @@ class InterstitialAdsManager: NSObject, GADFullScreenContentDelegate, Observable
     private let adUnitID: String
     private var didDismiss: () -> () = {}
     
-    private var InterstitialAdInterval: Int { firebaseFlags.remoteConfig.adFrequency }
-    
     init(adUnitID: String) {
         self.adUnitID = adUnitID.toKey()
         self.firebaseFlags = FirebaseFlagManager()
@@ -32,7 +30,7 @@ class InterstitialAdsManager: NSObject, GADFullScreenContentDelegate, Observable
         firebaseFlags.refashRemoteConfig()
     }
     
-    func shouldShowiInterstitial(for number: Int) -> Bool {
+    func shouldShowInterstitial(for number: Int) -> Bool {
         return number > 0 && number % firebaseFlags.remoteConfig.adFrequency == 0
     }
     

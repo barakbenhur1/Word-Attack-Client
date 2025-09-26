@@ -164,6 +164,7 @@ final class GitReleaseDownloader {
             errorText = "[\(name)] \(httpStatus.map { "HTTP \($0)" } ?? "network") — retry \(retries)/3 in \(Int(delay))s"
             try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
             do {
+                errorText = nil
                 let presigned = try await resolvePresignedURL(apiURL: meta.apiURL)
                 BackgroundDownloadCenter.shared.startOne(name: name, request: URLRequest(url: presigned))
             } catch {
