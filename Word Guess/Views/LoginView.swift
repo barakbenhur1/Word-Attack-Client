@@ -21,32 +21,31 @@ struct LoginView<VM: LoginViewModel>: View {
     @ViewBuilder private var googleLabel: some View { ElevatedButtonLabel(LocalizedStringKey("Continue with Google"), image: "google") }
     
     var body: some View {
-        ZStack {
-            LinearGradient(colors: [.red, .yellow, .green, .blue],
-                           startPoint: .topLeading, endPoint: .bottomTrailing)
-            .blur(radius: 4).opacity(0.1).ignoresSafeArea()
+        GeometryReader { _ in
+            GameViewBackguard().ignoresSafeArea()
             
             VStack(spacing: 40) {
+                Spacer()
                 AppTitle(size: 44)
                 
                 VStack(spacing: 16) {
                     Button(action: appleAction, label: { appleLabel })
                         .buttonStyle(appleStyle)
-                        .shadow(radius: 4)
-                        .frame(maxWidth: .infinity)   // 👈 expand width
-//                        .frame(height: 60)
+                        .shadow(color: .black.opacity(0.12), radius: 8, y: 4)
+                        .frame(maxWidth: .infinity)
                     
                     Button(action: googleAction, label: { googleLabel })
                         .buttonStyle(googleStyle)
-                        .shadow(radius: 4)
-                        .frame(maxWidth: .infinity)   // 👈 expand width
-//                        .frame(height: 60)
+                        .shadow(color: .black.opacity(0.12), radius: 8, y: 4)
+                        .frame(maxWidth: .infinity)
                 }
+                
+                Spacer()
             }
             .padding(.horizontal, 40)
+            .ignoresSafeArea(.keyboard)
             .loading(show: loading)
         }
-        .ignoresSafeArea(.keyboard)
     }
     
     private func googleAction() {

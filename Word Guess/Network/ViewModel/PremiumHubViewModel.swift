@@ -35,7 +35,6 @@ class PremiumHubViewModel: WordViewModel {
     }
     
     func word(email: String) async {
-        word = .empty
         let value: SimpleWord? = await wordProvider.word(email: email)
         
         guard let value else { isError = true; return }

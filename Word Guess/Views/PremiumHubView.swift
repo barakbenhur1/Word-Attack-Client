@@ -461,6 +461,7 @@ final public class PremiumHubModel: ObservableObject {
         self.mainSecondsLeft = self.mainRoundLength
         self.discoveredLetters = []
         self.gameHistory = []
+        self.vm.word = .empty
         self.lastWordLetterFoundAt = Date()
         if let email {
             Task.detached(priority: .userInitiated) { [weak self] in

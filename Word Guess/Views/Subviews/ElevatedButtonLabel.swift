@@ -26,8 +26,8 @@ public struct ElevatedButtonStyle: ButtonStyle {
         public static let googleLogin = Palette (
             gradient: LinearGradient(
                 colors: [
-                    .white,
-                    Color(red: 15/255, green: 157/255, blue: 88/255)
+                    Color(hue: 0.0, saturation: 0.0, brightness: 0.08),  // near black
+                    Color(hue: 0.0, saturation: 0.0, brightness: 0.00)   // pure black
                 ],
                 startPoint: .topLeading, endPoint: .bottomTrailing)
         )
@@ -36,8 +36,8 @@ public struct ElevatedButtonStyle: ButtonStyle {
         public static let appleLogin = Palette (
             gradient: LinearGradient(
                 colors: [
-                    .white,
-                    .black
+                    Color(hue: 0.0, saturation: 0.0, brightness: 0.65),  // medium gray
+                    Color(hue: 0.0, saturation: 0.0, brightness: 0.48)   // darker gray
                 ],
                 startPoint: .topLeading, endPoint: .bottomTrailing)
         )

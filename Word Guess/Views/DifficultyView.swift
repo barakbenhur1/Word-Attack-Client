@@ -186,7 +186,7 @@ struct DifficultyView: View {
             GlassContainer(corner: 32) {
                 VStack(spacing: 6) {
                     difficultyButton(type: .ai)
-                        .shadow(color: .black.opacity(0.15), radius: 8, y: 4)
+                        .shadow(color: .black.opacity(0.12), radius: 8, y: 4)
                     
                     title()
                         .padding(.top, 2)
@@ -203,7 +203,7 @@ struct DifficultyView: View {
             
             logoutButton()
                 .padding(.all, 10)
-                .shadow(color: .black.opacity(0.12), radius: 6, y: 3)
+                .shadow(color: .black.opacity(0.12), radius: 8, y: 4)
         }
     }
     
@@ -349,6 +349,7 @@ private struct BackgroundDecor: View {
                            center: .center, startRadius: 0, endRadius: 1200)
             .allowsHitTesting(false)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 
