@@ -61,7 +61,6 @@ struct DifficultyView: View {
     @EnvironmentObject private var audio: AudioPlayer
     @EnvironmentObject private var loginHandeler: LoginHandeler
     @EnvironmentObject private var premium: PremiumManager
-    @EnvironmentObject private var adProvider: AdProvider
     
     @State private var isMenuOpen: Bool = false
     @State private var showPaywall = false
@@ -119,7 +118,7 @@ struct DifficultyView: View {
             .padding(.horizontal, 20)
         }
         .safeAreaInset(edge: .top) {
-            adProvider.adView(id: "TopBanner", withPlaceholder: true)
+            AdProvider.adView(id: "TopBanner", withPlaceholder: true)
                 .frame(minHeight: 50, maxHeight: 50)
                 .background(.ultraThinMaterial)
                 .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
@@ -127,7 +126,7 @@ struct DifficultyView: View {
                 .padding(.top, 4)
         }
         .safeAreaInset(edge: .bottom) {
-            adProvider.adView(id: "BottomBanner", withPlaceholder: true)
+            AdProvider.adView(id: "BottomBanner", withPlaceholder: true)
                 .frame(minHeight: 50, maxHeight: 50)
                 .background(.ultraThinMaterial)
                 .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
@@ -155,7 +154,7 @@ struct DifficultyView: View {
             TopTileButton(
                 title: "SCOREBOARD",
                 icon: Image(systemName: "person.3.fill"),
-                action: { Task.detached { await MainActor.run { router.navigateTo(.score) } } }
+                action: { router.navigateToSync(.score) }
             )
             .frame(maxWidth: .infinity)
             
@@ -165,11 +164,8 @@ struct DifficultyView: View {
                     .grayscale(premium.isPremium ? 0 : 1)
                     .font(.system(size: 28, weight: .semibold)),
                 action: {
-                    if premium.isPremium {
-                        Task.detached(priority: .high) {
-                            await MainActor.run { router.navigateTo(.premium(email: loginHandeler.model?.email)) }
-                        }
-                    } else { showPaywall = true }
+                    if premium.isPremium { router.navigateToSync(.premium(email: loginHandeler.model?.email)) }
+                    else { showPaywall = true }
                 },
                 isLocked: !premium.isPremium // <-- locked style but still tappable
             )

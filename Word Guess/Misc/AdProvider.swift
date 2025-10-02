@@ -14,26 +14,16 @@ private struct InterstitialAdsManagerConfig {
 
 @MainActor
 class AdProvider: ObservableObject {
-    let premium: PremiumManager
-    
     private static var interstitialAdsConfig: InterstitialAdsManagerConfig?
     
-    init() {
-        self.premium = PremiumManager.shared
-    }
-    
-    @ViewBuilder func adView(id: String, withPlaceholder: Bool = false) -> some View {
-        if !premium.isPremium {
+    @ViewBuilder static func adView(id: String,
+                                    withPlaceholder: Bool = false) -> some View {
+        ZStack(alignment: .center) {
             if withPlaceholder {
-                ZStack(alignment: .center) {
-                    Rectangle()
-                    AdView(adUnitID: id)
-                }
-            } else { AdView(adUnitID: id) }
-        }
-        else if withPlaceholder {
-            ZStack(alignment: .center) {
                 Rectangle()
+            }
+            if !PremiumManager.shared.isPremium {
+                AdView(adUnitID: id)
             }
         }
     }

@@ -4,11 +4,11 @@
 //
 //  Created by Barak Ben Hur on 15/10/2024.
 //  Pro UI rev 2025-09-03 (iPad-friendly measured columns, typography scaling, centered wide layout)
+//  Added 2025-10-02: Auto-scroll to current user's row + "Jump to my rank" button
 //
 
 import SwiftUI
 
-// MARK: - Layout constants
 // MARK: - Layout constants
 private enum LBLayout {
     static let hSpacing: CGFloat = 10
@@ -29,7 +29,7 @@ private enum LBLayout {
         let available = max(0, width - horizontalInsets)
         
         if isPadLike {
-            // Tweak these to taste — they’re percentages of `available`
+            // Percentages of `available`
             let placeP:  CGFloat = 0.10
             let scoreP:  CGFloat = 0.15
             let guessP:  CGFloat = 0.15
@@ -42,7 +42,7 @@ private enum LBLayout {
             var total  = available * totalP
             var name   = available * nameP
             
-            // Sensible minimums/maximums so things don’t collapse or balloon
+            // Minimums / maximums
             place = max(place, 60)
             score = max(score, 90)
             guess = max(guess, 90)
@@ -57,7 +57,7 @@ private enum LBLayout {
             
             return .init(place: place, name: name, score: score, guessed: guess, total: total)
         } else {
-            // Phone – keep compact widths like before; name flexes
+            // Phone – keep compact widths; name flexes
             return .init(place: 44, name: .zero, score: 66, guessed: 62, total: 66)
         }
     }
@@ -68,7 +68,7 @@ struct LeaderboardView<VM: ScoreboardViewModel>: View {
     @EnvironmentObject private var loginHandeler: LoginHandeler
     @EnvironmentObject private var router: Router
     @EnvironmentObject private var local: LanguageSetting
-    @EnvironmentObject private var adProvider: AdProvider
+    
     @Environment(\.horizontalSizeClass) private var hSize
     
     @State private var vm = VM()
@@ -77,6 +77,7 @@ struct LeaderboardView<VM: ScoreboardViewModel>: View {
     
     private var language: String? { local.locale.identifier.components(separatedBy: "_").first }
     private var isRTL: Bool { language == "he" }
+    private var myEmailLower: String { (loginHandeler.model?.email ?? "").lowercased() }
     
     var body: some View {
         let isPadLike = (hSize == .regular) || UIDevice.current.userInterfaceIdiom == .pad
@@ -104,94 +105,130 @@ struct LeaderboardView<VM: ScoreboardViewModel>: View {
                 .padding(.horizontal, isPadLike ? 18 : 10)
                 .padding(.top, isPadLike ? 8 : 4)
                 
-                ScrollView(.vertical) {
-                    VStack(spacing: isPadLike ? 20 : 16) {
-                        if current < vm.data.count, vm.data.indices.contains(current) {
-                            let day = vm.data[current]
-                            
-                            // Sort difficulties by word length
-                            let sortedDiffs = day.difficulties.sorted {
-                                DifficultyType(stripedRawValue: $0.value)!.getLength()
-                                < DifficultyType(stripedRawValue: $1.value)!.getLength()
-                            }
-                            let diffTitles = sortedDiffs.map { $0.value }
-                            
-                            // Build rows per difficulty
-                            let rowsPerDifficulty: [[LeaderboardRowModel]] = sortedDiffs.map { diff in
-                                let totalWords = diff.words.count
-                                let members = diff.members.sorted { $0.totalScore > $1.totalScore }
-                                return members.enumerated().map { idx, m in
-                                    LeaderboardRowModel(
-                                        rank: idx + 1,
-                                        name: m.name,
-                                        email: m.email,
-                                        score: m.totalScore,
-                                        guessed: max(m.words.count - 1, 0),
-                                        total: max(totalWords - 2, 0)
-                                    )
+                // Wrap the scroll content in ScrollViewReader so we can programmatically scroll
+                ScrollViewReader { proxy in
+                    ScrollView(.vertical) {
+                        VStack(spacing: isPadLike ? 20 : 16) {
+                            if current < vm.data.count, vm.data.indices.contains(current) {
+                                let day = vm.data[current]
+                                
+                                // Sort difficulties by word length
+                                let sortedDiffs = day.difficulties.sorted {
+                                    DifficultyType(stripedRawValue: $0.value)!.getLength()
+                                    < DifficultyType(stripedRawValue: $1.value)!.getLength()
                                 }
-                            }
-                            
-                            // Date pager
-                            DatePager(
-                                title: day.value,
-                                isRTL: isRTL,
-                                canGoPrevious: isRTL ? (current < vm.data.count - 1) : (current > 0),
-                                canGoNext:     isRTL ? (current > 0)                 : (current < vm.data.count - 1),
-                                onPrevious: {
-                                    if isRTL {
-                                        if current < vm.data.count - 1 { current += 1 }
-                                    } else if current > 0 {
-                                        current -= 1
+                                let diffTitles = sortedDiffs.map { $0.value }
+                                
+                                // Build rows per difficulty
+                                let rowsPerDifficulty: [[LeaderboardRowModel]] = sortedDiffs.map { diff in
+                                    let totalWords = diff.words.count
+                                    let members = diff.members.sorted { $0.totalScore > $1.totalScore }
+                                    return members.enumerated().map { idx, m in
+                                        LeaderboardRowModel(
+                                            rank: idx + 1,
+                                            name: m.name,
+                                            email: m.email,
+                                            score: m.totalScore,
+                                            guessed: max(m.words.count - 1, 0),
+                                            total: max(totalWords - 2, 0)
+                                        )
                                     }
-                                    selectedDifficultyIndex = 0
-                                },
-                                onNext: {
-                                    if isRTL {
-                                        if current > 0 { current -= 1 }
-                                    } else if current < vm.data.count - 1 {
-                                        current += 1
-                                    }
-                                    selectedDifficultyIndex = 0
                                 }
-                            )
-                            .environment(\.layoutDirection, isRTL ? .rightToLeft : .leftToRight)
-                            .padding(.horizontal, isPadLike ? 4 : 0)
-                            
-                            // Difficulty picker (always segmented, even if only one option)
-                            if !diffTitles.isEmpty {
-                                DifficultyPicker(
-                                    titles: diffTitles.map { prettyDifficulty($0) },
-                                    selectedIndex: $selectedDifficultyIndex
-                                )
-                                .frame(maxWidth: isPadLike ? 520 : .infinity)
-                                .transition(.opacity)
-                            }
-                            
-                            // Leaderboard card – measure width to compute numeric columns
-                            GeometryReader { proxy in
-                                let cols = LBLayout.columns(for: proxy.size.width, isPadLike: isPadLike)
-                                LeaderboardCard(
-                                    rows: rowsPerDifficulty[safe: selectedDifficultyIndex] ?? [],
+                                
+                                // Date pager
+                                DatePager(
+                                    title: day.value,
                                     isRTL: isRTL,
-                                    cols: cols,
-                                    isPadLike: isPadLike
+                                    canGoPrevious: isRTL ? (current < vm.data.count - 1) : (current > 0),
+                                    canGoNext:     isRTL ? (current > 0)                 : (current < vm.data.count - 1),
+                                    onPrevious: {
+                                        if isRTL {
+                                            if current < vm.data.count - 1 { current += 1 }
+                                        } else if current > 0 {
+                                            current -= 1
+                                        }
+                                        selectedDifficultyIndex = 0
+                                    },
+                                    onNext: {
+                                        if isRTL {
+                                            if current > 0 { current -= 1 }
+                                        } else if current < vm.data.count - 1 {
+                                            current += 1
+                                        }
+                                        selectedDifficultyIndex = 0
+                                    }
                                 )
-                                .frame(maxWidth: .infinity, alignment: .center)
+                                .environment(\.layoutDirection, isRTL ? .rightToLeft : .leftToRight)
+                                .padding(.horizontal, isPadLike ? 4 : 0)
+                                
+                                // Optional “Jump to my rank” helper
+                                if !myEmailLower.isEmpty {
+                                    Button {
+                                        scrollToMe(proxy: proxy, rowsPerDifficulty: rowsPerDifficulty)
+                                    } label: {
+                                        Label("Jump to my rank", systemImage: "person.crop.circle.badge.checkmark")
+                                            .font(.footnote.weight(.semibold))
+                                    }
+                                    .buttonStyle(.bordered)
+                                    .tint(.accentColor)
+                                }
+                                
+                                // Difficulty picker (always segmented, even if only one)
+                                if !diffTitles.isEmpty {
+                                    DifficultyPicker(
+                                        titles: diffTitles.map { prettyDifficulty($0) },
+                                        selectedIndex: $selectedDifficultyIndex
+                                    )
+                                    .frame(maxWidth: isPadLike ? 520 : .infinity)
+                                    .transition(.opacity)
+                                }
+                                
+                                // Leaderboard card – measure width to compute numeric columns
+                                GeometryReader { proxyGeo in
+                                    let cols = LBLayout.columns(for: proxyGeo.size.width, isPadLike: isPadLike)
+                                    LeaderboardCard(
+                                        rows: rowsPerDifficulty[safe: selectedDifficultyIndex] ?? [],
+                                        isRTL: isRTL,
+                                        cols: cols,
+                                        isPadLike: isPadLike
+                                    )
+                                    .frame(maxWidth: .infinity, alignment: .center)
+                                }
+                                .frame(maxWidth: .infinity, minHeight: 0)
+                                
+                                // Auto-scroll triggers
+                                .onChange(of: selectedDifficultyIndex) {
+                                    scrollToMe(proxy: proxy, rowsPerDifficulty: rowsPerDifficulty)
+                                }
+                                .onAppear {
+                                    // when view first lays out for this day
+                                    scrollToMe(proxy: proxy, rowsPerDifficulty: rowsPerDifficulty)
+                                }
+                            } else {
+                                EmptyStateCard()
                             }
-                            .frame(maxWidth: .infinity, minHeight: 0)
-                        } else {
-                            EmptyStateCard()
+                        }
+                        .padding(.horizontal, isPadLike ? 22 : 16)
+                        .padding(.bottom, isPadLike ? 10 : 6)
+                        .frame(maxWidth: 900) // center content on wide iPads
+                        .frame(maxWidth: .infinity)
+                    }
+                    // Also re-scroll on date change and when new data arrives
+                    .onChange(of: current) {
+                        if let rows = rowsForCurrentSelection() {
+                            withAnimation(.easeInOut) { proxy.scrollTo(rows.targetKey, anchor: .center) }
                         }
                     }
-                    .padding(.horizontal, isPadLike ? 22 : 16)
-                    .padding(.bottom, isPadLike ? 10 : 6)
-                    .frame(maxWidth: 900) // center content on wide iPads
-                    .frame(maxWidth: .infinity)
-                }
+                    .onChange(of: vm.data) {
+                        if let rows = rowsForCurrentSelection() {
+                            withAnimation(.easeInOut) { proxy.scrollTo(rows.targetKey, anchor: .center) }
+                        }
+                    }
+                } // ScrollViewReader
                 
                 Spacer()
-                adProvider.adView(id: "ScoreBanner")
+                AdProvider.adView(id: "ScoreBanner")
+                    .frame(minHeight: 40, maxHeight: 40)
             }
         }
         .environment(\.layoutDirection, isRTL ? .rightToLeft : .leftToRight)
@@ -199,6 +236,46 @@ struct LeaderboardView<VM: ScoreboardViewModel>: View {
         .onChange(of: vm.data) {
             current = max(vm.data.count - 1, 0)
             selectedDifficultyIndex = 0
+        }
+    }
+}
+
+// MARK: - Scroll helpers inside LeaderboardView
+private extension LeaderboardView {
+    /// Compute rows for current day & selection and return the target key for the signed-in email.
+    func rowsForCurrentSelection() -> (rows: [LeaderboardRowModel], targetKey: String)? {
+        guard current < vm.data.count, vm.data.indices.contains(current) else { return nil }
+        let day = vm.data[current]
+        let sortedDiffs = day.difficulties.sorted {
+            DifficultyType(stripedRawValue: $0.value)!.getLength()
+            < DifficultyType(stripedRawValue: $1.value)!.getLength()
+        }
+        let rowsPerDifficulty: [[LeaderboardRowModel]] = sortedDiffs.map { diff in
+            let totalWords = diff.words.count
+            let members = diff.members.sorted { $0.totalScore > $1.totalScore }
+            return members.enumerated().map { idx, m in
+                LeaderboardRowModel(
+                    rank: idx + 1,
+                    name: m.name,
+                    email: m.email,
+                    score: m.totalScore,
+                    guessed: max(m.words.count - 1, 0),
+                    total: max(totalWords - 2, 0)
+                )
+            }
+        }
+        let rows = rowsPerDifficulty[safe: selectedDifficultyIndex] ?? []
+        let myKey = "row-\(myEmailLower)"
+        guard rows.contains(where: { $0.key == myKey }) else { return nil }
+        return (rows, myKey)
+    }
+    
+    func scrollToMe(proxy: ScrollViewProxy, rowsPerDifficulty: [[LeaderboardRowModel]]) {
+        let myKey = "row-\(myEmailLower)"
+        let rows = rowsPerDifficulty[safe: selectedDifficultyIndex] ?? []
+        guard rows.contains(where: { $0.key == myKey }) else { return }
+        withAnimation(.easeInOut) {
+            proxy.scrollTo(myKey, anchor: .center)
         }
     }
 }
@@ -260,22 +337,6 @@ private struct DifficultyPicker: View {
     }
 }
 
-private struct DifficultyChip: View {
-    let title: String
-    var body: some View {
-        Text(title.localized)
-            .font(.subheadline)
-            .fontWeight(.medium)
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 10)
-            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .stroke(Color.primary.opacity(0.08), lineWidth: 1)
-            )
-    }
-}
-
 private struct LeaderboardCard: View {
     let rows: [LeaderboardRowModel]
     let isRTL: Bool
@@ -293,7 +354,6 @@ private struct LeaderboardCard: View {
                 header("Guessed").frame(width: cols.guessed)
                 header("Total").frame(width: cols.total)
             }
-
             .padding(.horizontal, 12)
             .padding(.vertical, isPadLike ? 11 : 9)
             .background(Color.primary.opacity(0.06))
@@ -325,7 +385,7 @@ private struct LeaderboardCard: View {
     private func header(_ text: LocalizedStringKey) -> some View {
         Text(text)
             .font(isPadLike ? .subheadline : .footnote)
-            .fontWeight(.semibold)           // <- separate modifier (fixes your error)
+            .fontWeight(.semibold)
             .multilineTextAlignment(.center)
             .textCase(.uppercase)
             .foregroundStyle(.secondary)
@@ -386,6 +446,7 @@ private struct LeaderboardRow: View {
         .padding(.horizontal, 12)
         .padding(.vertical, isPadLike ? 14 : 12)
         .contentShape(Rectangle())
+        .id(row.key) // ← make each row scroll-addressable
     }
 }
 
@@ -409,8 +470,8 @@ private struct RankBadge: View {
                 if rank == 1 { Image(systemName: "crown.fill") }
                 Text("\(rank)")
                     .font(.callout)
-                    .fontWeight(.semibold)   // <- separate
-                    .monospacedDigit()       // <- on Text
+                    .fontWeight(.semibold)
+                    .monospacedDigit()
             }
             .foregroundStyle(foregroundStyle(rank))
         }
@@ -466,6 +527,9 @@ private struct LeaderboardRowModel: Identifiable, Equatable {
     let score: Int
     let guessed: Int
     let total: Int
+    
+    // Stable key for ScrollViewReader
+    var key: String { "row-\(email.lowercased())" }
 }
 
 private extension Collection {

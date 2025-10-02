@@ -33,7 +33,6 @@ struct WordGuessApp: App {
     private let router = Router.shared
     private let deepLinker = DeepLinker.shared
     private let login = LoginViewModel()
-    private let adProvider = AdProvider()
 
     var body: some Scene {
         WindowGroup {
@@ -112,7 +111,6 @@ struct WordGuessApp: App {
         .environmentObject(loginHaneler)
         .environmentObject(local)
         .environmentObject(premium)
-        .environmentObject(adProvider)
         .environmentObject(session)
         .environment(\.locale, local.locale)
         .environment(\.managedObjectContext, persistenceController.container.viewContext)

@@ -3,6 +3,7 @@
 //  Word Guess
 //
 //  Created by Barak Ben Hur on 13/09/2025.
+//  Updated 2025-10-02: Auto-scroll to current user's row + "Jump to my rank" button
 //
 
 import SwiftUI
@@ -13,10 +14,10 @@ import Observation
 struct PremiumLeaderboardView<VM: PremiumScoreboardViewModel>: View {
     @EnvironmentObject private var router: Router
     @EnvironmentObject private var loginHandeler: LoginHandeler
-    
     @Environment(\.horizontalSizeClass) private var hSize
     
     private var email: String? { loginHandeler.model?.email }
+    private var myEmailLower: String { (email ?? "").lowercased() }
     
     @State private var vm = VM()
     
@@ -29,14 +30,25 @@ struct PremiumLeaderboardView<VM: PremiumScoreboardViewModel>: View {
             
             VStack(alignment: .leading, spacing: 26) {
                 header
-            
+                
                 Group {
                     if vm.data == nil {
                         skeletonList
                     } else if let items = vm.data, items.isEmpty {
                         emptyState
                     } else if let items = vm.data {
-                        listBody(items: items)
+                        // Wrap the list in a ScrollViewReader so we can programmatically scroll
+                        ScrollViewReader { proxy in
+                            listBody(items: items, proxy: proxy)
+                                .onAppear {
+                                    // Auto-scroll on first appear after data arrives
+                                    scrollToMe(proxy: proxy, items: items)
+                                }
+                                .onChange(of: vm.data) {
+                                    // Auto-scroll when data refreshes
+                                    scrollToMe(proxy: proxy, items: vm.data ?? [])
+                                }
+                        }
                     }
                 }
             }
@@ -81,23 +93,41 @@ struct PremiumLeaderboardView<VM: PremiumScoreboardViewModel>: View {
     
     // MARK: Body
     
-    private func listBody(items: [PremiumScoreData]) -> some View {
+    private func listBody(items: [PremiumScoreData], proxy: ScrollViewProxy) -> some View {
         // Only non-negative scores; highest first
         let sorted = items.filter { $0.value >= 0 }.sorted { $0.value > $1.value }
+        let hasMe  = sorted.contains(where: { $0.email.lowercased() == myEmailLower })
         
-        return ScrollView(showsIndicators: false) {
-            VStack(spacing: 10) {
-                ForEach(Array(sorted.enumerated()), id: \.element.id) { idx, entry in
-                    if let email {
-                        LeaderboardRow(
-                            rank: idx + 1,
-                            entry: entry,
-                            isCurrentUser: entry.email.caseInsensitiveCompare(email) == .orderedSame
-                        )
+        return VStack(spacing: 12) {
+            // Optional jump-to-me helper
+            if hasMe && !myEmailLower.isEmpty {
+                Button {
+                    scrollToMe(proxy: proxy, items: sorted)
+                } label: {
+                    Label("Jump to my rank", systemImage: "person.crop.circle.badge.checkmark")
+                        .font(.footnote.weight(.semibold))
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(.yellow)
+                .foregroundStyle(.black)
+                .frame(maxWidth: .infinity, alignment: .center)
+            }
+            
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 10) {
+                    ForEach(Array(sorted.enumerated()), id: \.element.id) { idx, entry in
+                        if let email {
+                            LeaderboardRow(
+                                rank: idx + 1,
+                                entry: entry,
+                                isCurrentUser: entry.email.caseInsensitiveCompare(email) == .orderedSame
+                            )
+                            .id(rowKey(for: entry.email)) // ← make each row scroll-addressable
+                        }
                     }
                 }
+                .padding(.bottom, 24)
             }
-            .padding(.bottom, 24)
         }
     }
     
@@ -123,6 +153,20 @@ struct PremiumLeaderboardView<VM: PremiumScoreboardViewModel>: View {
         }
         .frame(maxWidth: .infinity, alignment: .center)
         .padding(.vertical, 40)
+    }
+}
+
+// MARK: - Scroll helpers
+
+private extension PremiumLeaderboardView {
+    func rowKey(for email: String) -> String { "row-\(email.lowercased())" }
+    
+    func scrollToMe(proxy: ScrollViewProxy, items: [PremiumScoreData]) {
+        guard !myEmailLower.isEmpty else { return }
+        guard items.contains(where: { $0.email.lowercased() == myEmailLower }) else { return }
+        withAnimation(.easeInOut) {
+            proxy.scrollTo(rowKey(for: myEmailLower), anchor: .center)
+        }
     }
 }
 

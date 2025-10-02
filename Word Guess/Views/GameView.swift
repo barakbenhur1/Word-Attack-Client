@@ -36,7 +36,6 @@ struct GameView<VM: DifficultyWordViewModel>: View {
     @EnvironmentObject private var router: Router
     @EnvironmentObject private var local: LanguageSetting
     @EnvironmentObject private var premium: PremiumManager
-    @EnvironmentObject private var adProvider: AdProvider
     @EnvironmentObject private var session: GameSessionManager
     
     private let queue = DispatchQueue.main
@@ -217,7 +216,12 @@ struct GameView<VM: DifficultyWordViewModel>: View {
         HStack {
             backButton()
             Spacer()
-            adProvider.adView(id: "GameBanner")
+            AdProvider.adView(id: "GameBanner", withPlaceholder: true)
+                .frame(minHeight: 40, maxHeight: 40)
+                .background(.ultraThinMaterial.opacity(0.6))
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .padding(.horizontal, 12)
+                .padding(.bottom, 4)
             Spacer()
         }
     }

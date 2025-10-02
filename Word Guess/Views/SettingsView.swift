@@ -22,7 +22,6 @@ struct SettingsView: View {
     @EnvironmentObject private var local: LanguageSetting
     @EnvironmentObject private var audio: AudioPlayer
     @EnvironmentObject private var router: Router
-    @EnvironmentObject private var adProvider: AdProvider
     @EnvironmentObject private var premium: PremiumManager
     @EnvironmentObject private var menuManager: MenuManager
     @EnvironmentObject private var loginHandeler: LoginHandeler
@@ -82,7 +81,7 @@ struct SettingsView: View {
             VStack {
                 topView()
                 list()
-                adProvider.adView(id: "SettingsBanner")
+                AdProvider.adView(id: "SettingsBanner")
             }
         }
         .customAlert("Reset AI Difficulty",
