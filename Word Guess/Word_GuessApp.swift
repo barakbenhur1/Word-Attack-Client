@@ -28,7 +28,7 @@ struct WordGuessApp: App {
     @State private var isInvite = false
     
     private let persistenceController = PersistenceController.shared
-    private let loginHaneler = LoginHandeler()
+    private let loginHandeler = LoginHandeler()
     private let screenManager = ScreenManager.shared
     private let audio = AudioPlayer()
     private let local = LanguageSetting()
@@ -39,24 +39,24 @@ struct WordGuessApp: App {
     var body: some Scene {
         WindowGroup {
             RouterView {
-                if loginHaneler.model == nil { LoginView() }
-                else if loginHaneler.hasGender { DifficultyView() }
+                if loginHandeler.model == nil { LoginView() }
+                else if loginHandeler.hasGender { DifficultyView() }
                 else { ServerLoadingView() }
             }
             .handleBackground()
             .attachAppLifecycleObservers(session: session, inactivityHour: 19)
             .onAppear { onAppear() }
             .onDisappear { tooltipPusher.stop() }
-            .onChange(of: loginHaneler.model) {
-                guard loginHaneler.model == nil else { return }
+            .onChange(of: loginHandeler.model) {
+                guard loginHandeler.model == nil else { return }
                 Task(priority: .high) { await router.popToRoot() }
             }
-            .onChange(of: loginHaneler.model?.gender) {
-                guard loginHaneler.model?.gender != nil else { return }
+            .onChange(of: loginHandeler.model?.gender) {
+                guard loginHandeler.model?.gender != nil else { return }
                 deepLinker.preform()
             }
             .onChange(of: local.locale) {
-                guard let email = loginHaneler.model?.email else { return }
+                guard let email = loginHandeler.model?.email else { return }
                 Task.detached(priority: .high) { await login.changeLanguage(email: email) }
             }
             .onChange(of: deepLinker.inviteRef) {
@@ -70,13 +70,13 @@ struct WordGuessApp: App {
             }
             .onOpenURL { url in
                 deepLinker.set(url: url)
-                guard loginHaneler.model?.gender != nil else { return }
+                guard loginHandeler.model?.gender != nil else { return }
                 deepLinker.preform()
             }
             .onReceive(NotificationCenter.default.publisher(for: .DeepLinkOpen)) { note in
                 if let url = note.userInfo?["url"] as? URL {
                     deepLinker.set(url: url)
-                    guard loginHaneler.model?.gender != nil else { return }
+                    guard loginHandeler.model?.gender != nil else { return }
                     deepLinker.preform()
                 }
             }
@@ -111,7 +111,7 @@ struct WordGuessApp: App {
         .environmentObject(screenManager)
         .environmentObject(audio)
         .environmentObject(persistenceController)
-        .environmentObject(loginHaneler)
+        .environmentObject(loginHandeler)
         .environmentObject(local)
         .environmentObject(premium)
         .environmentObject(session)
@@ -123,19 +123,19 @@ struct WordGuessApp: App {
     private func onAppear() {
         guard let currentUser = Auth.auth().currentUser,
               let email = currentUser.email else { return }
-        guard loginHaneler.model == nil else { return }
-        loginHaneler.model = getInfo(for: currentUser)
+        guard loginHandeler.model == nil else { return }
+        loginHandeler.model = getInfo(for: currentUser)
         Task.detached(priority: .high) {
             guard await login.isLoggedin(email: email) else { await notLoggedin(); return }
             await refreshWordZapPlaces(email: email)
             await login.changeLanguage(email: email)
             let gender = await login.gender(email: email)
-            await MainActor.run { loginHaneler.model?.gender = gender }
+            await MainActor.run { loginHandeler.model?.gender = gender }
         }
     }
     
     private func notLoggedin() async {
-        await MainActor.run { loginHaneler.model = nil }
+        await MainActor.run { loginHandeler.model = nil }
     }
     
     private func handleUrl(_ url: URL) {
