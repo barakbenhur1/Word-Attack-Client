@@ -92,8 +92,8 @@ struct WordGuessApp: App {
                     if let n = checker.needUpdate {
                         UpdateOverlayView(
                             latest: n.latest,
-                            onUpdate: { handleUrl(n.url) },
-                            onClose:  { checker.dismiss() }
+                            onUpdate: handleUpdate,
+                            onClose: checker.dismiss
                         )
                     }
                 }
@@ -129,8 +129,7 @@ struct WordGuessApp: App {
             guard await login.isLoggedin(email: email) else { await notLoggedin(); return }
             await refreshWordZapPlaces(email: email)
             await login.changeLanguage(email: email)
-            let gender = await login.gender(email: email)
-            await MainActor.run { loginHandeler.model?.gender = gender }
+            await loggedin(email: email)
         }
     }
     
@@ -138,7 +137,13 @@ struct WordGuessApp: App {
         await MainActor.run { loginHandeler.model = nil }
     }
     
-    private func handleUrl(_ url: URL) {
+    private func loggedin(email: String) async {
+        let gender = await login.gender(email: email)
+        await MainActor.run { loginHandeler.model?.gender = gender }
+    }
+    
+    private func handleUpdate() {
+        guard let url = checker.needUpdate?.url else { return }
         openURL(url)
         checker.dismiss()
     }
