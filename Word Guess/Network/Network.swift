@@ -156,7 +156,6 @@ extension Network {
         }
     }
     
-    
     // MARK: ComplitionHandeler
     internal class ComplitionHandeler: ObservableObject {
         func makeValid<T: Codable>(_ complition: @escaping () -> ()) -> (T) -> () { return { _ in complition() } }
