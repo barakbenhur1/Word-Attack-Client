@@ -96,8 +96,8 @@ public struct ElevatedButtonStyle: ButtonStyle {
         public static let share = Palette(
             gradient: LinearGradient(
                 gradient: Gradient(stops: [
-                    .init(color: Color(hue: 0.42, saturation: 0.72, brightness: 0.64), location: 0.00),
-                    .init(color: Color(hue: 0.40, saturation: 0.78, brightness: 0.82), location: 0.60),
+                    .init(color: Color(hue: 0.502, saturation: 1.0, brightness: 0.66), location: 0.00),
+                    .init(color: Color(hue: 0.502, saturation: 1.0, brightness: 0.78), location: 0.60),
                 ]),
                 startPoint: .topLeading, endPoint: .bottomTrailing
             )

@@ -62,7 +62,6 @@ struct GameView<VM: DifficultyWordViewModel>: View {
     
     // Task/cancel management
     @State private var isVisible = false
-    @State private var appearTask: Task<Void, Never>?
     @State private var delayedSoundTask: Task<Void, Never>?
     @State private var newWordTask: Task<Void, Never>?
     
@@ -138,22 +137,29 @@ struct GameView<VM: DifficultyWordViewModel>: View {
     }
     
     private func onAppear(email: String) {
-        guard !didStart else { return }
+        guard !didStart && (interstitialAdManager == nil || !interstitialAdManager!.initialInterstitialAdLoaded) else { return }
         switch diffculty {
         case .tutorial: coreData.new()
         default: break
         }
-        appearTask?.cancel()
         session.startNewRound(id: diffculty)
-        appearTask = Task.detached(priority: .userInitiated) {
-            await handleNewWord(email: email)
-            await MainActor.run { didStart = vm.word != .empty }
+        if let interstitialAdManager {
+            interstitialAdManager.displayInitialInterstitialAd {
+                Task.detached(priority: .userInitiated) {
+                    await handleNewWord(email: email)
+                }
+            }
+        } else {
+            Task.detached(priority: .userInitiated) {
+                await handleNewWord(email: email)
+            }
         }
     }
     
     private func handleNewWord(email: String) async {
         await vm.getScore(diffculty: diffculty, email: email)
         await vm.word(diffculty: diffculty, email: email)
+        await MainActor.run { didStart = vm.word != .empty }
     }
     
     private func afterTimeAttack() {
@@ -184,7 +190,6 @@ struct GameView<VM: DifficultyWordViewModel>: View {
                 audio.stop()
                 // cancel outstanding tasks
                 scoreAnimation = (0, CGFloat(0), CGFloat(0), CGFloat(30))
-                appearTask?.cancel(); appearTask = nil
                 delayedSoundTask?.cancel(); delayedSoundTask = nil
                 newWordTask?.cancel(); newWordTask = nil
             }
@@ -488,6 +493,7 @@ struct GameView<VM: DifficultyWordViewModel>: View {
     }
     
     private func navBack() {
+        interstitialAdManager?.initialInterstitialAdLoaded = false
         UIApplication.shared.hideKeyboard()
         audio.stop()
         session.finishRound()

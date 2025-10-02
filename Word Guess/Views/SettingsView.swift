@@ -8,7 +8,7 @@
 import SwiftUI
 
 enum SettingsOption: String {
-    case language = "language", sound = "sound", ai = "ai", premium = "Premium", share = "Share"
+    case language = "language", sound = "sound", ai = "ai", premium = "Premium", share = "Share", update = "Update"
     
     var stringValue: String { rawValue.localized }
 }
@@ -19,18 +19,20 @@ struct SettingsOptionButton: Identifiable {
 }
 
 struct SettingsView: View {
+    @Environment(\.openURL) private var openURL
+    
     @EnvironmentObject private var local: LanguageSetting
     @EnvironmentObject private var audio: AudioPlayer
     @EnvironmentObject private var router: Router
     @EnvironmentObject private var premium: PremiumManager
     @EnvironmentObject private var menuManager: MenuManager
     @EnvironmentObject private var loginHandeler: LoginHandeler
+    @EnvironmentObject private var checker: AppStoreVersionChecker
     
     @State private var items: [SettingsOptionButton] = [.init(type: .premium),
                                                         .init(type: .sound),
                                                         .init(type: .ai),
-                                                        .init(type: .language),
-                                                        .init(type: .share)]
+                                                        .init(type: .language)]
     
     @State private var showResetAI: Bool = false
     
@@ -53,8 +55,14 @@ struct SettingsView: View {
         case .sound:    audio.isOn.toggle()
         case .ai:       showResetAI = difficulty != nil
         case .premium:  handlePremium()
+        case .update:   handleUpdate()
         case .share:    break
         }
+    }
+    
+    private func handleUpdate() {
+        guard let url = checker.needUpdate?.url else { return }
+        openURL(url)
     }
     
     private func handlePremium() {
@@ -98,6 +106,12 @@ struct SettingsView: View {
         .onAppear {
             difficulty = UserDefaults.standard.string(forKey: "aiDifficulty")
             language = local.locale.identifier.components(separatedBy: "_").first
+            
+            if checker.needUpdate != nil {
+                items.append(.init(type: .update))
+            }
+            
+            items.append(.init(type: .share))
         }
     }
     
@@ -195,6 +209,21 @@ struct SettingsView: View {
                     Text("Reset Difficulty")
                         .font(.headline)
                         .foregroundStyle(difficulty == nil ? .gray : .darkTurquoise)
+                }
+                
+            case .update:
+                if let notice = checker.needUpdate {
+                    HStack {
+                        Text(item.type.stringValue.localized)
+                            .font(.headline.bold().italic())
+                            .foregroundStyle(.black)
+                        
+                        Spacer()
+                        
+                        Text("Update App To Version \(notice.latest)")
+                            .font(.caption.bold().italic())
+                            .foregroundStyle(Color.darkTurquoise)
+                    }
                 }
                 
             case .share:

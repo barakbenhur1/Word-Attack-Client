@@ -2029,7 +2029,14 @@
       }
     },
     "Jump to my rank" : {
-
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "גלול לדירוג שלי"
+          }
+        }
+      }
     },
     "Just" : {
       "extractionState" : "manual",
@@ -3704,6 +3711,17 @@
         }
       }
     },
+    "Share" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "שיתוף"
+          }
+        }
+      }
+    },
     "Share with friends" : {
       "localizations" : {
         "he" : {
@@ -4452,6 +4470,42 @@
         }
       }
     },
+    "Update" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "עדכון"
+          }
+        }
+      }
+    },
+    "Update App To Version %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Update To Version %@"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "עדכון לגרסא %@"
+          }
+        }
+      }
+    },
+    "Update available" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "עדכון זמין"
+          }
+        }
+      }
+    },
     "Use allowed letters only" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -4492,6 +4546,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "חלל מילולי"
+          }
+        }
+      }
+    },
+    "Version %@ is available on the App Store." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "גרסא %@ זמינה בחנות"
           }
         }
       }

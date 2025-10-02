@@ -17,10 +17,12 @@ class LanguageSetting: ObservableObject { var locale = Locale.current }
 struct WordGuessApp: App {
     @UIApplicationDelegateAdaptor private var delegate: AppDelegate
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.openURL) private var openURL
     
     @StateObject private var vm = AppStateViewModel()
     @StateObject private var premium = PremiumManager.shared
     @StateObject private var session = GameSessionManager()
+    @StateObject private var checker = AppStoreVersionChecker()
     
     @State private var tooltipPusher = PhraseProvider()
     @State private var isInvite = false
@@ -43,22 +45,11 @@ struct WordGuessApp: App {
             }
             .handleBackground()
             .attachAppLifecycleObservers(session: session, inactivityHour: 19)
-            .onAppear {
-                guard let currentUser = Auth.auth().currentUser,
-                      let email = currentUser.email else { return }
-                loginHaneler.model = getInfo(for: currentUser)
-                Task.detached(priority: .high) {
-                    await refreshWordZapPlaces(email: email)
-                    let check = await login.changeLanguage(email: email)
-                    guard check else { await MainActor.run { loginHaneler.model = nil }; return }
-                    let gender = await login.gender(email: email)
-                    await MainActor.run { loginHaneler.model?.gender = gender }
-                }
-            }
+            .onAppear { onAppear() }
             .onDisappear { tooltipPusher.stop() }
             .onChange(of: loginHaneler.model) {
                 guard loginHaneler.model == nil else { return }
-                Task(priority: .userInitiated) { await router.popToRoot() }
+                Task(priority: .high) { await router.popToRoot() }
             }
             .onChange(of: loginHaneler.model?.gender) {
                 guard loginHaneler.model?.gender != nil else { return }
@@ -95,6 +86,18 @@ struct WordGuessApp: App {
                 }
             }
             .task { await consumeQueuedDeepLink() }
+            .task { await checker.check() }
+            .overlay {
+                if !checker.isDismissed {
+                    if let n = checker.needUpdate {
+                        UpdateOverlayView(
+                            latest: n.latest,
+                            onUpdate: { handleUrl(n.url) },
+                            onClose:  { checker.dismiss() }
+                        )
+                    }
+                }
+            }
             .glassFullScreen(isPresented: $isInvite) {
                 if let ref = deepLinker.inviteRef {
                     InviteJoinView(ref: ref) { _ in
@@ -112,8 +115,32 @@ struct WordGuessApp: App {
         .environmentObject(local)
         .environmentObject(premium)
         .environmentObject(session)
+        .environmentObject(checker)
         .environment(\.locale, local.locale)
         .environment(\.managedObjectContext, persistenceController.container.viewContext)
+    }
+    
+    private func onAppear() {
+        guard let currentUser = Auth.auth().currentUser,
+              let email = currentUser.email else { return }
+        guard loginHaneler.model == nil else { return }
+        loginHaneler.model = getInfo(for: currentUser)
+        Task.detached(priority: .high) {
+            guard await login.isLoggedin(email: email) else { await notLoggedin(); return }
+            await refreshWordZapPlaces(email: email)
+            await login.changeLanguage(email: email)
+            let gender = await login.gender(email: email)
+            await MainActor.run { loginHaneler.model?.gender = gender }
+        }
+    }
+    
+    private func notLoggedin() async {
+        await MainActor.run { loginHaneler.model = nil }
+    }
+    
+    private func handleUrl(_ url: URL) {
+        openURL(url)
+        checker.dismiss()
     }
     
     private func consumeQueuedDeepLink() async {

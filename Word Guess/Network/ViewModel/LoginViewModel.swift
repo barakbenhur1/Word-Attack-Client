@@ -25,6 +25,12 @@ class LoginViewModel: ObservableObject {
         return value != nil
     }
     
+    func isLoggedin(email: String) async -> Bool {
+        let value: EmptyModel? = await network.send(route: .isLoggedin,
+                                                    parameters: ["email": email])
+        return value != nil
+    }
+    
     func gender(email: String) async -> String {
         let value: GenderData? = await network.send(route: .gender,
                                                     parameters: ["email": email])

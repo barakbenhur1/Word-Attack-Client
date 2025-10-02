@@ -76,7 +76,11 @@ struct LoginView<VM: LoginViewModel>: View {
                         let name = "\(model.givenName) \(model.lastName)".trimmingCharacters(in: .whitespaces)
                         let ok = await loginVm.login(email: model.email, name: name, gender: model.gender)
                         loading = false
-                        if ok { loginHandeler.model = model }
+                        if ok {
+                            await MainActor.run {
+                                loginHandeler.model = model
+                            }
+                        }
                     }
                 },
                 error: { err in loading = false; print(err) }

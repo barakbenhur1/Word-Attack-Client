@@ -59,7 +59,7 @@ struct DifficultyView: View {
     @FetchRequest(sortDescriptors: []) var tutorialItems: FetchedResults<TutorialItem>
     @EnvironmentObject private var router: Router
     @EnvironmentObject private var audio: AudioPlayer
-    @EnvironmentObject private var loginHandeler: LoginHandeler
+    @EnvironmentObject private var loginHaneler: LoginHandeler
     @EnvironmentObject private var premium: PremiumManager
     
     @State private var isMenuOpen: Bool = false
@@ -246,7 +246,7 @@ struct DifficultyView: View {
         Button {
             Task.detached(priority: .userInitiated) {
                 await MainActor.run {
-                    loginHandeler.model = nil
+                    loginHaneler.model = nil
                     auth.logout()
                 }
             }

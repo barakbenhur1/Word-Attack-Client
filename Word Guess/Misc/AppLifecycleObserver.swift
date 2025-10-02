@@ -27,6 +27,7 @@ struct AppLifecycleObserver: ViewModifier {
                         // Ask permission once; safe to call again
                         try? await NotificationManager.shared.requestAuthorization()
                         // Re-schedule today's inactivity reminder (fires later if user doesn't reopen)
+                        await NotificationManager.shared.cancelDailyInactivityReminder()
                         await NotificationManager.shared.scheduleDailyInactivityReminder(hour: inactivityHour,
                                                                                          minute: inactivityMinute)
                         // If we returned to the app, cancel any resume reminder for current game

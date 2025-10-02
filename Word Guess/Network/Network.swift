@@ -11,7 +11,7 @@ import Foundation
 
 protocol DataSource: ObservableObject {}
 
-internal enum APIRoute: String { case root = "", word, score, gender, changeLanguage, getPremiumScore, getAllPremiumScores, scoreboard, place, getScore, getWord, addGuess, premiumScore }
+internal enum APIRoute: String { case root = "", word, score, gender, changeLanguage, getPremiumScore, getAllPremiumScores, scoreboard, place, getScore, getWord, addGuess, premiumScore, isLoggedin }
 
 // MARK: Networkble
 private protocol Networkble: DataSource {

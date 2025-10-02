@@ -75,6 +75,7 @@ struct LeaderboardView<VM: ScoreboardViewModel>: View {
     @State private var current: Int = 0
     @State private var selectedDifficultyIndex: Int = 0
     
+    private var interstitialAdManager: InterstitialAdsManager? = AdProvider.interstitialAdsManager(id: "GameInterstitial")
     private var language: String? { local.locale.identifier.components(separatedBy: "_").first }
     private var isRTL: Bool { language == "he" }
     private var myEmailLower: String { (loginHandeler.model?.email ?? "").lowercased() }
@@ -93,7 +94,7 @@ struct LeaderboardView<VM: ScoreboardViewModel>: View {
                 
                 // Title bar
                 ZStack(alignment: .leading) {
-                    BackButton(action: router.navigateBack)
+                    BackButton(action: closeView)
                     HStack {
                         Spacer()
                         Text("SCOREBOARD")
@@ -201,12 +202,15 @@ struct LeaderboardView<VM: ScoreboardViewModel>: View {
                                     scrollToMe(proxy: proxy, rowsPerDifficulty: rowsPerDifficulty)
                                 }
                                 .onAppear {
-                                    // when view first lays out for this day
-                                    scrollToMe(proxy: proxy, rowsPerDifficulty: rowsPerDifficulty)
+                                    guard interstitialAdManager == nil || !interstitialAdManager!.initialInterstitialAdLoaded else { return }
+                                    if let interstitialAdManager {
+                                        interstitialAdManager.displayInitialInterstitialAd {
+                                            // when view first lays out for this day
+                                            scrollToMe(proxy: proxy, rowsPerDifficulty: rowsPerDifficulty)
+                                        }
+                                    } else { scrollToMe(proxy: proxy, rowsPerDifficulty: rowsPerDifficulty) }
                                 }
-                            } else {
-                                EmptyStateCard()
-                            }
+                            } else { EmptyStateCard() }
                         }
                         .padding(.horizontal, isPadLike ? 22 : 16)
                         .padding(.bottom, isPadLike ? 10 : 6)
@@ -277,6 +281,11 @@ private extension LeaderboardView {
         withAnimation(.easeInOut) {
             proxy.scrollTo(myKey, anchor: .center)
         }
+    }
+    
+    func closeView() {
+        interstitialAdManager?.initialInterstitialAdLoaded = false
+        router.navigateBack()
     }
 }
 

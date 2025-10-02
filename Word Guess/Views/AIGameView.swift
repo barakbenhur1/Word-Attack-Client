@@ -30,7 +30,6 @@ struct AIGameView<VM: AIWordViewModel>: View {
     private var length: Int { DifficultyType.ai.getLength() }
     
     private var email: String? { loginHandeler.model?.email }
-    private var gender: String? { loginHandeler.model?.gender }
     private var interstitialAdManager: InterstitialAdsManager? = AdProvider.interstitialAdsManager(id: "GameInterstitial")
     
     private let fullHP :Int = 100
@@ -40,6 +39,7 @@ struct AIGameView<VM: AIWordViewModel>: View {
     @State private var vm = VM()
     @State private var endFetchAnimation = false
     @State private var didStart = false
+    @State private var gender: String = "male"
     
     @State private var aiHpAnimation: HpAnimationParams = (0, CGFloat(0), CGFloat(0), CGFloat(30))
     @State private var playerHpAnimation: HpAnimationParams = (0, CGFloat(0), CGFloat(0), CGFloat(30))
@@ -200,16 +200,25 @@ struct AIGameView<VM: AIWordViewModel>: View {
     }
     
     private func onAppear(email: String) {
-        guard !didStart else { return }
+        guard !didStart && (interstitialAdManager == nil || !interstitialAdManager!.initialInterstitialAdLoaded) else { return }
         aiIntroTask?.cancel()
         aiTypeTask?.cancel()
         hitTaskPlayer?.cancel()
         hitTaskAI?.cancel()
         phraseTask?.cancel()
         aiTypeToken = UUID()
+        gender = loginHandeler.model?.gender ?? "male"
         session.startNewRound(id: .ai)
-        Task.detached(priority: .userInitiated) {
-            await handleStartup(email: email)
+        if let interstitialAdManager {
+            interstitialAdManager.displayInitialInterstitialAd {
+                Task.detached(priority: .userInitiated) {
+                    await handleStartup(email: email)
+                }
+            }
+        } else {
+            Task.detached(priority: .userInitiated) {
+                await handleStartup(email: email)
+            }
         }
     }
     
@@ -245,6 +254,7 @@ struct AIGameView<VM: AIWordViewModel>: View {
         ai?.release()
         audio.stop()
         session.finishRound()
+        interstitialAdManager?.initialInterstitialAdLoaded = false
         
         if vm.fatalError || ai == nil || !ai!.isReadyToGuess {
             router.navigateBack()
@@ -749,7 +759,7 @@ struct AIGameView<VM: AIWordViewModel>: View {
                         Spacer()
                         VStack {
                             ZStack {
-                                Image("player_\(gender ?? "male")")
+                                Image("player_\(gender)")
                                     .resizable()
                                     .scaledToFill()
                                     .shadow(radius: 4)
@@ -768,10 +778,8 @@ struct AIGameView<VM: AIWordViewModel>: View {
                                     .frame(maxWidth: .infinity)
                                     .foregroundStyle(.red)
                                     .opacity(playerHpAnimation.opacity)
-                                    .scaleEffect(.init(width: playerHpAnimation.scale,
-                                                       height: playerHpAnimation.scale))
-                                    .offset(x: playerHpAnimation.scale > 0 ? (language == "he" ? 12 : -12) : 0,
-                                            y: playerHpAnimation.offset)
+                                    .scaleEffect(.init(width: playerHpAnimation.scale, height: playerHpAnimation.scale))
+                                    .offset(x: playerHpAnimation.scale > 0 ? (language == "he" ? 12 : -12) : 0, y: playerHpAnimation.offset)
                                     .blur(radius: 0.5)
                                     .fixedSize()
                             }
