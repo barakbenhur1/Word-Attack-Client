@@ -20,8 +20,10 @@ struct WordGuessApp: App {
     
     @StateObject private var vm = AppStateViewModel()
     @StateObject private var premium = PremiumManager.shared
+    @StateObject private var session = GameSessionManager()
     
     @State private var tooltipPusher = PhraseProvider()
+    @State private var isInvite = false
     
     private let persistenceController = PersistenceController.shared
     private let loginHaneler = LoginHandeler()
@@ -32,7 +34,7 @@ struct WordGuessApp: App {
     private let deepLinker = DeepLinker.shared
     private let login = LoginViewModel()
     private let adProvider = AdProvider()
-    
+
     var body: some Scene {
         WindowGroup {
             RouterView {
@@ -41,13 +43,15 @@ struct WordGuessApp: App {
                 else { ServerLoadingView() }
             }
             .handleBackground()
+            .attachAppLifecycleObservers(session: session, inactivityHour: 19)
             .onAppear {
                 guard let currentUser = Auth.auth().currentUser,
                       let email = currentUser.email else { return }
                 loginHaneler.model = getInfo(for: currentUser)
                 Task.detached(priority: .high) {
                     await refreshWordZapPlaces(email: email)
-                    await login.changeLanguage(email: email)
+                    let check = await login.changeLanguage(email: email)
+                    guard check else { await MainActor.run { loginHaneler.model = nil }; return }
                     let gender = await login.gender(email: email)
                     await MainActor.run { loginHaneler.model?.gender = gender }
                 }
@@ -65,6 +69,10 @@ struct WordGuessApp: App {
                 guard let email = loginHaneler.model?.email else { return }
                 Task.detached(priority: .high) { await login.changeLanguage(email: email) }
             }
+            .onChange(of: deepLinker.inviteRef) {
+                guard deepLinker.inviteRef != nil else { return }
+                isInvite = true
+            }
             .task {
                 SharedStore.wipeGroupOnFreshInstall()
                 await vm.bootstrap()
@@ -75,6 +83,27 @@ struct WordGuessApp: App {
                 guard loginHaneler.model?.gender != nil else { return }
                 deepLinker.preform()
             }
+            .onReceive(NotificationCenter.default.publisher(for: .DeepLinkOpen)) { note in
+                if let url = note.userInfo?["url"] as? URL {
+                    deepLinker.set(url: url)
+                    guard loginHaneler.model?.gender != nil else { return }
+                    deepLinker.preform()
+                }
+            }
+            .onChange(of: scenePhase) { _, newPhase in
+                if newPhase == .active {
+                    Task { await consumeQueuedDeepLink() }
+                }
+            }
+            .task { await consumeQueuedDeepLink() }
+            .glassFullScreen(isPresented: $isInvite) {
+                if let ref = deepLinker.inviteRef {
+                    InviteJoinView(ref: ref) { _ in
+                        isInvite = false
+                    }
+                }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .init("UNUserNotificationCenterDidReceiveResponse"))) { _ in }
         }
         .environmentObject(router)
         .environmentObject(screenManager)
@@ -84,8 +113,16 @@ struct WordGuessApp: App {
         .environmentObject(local)
         .environmentObject(premium)
         .environmentObject(adProvider)
+        .environmentObject(session)
         .environment(\.locale, local.locale)
         .environment(\.managedObjectContext, persistenceController.container.viewContext)
+    }
+    
+    private func consumeQueuedDeepLink() async {
+        if let url = await DeepLinkInbox.shared.take() {
+            deepLinker.set(url: url)
+            deepLinker.preform()
+        }
     }
     
     private func getInfo(for currentUser: User) -> LoginAuthModel {
@@ -138,8 +175,60 @@ struct BackgroundHandlerModifier: ViewModifier {
     }
 }
 
+actor DeepLinkInbox {
+    static let shared = DeepLinkInbox()
+    private var queued: URL?
+
+    func push(_ url: URL) { queued = url }
+    func take() -> URL? { defer { queued = nil }; return queued }
+}
+
 private extension View {
     /// Attach this once (e.g., on your root view) to auto-pause/resume audio on background/foreground.
     func handleBackground() -> some View { modifier(BackgroundHandlerModifier()) }
 }
 
+struct OverFullScreenPresenter<Content: View>: UIViewControllerRepresentable {
+    @Binding var isPresented: Bool
+    let content: Content
+
+    init(isPresented: Binding<Bool>, @ViewBuilder content: () -> Content) {
+        _isPresented = isPresented
+        self.content = content()
+    }
+
+    func makeUIViewController(context: Context) -> UIViewController {
+        let vc = UIViewController()
+        vc.view.backgroundColor = .clear
+        return vc
+    }
+
+    func updateUIViewController(_ parent: UIViewController, context: Context) {
+        if isPresented, parent.presentedViewController == nil {
+            let host = UIHostingController(rootView:
+                content
+                    .background(Color.clear)
+                    .ignoresSafeArea()
+            )
+            host.view.backgroundColor = .clear
+            host.modalPresentationStyle = .overFullScreen
+            host.modalTransitionStyle = .crossDissolve
+            parent.present(host, animated: true)
+        } else if !isPresented, parent.presentedViewController != nil {
+            parent.dismiss(animated: true)
+        }
+    }
+}
+
+extension View {
+    func glassFullScreen<Content: View>(
+        isPresented: Binding<Bool>,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        background(OverFullScreenPresenter(isPresented: isPresented, content: content))
+    }
+}
+
+extension Notification.Name {
+    static let DeepLinkOpen = Notification.Name("DeepLinkOpen")
+}

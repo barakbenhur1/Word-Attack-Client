@@ -22,6 +22,7 @@ struct AIGameView<VM: AIWordViewModel>: View {
     @EnvironmentObject private var local: LanguageSetting
     @EnvironmentObject private var premium: PremiumManager
     @EnvironmentObject private var adProvider: AdProvider
+    @EnvironmentObject private var session: GameSessionManager
     
     fileprivate enum Turn: Int { case player = 0, ai = 1 }
     private enum GameState { case inProgress, lose, win }
@@ -38,7 +39,6 @@ struct AIGameView<VM: AIWordViewModel>: View {
     private let noGuessHitPoints = 40
     
     @State private var vm = VM()
-    @State private var keyboard = KeyboardHeightHelper()
     @State private var endFetchAnimation = false
     @State private var didStart = false
     
@@ -208,6 +208,7 @@ struct AIGameView<VM: AIWordViewModel>: View {
         hitTaskAI?.cancel()
         phraseTask?.cancel()
         aiTypeToken = UUID()
+        session.startNewRound(id: .ai)
         Task.detached(priority: .userInitiated) {
             await handleStartup(email: email)
         }
@@ -244,6 +245,7 @@ struct AIGameView<VM: AIWordViewModel>: View {
         screenManager.keepScreenOn = false
         ai?.release()
         audio.stop()
+        session.finishRound()
         
         if vm.fatalError || ai == nil || !ai!.isReadyToGuess {
             router.navigateBack()
@@ -258,7 +260,6 @@ struct AIGameView<VM: AIWordViewModel>: View {
     }
     
     private func closeViewAfterErorr() {
-        keyboard.show = true
         closeView()
     }
     

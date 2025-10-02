@@ -15,26 +15,29 @@ struct AdView: View {
         BannerView(adUnitID: adUnitID)
             .frame(width: GADAdSizeBanner.size.width,
                    height: GADAdSizeBanner.size.height)
-            .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in ATTrackingManager.requestTrackingAuthorization(completionHandler: { status in }) }
+            .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
+                if ATTrackingManager.trackingAuthorizationStatus == .notDetermined {
+                    ATTrackingManager.requestTrackingAuthorization { _ in }
+                }
+            }
     }
 }
 
-
 struct BannerView: UIViewControllerRepresentable {
-    
     private let adUnitID: String
     
     private let bannerView = GADBannerView(adSize: GADAdSizeBanner)
     
     init(adUnitID: String) {
-        self.adUnitID = adUnitID.toKey()
+        self.adUnitID = adUnitID
     }
     
     func makeUIViewController(context: Context) -> UIViewController {
         let viewController = UIViewController()
-        bannerView.adUnitID = adUnitID
+        bannerView.adUnitID = adUnitID.toKey()
         bannerView.rootViewController = viewController
         viewController.view.addSubview(bannerView)
+        bannerView.load(GADRequest())
         return viewController
     }
     

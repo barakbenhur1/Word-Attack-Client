@@ -584,6 +584,16 @@
         }
       }
     },
+    "By joining, you agree to the Terms and Privacy Policy." : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "בעצם ההצטרפות, אתם מסכימים לתנאים ולמדיניות הפרטיות."
+          }
+        }
+      }
+    },
     "C’mon already" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -862,6 +872,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "המשך עם גוגל"
+          }
+        }
+      }
+    },
+    "Copied code" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הקוד הועתק"
           }
         }
       }
@@ -1854,6 +1874,17 @@
         }
       }
     },
+    "I’m playing WordZap — come beat my score!" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אני משחק ב-WordZap — בואו לנסות לנצח אותי!"
+          }
+        }
+      }
+    },
     "Idiom idiot" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1986,6 +2017,17 @@
         }
       }
     },
+    "Join me on WordZap" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הצטרף אליי ב-WordZap"
+          }
+        }
+      }
+    },
     "Just" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2089,6 +2131,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "טוען"
+          }
+        }
+      }
+    },
+    "Let׳s Start" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "בוא נתחיל"
           }
         }
       }
@@ -3649,6 +3701,16 @@
         }
       }
     },
+    "Share with friends" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "שתפו עם חברים"
+          }
+        }
+      }
+    },
     "skip" : {
       "localizations" : {
         "en" : {
@@ -4497,6 +4559,16 @@
         }
       }
     },
+    "Wellcome!" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ברוך הבא!"
+          }
+        }
+      }
+    },
     "win" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -4716,6 +4788,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "אתה נגד בינה מלאכותית"
+          }
+        }
+      }
+    },
+    "You were invited by" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הוזמנת על־ידי"
           }
         }
       }

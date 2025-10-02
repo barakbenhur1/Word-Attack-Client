@@ -144,6 +144,7 @@ struct DifficultyView: View {
                 action: {
                     Task.detached {
                         await MainActor.run {
+//                            menuManager.refresh()
                             withAnimation(.spring(response: 0.35, dampingFraction: 0.9)) { isMenuOpen = true }
                         }
                     }
@@ -235,9 +236,7 @@ struct DifficultyView: View {
         }()
         
         Button {
-            Task(priority: .userInitiated) {
-                await MainActor.run { router.navigateTo(.game(diffculty: type)) }
-            }
+            router.navigateToSync(.game(diffculty: type))
         } label: {
             ElevatedButtonLabel(LocalizedStringKey(type.rawValue))
                 .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))

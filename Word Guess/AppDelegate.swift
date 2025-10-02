@@ -23,16 +23,22 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
     func application(
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]? = nil) -> Bool {
-            
             // Facebook SDK
             ApplicationDelegate.shared.application(application, didFinishLaunchingWithOptions: launchOptions)
             
             // Notifications (alerts/badges/sounds) — not strictly needed for *silent* pushes,
             // but harmless if you also use visible notifications.
+            let open = UNNotificationAction(identifier: "OPEN_ACTION",
+                                            title: "Open",
+                                            options: [.foreground])
+            let cat = UNNotificationCategory(identifier: "OPEN_DEEPLINK",
+                                             actions: [open],
+                                             intentIdentifiers: [],
+                                             options: [])
+            UNUserNotificationCenter.current().setNotificationCategories([cat])
+            
+            // Set delegate EARLY so cold-start taps are delivered here
             UNUserNotificationCenter.current().delegate = self
-            UNUserNotificationCenter.current().requestAuthorization(
-                options: [.alert, .badge, .sound]
-            ) { _, _ in }
             
             // Firebase
             FirebaseApp.configure()
@@ -57,10 +63,6 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
             registerBGTasks()
             dumpBGConfig()
             Task(priority: .background) { await scheduleBGWork(reason: "launch") }
-            
-            _ = UIScreen.main.bounds
-            _ = UIScreen.main.nativeBounds
-            _ = UIScreen.main.scale
             
             return true
         }
@@ -141,12 +143,23 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
                 completionHandler(changed ? .newData : .noData)
             }
         }
+
+     // <-- This is called when the user taps the notification (or an action)
+    func userNotificationCenter(_ center: UNUserNotificationCenter,
+                                   didReceive response: UNNotificationResponse,
+                                withCompletionHandler completion: @escaping () -> Void) {
+        if let s = response.notification.request.content.userInfo[NotifKeys.deeplink] as? String,
+           let url = URL(string: s) {
+            Task { await DeepLinkInbox.shared.push(url) }
+        }
+        completion()
+       }
     
     // Optional: if you also post visible notifications while foregrounded.
     func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         willPresent notification: UNNotification) async -> UNNotificationPresentationOptions {
-            return [] // or [.banner, .sound] if you want to show while app is open
+            return [.banner, .sound] // or [.banner, .sound] if you want to show while app is open
         }
     
     // MARK: - Graceful background finish for your own triggers

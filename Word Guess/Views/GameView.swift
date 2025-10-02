@@ -37,6 +37,7 @@ struct GameView<VM: DifficultyWordViewModel>: View {
     @EnvironmentObject private var local: LanguageSetting
     @EnvironmentObject private var premium: PremiumManager
     @EnvironmentObject private var adProvider: AdProvider
+    @EnvironmentObject private var session: GameSessionManager
     
     private let queue = DispatchQueue.main
     private let rows: Int = 5
@@ -52,7 +53,6 @@ struct GameView<VM: DifficultyWordViewModel>: View {
     @State private var matrix: [[String]]
     @State private var colors: [[CharColor]]
     @State private var vm = VM()
-    @State private var keyboard = KeyboardHeightHelper()
     @State private var didStart = false
     @State private var timeAttackAnimation = false
     @State private var timeAttackAnimationDone = true
@@ -77,7 +77,6 @@ struct GameView<VM: DifficultyWordViewModel>: View {
     }
     
     private func closeAfterError() {
-        keyboard.show = true
         navBack()
     }
     
@@ -113,19 +112,16 @@ struct GameView<VM: DifficultyWordViewModel>: View {
             guard endFetchAnimation && vm.word.isTimeAttack else { return }
             timeAttackAnimationDone = false
             withAnimation(.interpolatingSpring(.smooth)) { timeAttackAnimation = true }
-            delayedSoundTask?.cancel()
-            delayedSoundTask = Task {
-                do {
-                    try await Task.sleep(nanoseconds: 2_000_000_000)
-                    guard guardVisible() else { return }
-                    timeAttackAnimationDone = true
-                    timeAttackAnimation = false
-                    try await Task.sleep(nanoseconds: 300_000_000)
-                    guard guardVisible() else { return }
-                    audio.playSound(sound: "tick",
-                                    type: "wav",
-                                    loop: true)
-                } catch { /* cancelled */ }
+            Task {
+                try? await Task.sleep(nanoseconds: 2_000_000_000)
+                guard guardVisible() else { return }
+                timeAttackAnimationDone = true
+                timeAttackAnimation = false
+                try? await Task.sleep(nanoseconds: 300_000_000)
+                guard guardVisible() else { return }
+                audio.playSound(sound: "tick",
+                                type: "wav",
+                                loop: true)
             }
         }
     }
@@ -149,6 +145,7 @@ struct GameView<VM: DifficultyWordViewModel>: View {
         default: break
         }
         appearTask?.cancel()
+        session.startNewRound(id: diffculty)
         appearTask = Task.detached(priority: .userInitiated) {
             await handleNewWord(email: email)
             await MainActor.run { didStart = vm.word != .empty }
@@ -262,10 +259,9 @@ struct GameView<VM: DifficultyWordViewModel>: View {
     }
     
     @ViewBuilder private func gameTable() -> some View {
-        // Rows
         ForEach(0..<rows, id: \.self) { i in
             ZStack {
-                let gainFocus = Binding(get: { current == i && endFetchAnimation && !timeAttackAnimation && timeAttackAnimationDone },
+                let gainFocus = Binding(get: { current == i && endFetchAnimation && timeAttackAnimationDone },
                                         set: { _ in })
                 WordView(cleanCells: $cleanCells,
                          current: $current,
@@ -279,7 +275,7 @@ struct GameView<VM: DifficultyWordViewModel>: View {
                          .disabled(current != i)
                          .shadow(radius: 4)
                 
-                if keyboard.show && vm.word.isTimeAttack && timeAttackAnimationDone && current == i {
+                if vm.word.isTimeAttack && timeAttackAnimationDone && current == i {
                     let start = Date()
                     let end = start.addingTimeInterval(diffculty == .easy ? 20 : 15)
                     ProgressBarView(length: length,
@@ -297,7 +293,7 @@ struct GameView<VM: DifficultyWordViewModel>: View {
             ZStack(alignment: .top) {
                 switch diffculty {
                 case .tutorial: toturialTop()
-                default: gameTop()
+                default:        gameTop()
                 }
             }
             .shadow(radius: 4)
@@ -308,7 +304,6 @@ struct GameView<VM: DifficultyWordViewModel>: View {
     @ViewBuilder private func gameTop() -> some View {
         ZStack(alignment: .trailing) {
             HStack {
-                // Left: Difficulty
                 VStack {
                     Spacer()
                     Text(diffculty.stringValue)
@@ -491,6 +486,7 @@ struct GameView<VM: DifficultyWordViewModel>: View {
     private func navBack() {
         UIApplication.shared.hideKeyboard()
         audio.stop()
+        session.finishRound()
         router.navigateBack()
     }
     
@@ -567,29 +563,26 @@ struct GameView<VM: DifficultyWordViewModel>: View {
     private func score(value: Int) {
         scoreAnimation.value = value
         withAnimation(.linear(duration: 1.4)) {
-            scoreAnimation.offset = 0
-            scoreAnimation.opticity = 1
+            scoreAnimation.offset = 5
+            scoreAnimation.opticity = 0.85
             scoreAnimation.scale = 0.9
         }
         
-        // Replace nested asyncAfters with visibility-guarded scheduling
         Task {
-            do {
-                try await Task.sleep(nanoseconds: 1_440_000_000)
-                guard guardVisible() else { scoreAnimation = (0, CGFloat(0), CGFloat(0), CGFloat(30)); return }
-                if scoreAnimation.opticity == 1 {
-                    withAnimation(.linear(duration: 0.2)) {
-                        scoreAnimation.opticity = 0
-                        scoreAnimation.scale = 0
-                    }
+            try? await Task.sleep(nanoseconds: 1_440_000_000)
+            guard guardVisible() else { scoreAnimation = (0, CGFloat(0), CGFloat(0), CGFloat(30)); return }
+            if scoreAnimation.opticity == 0.85 {
+                withAnimation(.linear(duration: 0.2)) {
+                    scoreAnimation.opticity = 0
+                    scoreAnimation.scale = 0
                 }
-                try await Task.sleep(nanoseconds: 200_000_000)
-                guard guardVisible() else { scoreAnimation = (0, CGFloat(0), CGFloat(0), CGFloat(30)); return }
-                vm.score += value
-                vm.word.number += 1
-                scoreAnimation.value = 0
-                scoreAnimation.offset = 30
-            } catch { /* cancelled */ }
+            }
+            try? await Task.sleep(nanoseconds: 200_000_000)
+            guard guardVisible() else { scoreAnimation = (0, CGFloat(0), CGFloat(0), CGFloat(30)); return }
+            vm.score += value
+            vm.word.number += 1
+            scoreAnimation.value = 0
+            scoreAnimation.offset = 30
         }
     }
 }
@@ -674,34 +667,6 @@ extension View {
                 transaction.disablesAnimations = true
                 transaction.animation = .linear(duration: 0.1)
             }
-        }
-    }
-}
-
-@Observable
-class KeyboardHeightHelper: ObservableObject {
-    var keyboardHeight: CGFloat = 0
-    var show: Bool = false
-    
-    init() { listenForKeyboardNotifications() }
-    
-    deinit { NotificationCenter.default.removeObserver(self) }
-    
-    private func listenForKeyboardNotifications() {
-        NotificationCenter.default.addObserver(forName: UIResponder.keyboardDidShowNotification,
-                                               object: nil,
-                                               queue: .main) { notification in
-            guard let userInfo = notification.userInfo,
-                  let keyboardRect = userInfo[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect else { return }
-            
-            self.keyboardHeight = keyboardRect.height
-            self.show = true
-        }
-        
-        NotificationCenter.default.addObserver(forName: UIResponder.keyboardDidHideNotification,
-                                               object: nil,
-                                               queue: .main) { (notification) in
-            //            self.keyboardHeight = 0
         }
     }
 }

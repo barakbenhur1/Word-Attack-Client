@@ -190,9 +190,8 @@ struct LeaderboardView<VM: ScoreboardViewModel>: View {
                     .frame(maxWidth: .infinity)
                 }
                 
-                // Ad
+                Spacer()
                 adProvider.adView(id: "ScoreBanner")
-                    .frame(maxWidth: 728) // leaderboard-like width for iPad
             }
         }
         .environment(\.layoutDirection, isRTL ? .rightToLeft : .leftToRight)

@@ -28,6 +28,8 @@ class Router: Singleton {
     
     var path: NavigationPath = NavigationPath()
     
+    private var routeQueue: [Route] = []
+    
     private var navigationAnimation: Bool = false { didSet { UINavigationBar.setAnimationsEnabled(navigationAnimation) } }
     
     private var lockNavigation: Bool = false
@@ -66,12 +68,22 @@ class Router: Singleton {
         }
     }
     
+    func navigateToSync(_ appRoute: Route) {
+        Task(priority: .userInitiated) {
+            await MainActor.run {
+                navigateTo(appRoute)
+            }
+        }
+    }
+    
     // Used by views to navigate to another view
     @MainActor
     func navigateTo(_ appRoute: Route) {
         guard !lockNavigation else { return }
+        guard routeQueue.last != appRoute else { return }
         UIApplication.shared.hideKeyboard()
         handeleNavigationAnimation(for: appRoute)
+        routeQueue.append(appRoute)
         path.append(appRoute)
         lockNavigation = true
         Task.detached(priority: .high) {
@@ -88,13 +100,13 @@ class Router: Singleton {
     func navigateBack() {
         guard !path.isEmpty else { return }
         UIApplication.shared.hideKeyboard()
-        DeepLinker.shared.reset()
+        routeQueue.removeLast()
         path.removeLast()
     }
     
     func popToRoot() async {
         guard !path.isEmpty else { return }
         await UIApplication.shared.hideKeyboard()
-        await MainActor.run { path.removeLast(path.count) }
+        await MainActor.run { routeQueue = []; path.removeLast(path.count) }
     }
 }

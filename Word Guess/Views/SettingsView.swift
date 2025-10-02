@@ -8,7 +8,7 @@
 import SwiftUI
 
 enum SettingsOption: String {
-    case language = "language", sound = "sound", ai = "ai", premium = "Premium"
+    case language = "language", sound = "sound", ai = "ai", premium = "Premium", share = "Share"
     
     var stringValue: String { rawValue.localized }
 }
@@ -25,13 +25,20 @@ struct SettingsView: View {
     @EnvironmentObject private var adProvider: AdProvider
     @EnvironmentObject private var premium: PremiumManager
     @EnvironmentObject private var menuManager: MenuManager
+    @EnvironmentObject private var loginHandeler: LoginHandeler
     
     @State private var items: [SettingsOptionButton] = [.init(type: .premium),
                                                         .init(type: .sound),
                                                         .init(type: .ai),
-                                                        .init(type: .language)]
+                                                        .init(type: .language),
+                                                        .init(type: .share)]
     
     @State private var showResetAI: Bool = false
+    
+    
+    @State private var showShare: Bool = false
+    
+    @State private var itemSource: InviteItemSource?
     
     @State private var showPaywall = false
     
@@ -47,6 +54,7 @@ struct SettingsView: View {
         case .sound:    audio.isOn.toggle()
         case .ai:       showResetAI = difficulty != nil
         case .premium:  handlePremium()
+        case .share:    break
         }
     }
     
@@ -189,6 +197,21 @@ struct SettingsView: View {
                         .font(.headline)
                         .foregroundStyle(difficulty == nil ? .gray : .darkTurquoise)
                 }
+                
+            case .share:
+                if let email = loginHandeler.model?.email  {
+                    InviteFriendsButton(refUserID: email) { item in
+                        itemSource = item
+                        showShare = true
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+            }
+            
+            if let itemSource, showShare {
+                ShareSheet(isPresented: $showShare,
+                           itemSource: itemSource,
+                           anchorRectInScreen: .zero)
             }
         }
         .padding()
