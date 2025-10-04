@@ -1,6 +1,6 @@
 //
 //  Network.swift
-//  Word Guess
+//  WordZap
 //
 //  Created by Barak Ben Hur on 18/10/2024.
 //

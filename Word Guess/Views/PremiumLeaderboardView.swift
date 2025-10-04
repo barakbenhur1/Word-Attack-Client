@@ -1,6 +1,6 @@
 //
 //  PremiumLeaderboardView.swift
-//  Word Guess
+//  WordZap
 //
 //  Created by Barak Ben Hur on 13/09/2025.
 //  Updated 2025-10-02: Auto-scroll to current user's row + "Jump to my rank" button
@@ -78,12 +78,12 @@ struct PremiumLeaderboardView<VM: PremiumScoreboardViewModel>: View {
             HStack(spacing: 4) {
                 Spacer()
                 Image(systemName: "trophy.fill")
-                    .font(.system(size: isPadLike ? 28 : 23, weight: .bold, design: .rounded))
+                    .font(.system(size: isPadLike ? 27 : 22, weight: .bold, design: .rounded))
                     .multilineTextAlignment(.center)
                     .foregroundStyle(.yellow)
                     .shadow(color: .yellow.opacity(0.5), radius: 8, y: 2)
                 Text("Premium Leaderboard")
-                    .font(.system(size: isPadLike ? 28 : 23, weight: .bold, design: .rounded))
+                    .font(.system(size: isPadLike ? 27 : 22, weight: .bold, design: .rounded))
                     .multilineTextAlignment(.center)
                     .foregroundStyle(.white.opacity(0.92))
                 Spacer()
@@ -95,7 +95,7 @@ struct PremiumLeaderboardView<VM: PremiumScoreboardViewModel>: View {
     
     private func listBody(items: [PremiumScoreData], proxy: ScrollViewProxy) -> some View {
         // Only non-negative scores; highest first
-        let sorted = items.filter { $0.value >= 0 }.sorted { $0.value > $1.value }
+        let sorted = items.filter { $0.value >= 0 }.sorted { $0.rank < $1.rank }
         let hasMe  = sorted.contains(where: { $0.email.lowercased() == myEmailLower })
         
         return VStack(spacing: 12) {
@@ -118,7 +118,7 @@ struct PremiumLeaderboardView<VM: PremiumScoreboardViewModel>: View {
                     ForEach(Array(sorted.enumerated()), id: \.element.id) { idx, entry in
                         if let email {
                             LeaderboardRow(
-                                rank: idx + 1,
+                                rank: entry.rank,
                                 entry: entry,
                                 isCurrentUser: entry.email.caseInsensitiveCompare(email) == .orderedSame
                             )
@@ -193,11 +193,11 @@ private struct LeaderboardRow: View {
                     Text(entry.name)
                         .font(.system(.subheadline, design: .rounded).weight(.semibold))
                         .foregroundStyle(.white.opacity(0.95))
-                        .lineLimit(1)
-                    Text(entry.email)
-                        .font(.caption2)
-                        .foregroundStyle(.white.opacity(0.55))
-                        .lineLimit(1)
+                        .lineLimit(2)
+//                    Text(entry.email)
+//                        .font(.caption2)
+//                        .foregroundStyle(.white.opacity(0.55))
+//                        .lineLimit(1)
                 }
                 
                 Spacer()
@@ -209,7 +209,7 @@ private struct LeaderboardRow: View {
         }
         .overlay(
             Group {
-                if rank <= 3 || isCurrentUser {
+                if isCurrentUser {
                     RoundedRectangle(cornerRadius: 16)
                         .stroke(glowColor.opacity(0.35), lineWidth: 1)
                         .shadow(color: glowColor.opacity(0.4), radius: 8, y: 3)

@@ -22,7 +22,7 @@ class Router: Singleton {
         case score
         case premiumScore
         case premium(email: String?)
-        case premiumGame(word: String, history: [[String]], allowedLetters: String)
+        case premiumGame(word: String, canBeSolved: Bool, history: [[String]], allowedLetters: String)
         case game(diffculty: DifficultyType)
     }
     
@@ -46,10 +46,11 @@ class Router: Singleton {
         case .premiumScore:                                    PremiumLeaderboardView()
         case .game(let value):                                 gameView(value: value)
         case .premium(let email):                              PremiumHubView(email: email).environmentObject(timerBridge)
-        case .premiumGame(let word, let history, let allowed): PremiumHubGameView(vm: .init(word: word),
-                                                                                  history: history,
-                                                                                  allowedLetters: Set(allowed),
-                                                                                  onForceEnd: PremiumCoplitionHandler.shared.onForceEndPremium).environmentObject(timerBridge)
+        case .premiumGame(let word, let canBeSolved, let history, let allowed): PremiumHubGameView(vm: .init(word: word),
+                                                                                                   canBeSolved: canBeSolved,
+                                                                                                   history: history,
+                                                                                                   allowedLetters: Set(allowed),
+                                                                                                   onForceEnd: PremiumCoplitionHandler.shared.onForceEndPremium).environmentObject(timerBridge)
         }
     }
     
@@ -62,7 +63,7 @@ class Router: Singleton {
     
     private func handeleNavigationAnimation(for appRoute: Route) {
         switch appRoute {
-        case .premiumGame(_, _, _): navigationAnimation = false
+        case .premiumGame(_, _, _, _): navigationAnimation = false
         case .game(let diffculty):  navigationAnimation = diffculty != .tutorial
         default:                    navigationAnimation = true
         }

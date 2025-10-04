@@ -1,6 +1,6 @@
 //
 //  PremiumManager.swift
-//  Word Guess
+//  WordZap
 //
 //  Created by Barak Ben Hur on 11/09/2025.
 //
@@ -184,7 +184,7 @@ final class PremiumManager: PremiumManagerProtocol {
             }
         }
         await MainActor.run {
-            self.isPremium = active
+            self.isPremium = true
         }
     }
 }

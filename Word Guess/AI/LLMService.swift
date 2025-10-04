@@ -1,6 +1,6 @@
 //
 //  LLMService+WordZapAI.swift
-//  Word Guess
+//  WordZap
 //
 //  Loads the decoder model and exposes a KV “step” API.
 //  Robust to .mlmodelc/.mlmodel and Storage/Bundle locations.

@@ -1,6 +1,6 @@
 //
 //  AdProvider.swift
-//  Word Guess
+//  WordZap
 //
 //  Created by Barak Ben Hur on 11/09/2025.
 //
@@ -14,10 +14,7 @@ private struct InterstitialAdsManagerConfig {
 
 @MainActor
 class AdProvider: ObservableObject {
-    private static var interstitialAdsConfig: InterstitialAdsManagerConfig?
-    
-    @ViewBuilder static func adView(id: String,
-                                    withPlaceholder: Bool = false) -> some View {
+    @ViewBuilder static func adView(id: String, withPlaceholder: Bool = false) -> some View {
         ZStack(alignment: .center) {
             if withPlaceholder {
                 Rectangle()
@@ -30,14 +27,8 @@ class AdProvider: ObservableObject {
     
     static func interstitialAdsManager(id: String) -> InterstitialAdsManager?  {
         guard !PremiumManager.shared.isPremium else { return nil }
-        if let interstitialAdsConfig, id == interstitialAdsConfig.id {
-            interstitialAdsConfig.interstitialAdsManager.refashRemoteConfig()
-            return interstitialAdsConfig.interstitialAdsManager
-        } else {
-            let built: InterstitialAdsManagerConfig = .init(interstitialAdsManager: .init(adUnitID: id), id: id)
-            built.interstitialAdsManager.refashRemoteConfig()
-            interstitialAdsConfig = built
-            return built.interstitialAdsManager
-        }
+        let built: InterstitialAdsManagerConfig = .init(interstitialAdsManager: .init(adUnitID: id), id: id)
+        built.interstitialAdsManager.refashRemoteConfig()
+        return built.interstitialAdsManager
     }
 }

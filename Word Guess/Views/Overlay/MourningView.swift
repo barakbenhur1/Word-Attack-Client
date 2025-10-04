@@ -1,6 +1,6 @@
 //
 //  MourningView.swift
-//  Word Guess
+//  WordZap
 //
 //  Created by Barak Ben Hur on 15/08/2025.
 //  🖤 Subtle "loss" effect: rainy particles + vignette overlay (UIKit + SwiftUI)

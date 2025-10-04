@@ -1,6 +1,6 @@
 //
 //  CycleDifficultyIntents.swift
-//  Word Guess
+//  WordZap
 //
 //  Created by Barak Ben Hur on 31/08/2025.
 //

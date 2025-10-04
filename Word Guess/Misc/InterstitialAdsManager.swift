@@ -1,6 +1,6 @@
 //
 //  InterstitialAdsManager.swift
-//  Word Guess
+//  WordZap
 //
 //  Created by Barak Ben Hur on 21/10/2024.
 //
@@ -72,7 +72,7 @@ class InterstitialAdsManager: NSObject, GADFullScreenContentDelegate, Observable
     }
     
     // Display InterstitialAd
-    func displayInitialInterstitialAd(didDismiss: @escaping () -> ()) {
+    func displayInitialInterstitialAd(didDismiss: @escaping () -> () = {}) {
         guard let root = UIApplication.shared.connectedScenes
             .filter({$0.activationState == .foregroundActive})
             .compactMap({$0 as? UIWindowScene})

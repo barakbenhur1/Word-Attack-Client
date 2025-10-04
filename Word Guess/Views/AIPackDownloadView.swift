@@ -1,6 +1,6 @@
 //
 //  AIPackDownloadView.swift
-//  Word Guess
+//  WordZap
 //
 //  Drop-in file: View + robust replace utils + minimal manager stubs.
 //  Replace AIPackManager.ensurePackReady() with your real downloader.

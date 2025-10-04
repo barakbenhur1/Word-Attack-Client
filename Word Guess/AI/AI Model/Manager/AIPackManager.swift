@@ -1,6 +1,6 @@
 //
 //  AIPackManager.swift
-//  Word Guess
+//  WordZap
 //  Created by Barak Ben Hur on 15/08/2025.
 //  Uses GitHub Release tag instead of ODR.
 //

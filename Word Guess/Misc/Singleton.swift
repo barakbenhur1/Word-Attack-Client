@@ -1,6 +1,6 @@
 //
 //  Singleton.swift
-//  Word Guess
+//  WordZap
 //
 //  Created by Barak Ben Hur on 10/09/2024.
 //

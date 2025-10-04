@@ -1,6 +1,6 @@
 //
 //  RainbowPartyView.swift
-//  Word Guess
+//  WordZap
 //
 //  🎉 Robust confetti overlay (UIKit emitter + SwiftUI bridge)
 //

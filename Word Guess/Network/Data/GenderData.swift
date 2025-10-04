@@ -1,6 +1,6 @@
 //
 //  GenderData.swift
-//  Word Guess
+//  WordZap
 //
 //  Created by Barak Ben Hur on 12/08/2025.
 //

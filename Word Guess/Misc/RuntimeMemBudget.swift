@@ -1,6 +1,6 @@
 //
 //  RuntimeMemBudget.swift
-//  Word Guess
+//  WordZap
 //
 //  Created by Barak Ben Hur on 16/09/2025.
 //

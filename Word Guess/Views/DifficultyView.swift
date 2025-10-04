@@ -123,7 +123,6 @@ struct DifficultyView: View {
                 .background(.ultraThinMaterial)
                 .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                 .padding(.horizontal, 12)
-                .padding(.top, 4)
         }
         .safeAreaInset(edge: .bottom) {
             AdProvider.adView(id: "BottomBanner", withPlaceholder: true)
@@ -131,7 +130,6 @@ struct DifficultyView: View {
                 .background(.ultraThinMaterial)
                 .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                 .padding(.horizontal, 12)
-                .padding(.bottom, 4)
         }
     }
     
@@ -214,7 +212,6 @@ struct DifficultyView: View {
             Text("Pick a challenge to begin")
                 .font(.footnote.weight(.medium))
                 .foregroundStyle(.secondary)
-                .opacity(0.9)
                 .transition(.opacity.combined(with: .scale))
         }
         .padding(.bottom, 6)
@@ -350,7 +347,7 @@ private struct BackgroundDecor: View {
 
 // MARK: - Glass container
 
-private struct GlassContainer<Content: View>: View {
+struct GlassContainer<Content: View>: View {
     var corner: CGFloat = 32
     @ViewBuilder var content: Content
     

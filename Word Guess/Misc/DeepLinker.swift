@@ -1,6 +1,6 @@
 //
 //  DeepLinker.swift
-//  Word Guess
+//  WordZap
 //
 //  Created by Barak Ben Hur on 07/09/2025.
 //
@@ -85,11 +85,7 @@ private extension DeepLinker {
 
 private extension DeepLinker {
     func navigateTo(_ route: Router.Route) {
-        Task {
-            await MainActor.run {
-                router.navigateTo(route)
-            }
-        }
+        router.navigateToSync(route)
     }
 }
 

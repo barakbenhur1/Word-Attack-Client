@@ -1,6 +1,6 @@
 //
 //  RippleEffect.swift
-//  Word Guess
+//  WordZap
 //
 //  Created by Barak Ben Hur on 23/10/2024.
 //

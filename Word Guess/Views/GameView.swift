@@ -44,8 +44,7 @@ struct GameView<VM: DifficultyWordViewModel>: View {
     private var length: Int { return diffculty.getLength() }
     private var email: String? { return loginHandeler.model?.email }
 
-    private var interstitialAdManager: InterstitialAdsManager? = AdProvider.interstitialAdsManager(id: "GameInterstitial")
-   
+    @State private var interstitialAdManager: InterstitialAdsManager?
     @State private var current: Int = 0
     @State private var score: Int = 0
     @State private var scoreAnimation: (value: Int, opticity: CGFloat, scale: CGFloat, offset: CGFloat) = (0, CGFloat(0), CGFloat(0), CGFloat(30))
@@ -143,7 +142,8 @@ struct GameView<VM: DifficultyWordViewModel>: View {
         default: break
         }
         session.startNewRound(id: diffculty)
-        if let interstitialAdManager {
+        interstitialAdManager = AdProvider.interstitialAdsManager(id: "GameInterstitial")
+        if let interstitialAdManager, diffculty != .tutorial {
             interstitialAdManager.displayInitialInterstitialAd {
                 Task.detached(priority: .userInitiated) {
                     await handleNewWord(email: email)
@@ -187,7 +187,9 @@ struct GameView<VM: DifficultyWordViewModel>: View {
             .onDisappear {
                 isVisible = false
                 // stop audio that might be looping
+                UIApplication.shared.hideKeyboard()
                 audio.stop()
+                session.finishRound()
                 // cancel outstanding tasks
                 scoreAnimation = (0, CGFloat(0), CGFloat(0), CGFloat(30))
                 delayedSoundTask?.cancel(); delayedSoundTask = nil
@@ -493,7 +495,6 @@ struct GameView<VM: DifficultyWordViewModel>: View {
     }
     
     private func navBack() {
-        interstitialAdManager?.initialInterstitialAdLoaded = false
         UIApplication.shared.hideKeyboard()
         audio.stop()
         session.finishRound()

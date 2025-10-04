@@ -1,6 +1,6 @@
 //
 //  SocrePlaceProvider.swift
-//  Word Guess
+//  WordZap
 //
 //  Created by Barak Ben Hur on 01/09/2025.
 //

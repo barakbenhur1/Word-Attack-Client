@@ -2600,6 +2600,16 @@
         }
       }
     },
+    "New Round" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "סיבוב חדש"
+          }
+        }
+      }
+    },
     "Next" : {
       "localizations" : {
         "he" : {
@@ -4219,12 +4229,32 @@
         }
       }
     },
+    "This is you" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "זה אתה"
+          }
+        }
+      }
+    },
     "Time Attack" : {
       "localizations" : {
         "he" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "מתקפת זמן"
+          }
+        }
+      }
+    },
+    "Time left:" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "זמן שנשאר:"
           }
         }
       }
@@ -4664,13 +4694,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "WordZap"
+            "value" : "Word Zap"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "WordZap"
+            "value" : "Word Zap"
           }
         }
       }

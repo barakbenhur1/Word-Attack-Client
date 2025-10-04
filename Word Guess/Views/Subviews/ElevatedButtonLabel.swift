@@ -1,6 +1,6 @@
 //
 //  ElevatedButtonLabel.swift
-//  Word Guess
+//  WordZap
 //
 //  Created by Barak Ben Hur on 17/08/2025.
 //
@@ -190,15 +190,16 @@ public struct ElevatedButtonLabel: View {
                     .resizable()
                     .aspectRatio(contentMode: .fit)
                     .frame(width: 25, height: 25)
-                    .font(.system(size: 18, weight: .semibold, design: .rounded))
+                    .font(.system(size: 14, weight: .semibold, design: .rounded))
                     .padding(.leading, 10)
             } else if let image {
                 Image(image)
-                    .renderingMode(.original)
                     .resizable()
+                    .renderingMode(.template)
+                    .foregroundStyle(.white)
                     .aspectRatio(contentMode: .fit)
                     .frame(width: 30, height: 30)
-                    .font(.system(size: 18, weight: .semibold, design: .rounded))
+                    .font(.system(size: 14, weight: .semibold, design: .rounded))
                     .padding(.leading, 10)
             }
             Text(title)

@@ -1,6 +1,6 @@
 //
 //  BaseGameView.swift
-//  Word Guess
+//  WordZap
 //
 //  Created by Barak Ben Hur on 17/09/2025.
 //

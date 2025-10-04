@@ -1,6 +1,6 @@
 //
 //  AdView.swift
-//  Word Guess
+//  WordZap
 //
 //  Created by Barak Ben Hur on 21/10/2024.
 //
@@ -23,7 +23,7 @@ struct AdView: View {
     }
 }
 
-private let debugTestBannerID = "ca-app-pub-3940256099942544/2934735716"
+//private let debugTestBannerID = "ca-app-pub-3940256099942544/2934735716"
 
 public struct AdMobAdaptiveBanner: UIViewControllerRepresentable {
     public typealias UIViewControllerType = BannerViewController
@@ -32,14 +32,10 @@ public struct AdMobAdaptiveBanner: UIViewControllerRepresentable {
     private let backgroundColor: UIColor?
     
     /// - Parameters:
-    ///   - adUnitID: Your real ad unit in Release. In Debug we’ll auto use Google’s test ID.
+    ///   - adUnitID: Banner ID.
     ///   - backgroundColor: Optional background (often .clear).
     public init(adUnitID: String, backgroundColor: UIColor? = nil) {
-#if DEBUG
-        self.adUnitID = debugTestBannerID
-#else
-        self.adUnitID = adUnitID
-#endif
+        self.adUnitID = adUnitID.toKey()
         self.backgroundColor = backgroundColor
     }
     

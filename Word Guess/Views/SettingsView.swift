@@ -1,6 +1,6 @@
 //
 //  SettingsView.swift
-//  Word Guess
+//  WordZap
 //
 //  Created by Barak Ben Hur on 22/10/2024.
 //
@@ -13,7 +13,7 @@ enum SettingsOption: String {
     var stringValue: String { rawValue.localized }
 }
 
-struct SettingsOptionButton: Identifiable {
+struct SettingsOptionButton: Identifiable, Hashable {
     var id = UUID()
     let type: SettingsOption
 }
@@ -29,10 +29,7 @@ struct SettingsView: View {
     @EnvironmentObject private var loginHandeler: LoginHandeler
     @EnvironmentObject private var checker: AppStoreVersionChecker
     
-    @State private var items: [SettingsOptionButton] = [.init(type: .premium),
-                                                        .init(type: .sound),
-                                                        .init(type: .ai),
-                                                        .init(type: .language)]
+    @State private var items: [SettingsOptionButton] = []
     
     @State private var showResetAI: Bool = false
     
@@ -45,7 +42,7 @@ struct SettingsView: View {
     
     @State private var language: String?
     
-    @State private var difficulty: String? = UserDefaults.standard.string(forKey: "aiDifficulty")
+    @State private var difficulty: String?
     
     var fromSideMenu = false
     
@@ -106,6 +103,13 @@ struct SettingsView: View {
         .onAppear {
             difficulty = UserDefaults.standard.string(forKey: "aiDifficulty")
             language = local.locale.identifier.components(separatedBy: "_").first
+            
+            items = [
+                .init(type: .premium),
+                .init(type: .sound),
+                .init(type: .ai),
+                .init(type: .language)
+            ]
             
             if checker.needUpdate != nil {
                 items.append(.init(type: .update))

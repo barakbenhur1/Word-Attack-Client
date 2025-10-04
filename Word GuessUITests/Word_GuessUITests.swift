@@ -1,6 +1,6 @@
 //
 //  Word_GuessUITests.swift
-//  Word GuessUITests
+//  WordZapUITests
 //
 //  Created by Barak Ben Hur on 11/10/2024.
 //

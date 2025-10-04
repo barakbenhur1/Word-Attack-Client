@@ -88,6 +88,32 @@ public struct PremiumHubView: View {
             .ignoresSafeArea()
             
             VStack {
+                HStack(spacing: 12) {
+                    BackPill { closeView() }
+                        .padding(.trailing, 20)
+                    SolvedCounterPill(
+                        count: hub.solvedWords,
+                        rank: hub.rank,
+                        onTap: {
+                            hub.stop()
+                            router.navigateTo(.premiumScore)
+                        }
+                    )
+                    timerView(secondsLeft: hub.mainSecondsLeft,
+                              timer: timerBridge,
+                              skipProgressAnimation: hub.isSkipProgressAnimation)
+                    .padding(.trailing, 10)
+                    .gesture(
+                        DragGesture(minimumDistance: 20, coordinateSpace: .local)
+                            .onEnded { g in
+                                if abs(g.translation.width) > 60 {
+                                    hub.resetAll()     // Timer animates its own reset; no layout changes
+                                }
+                            }
+                    )
+                }
+                .padding(.top, 4)
+                
                 ScrollView(.vertical, showsIndicators: false) {
                     VStack(alignment: .leading, spacing: 18) {
                         Text("Discover letters in tactile mini-games. Use them to solve the word.")
@@ -109,7 +135,8 @@ public struct PremiumHubView: View {
                             Text("No letters yet")
                                 .font(.subheadline)
                                 .foregroundStyle(.white.opacity(0.6))
-                                .padding(.top, 4)
+                                .padding(.top, 8)
+                                .padding(.leading, 8)
                         }
                         
                         if !UIDevice.isPad {
@@ -155,28 +182,6 @@ public struct PremiumHubView: View {
             }
         }
         .environmentObject(hub.vm)
-        .safeAreaInset(edge: .top) {
-            HStack(spacing: 12) {
-                BackPill { closeView() }
-                .padding(.trailing, 20)
-                SolvedCounterPill(count: hub.solvedWords,
-                                  rank: hub.rank,
-                                  onTap: { router.navigateTo(.premiumScore) } )
-                timerView(secondsLeft: hub.mainSecondsLeft,
-                          timer: timerBridge,
-                          skipProgressAnimation: hub.isBackFromGame)
-                .padding(.trailing, 10)
-                .gesture(
-                    DragGesture(minimumDistance: 20, coordinateSpace: .local)
-                        .onEnded { g in
-                            if abs(g.translation.width) > 60 {
-                                hub.resetAll()     // Timer animates its own reset; no layout changes
-                            }
-                        }
-                )
-            }
-            .padding(.top, 4)
-        }
         .onChange(of: presentedSlot) { _, newValue in
             if let s = newValue { activeSlot = s; didResolveSheet = false }
         }
@@ -226,14 +231,20 @@ public struct PremiumHubView: View {
             }
         }
         .onAppear {
-            if !UserDefaults.standard.bool(forKey: "hasSeenHubTutorial_v1") {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { showTutorial = true }
-            }
+            hub.isShown = true
             PremiumHubModel.configureFor(language: language)
-            hub.refreshAIDifficulty()
-            hub.start()
             timerBridge.set(hub.mainSecondsLeft, total: hub.mainRoundLength)
+            hub.show()
+            guard hub.vm.word == .empty else { hub.start(); return }
+            
+            if !UserDefaults.standard.bool(forKey: "hasSeenHubTutorial_v1") {
+                Task {
+                    try? await Task.sleep(nanoseconds: 300_000_000)
+                    showTutorial = true
+                }
+            } else { hub.initLoop() }
         }
+        .onDisappear { hub.isShown = false }
         .onChange(of: local.locale) {
             PremiumHubModel.configureFor(language: language)
             hub.resetAll()
@@ -243,9 +254,16 @@ public struct PremiumHubView: View {
             if showTutorial {
                 HubTutorialOverlay {
                     UserDefaults.standard.set(true, forKey: "hasSeenHubTutorial_v1")
-                    withAnimation(.easeOut(duration: 0.25)) { showTutorial = false }
+                    hub.initLoop()
+                    withAnimation(.easeOut(duration: 0.25)) {
+                        showTutorial = false
+                    }
                 }
                 .transition(.opacity)
+            } else if hub.showNewWordToast {
+                NewWordToast()
+                    .transition(.scale(scale: 0.7).combined(with: .opacity))
+                    .zIndex(2)
             }
         }
         .customAlert("Network error",
@@ -394,11 +412,20 @@ final public class PremiumHubModel: ObservableObject {
     
     @Published var discoveredLetters: Set<Character> = []
     @Published var gameHistory: [[String]] = []
-    @Published var isBackFromGame: Bool = false
     @Published var canInteract: Bool = true
     @Published var aiDifficulty: AIDifficulty? = nil
     @Published var solvedWords: Int = 0
     @Published var rank: Int?
+    @Published var showNewWordToast = false
+    
+    @Published private var skipAnimationForProgress: Bool = false
+    
+    var isSkipProgressAnimation: Bool { skipAnimationForProgress }
+    
+    var isShown = false
+    
+    private var newWordTask: Task<Void, Never>?
+    private var newWordAnimationTask: Task<Void, Never>?
     
     // letter preference window
     private var lastWordLetterFoundAt: Date = Date()
@@ -415,31 +442,32 @@ final public class PremiumHubModel: ObservableObject {
     init(email: String?) {
         self.email = email
         self.aiDifficulty = loadAIDifficulty()
-        self.resetLoop()
     }
     
-    func refreshAIDifficulty() {
-        self.aiDifficulty = loadAIDifficulty()
-        if aiDifficulty == nil {
-            // Remove AI Merchant immediately if turned off
-            slots = slots.map { $0.kind == .aiMerchant ? self.catalog.makeSlot(hasAI: false, hub: self, existing: slots) : $0 }
-        }
-    }
-    
-    func start() {
+    func show() {
         if slots.isEmpty {
             slots = catalog.uniqueInitialSlots(hasAI: aiDifficulty != nil, hub: self)
         } else if aiDifficulty == nil {
             slots = slots.map { s in s.kind == .aiMerchant ? catalog.makeSlot(hasAI: false, hub: self, existing: slots) : s }
         }
+    }
+    
+    func skipProgressAnimation() {
+        skipAnimationForProgress = true
+    }
+    
+    func start() {
         guard tick == nil else { return }
         tick = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
             .sink { [weak self] _ in
                 guard let self else { return }
                 self.mainSecondsLeft -= 1
-                if self.mainSecondsLeft <= 0 {
+                self.mainSecondsLeft = max(0, self.mainSecondsLeft)
+                self.skipAnimationForProgress = false
+                if self.mainSecondsLeft == 0 {
                     Task.detached { @MainActor [weak self] in
                         guard let self else { return }
+                        guard isShown else { return }
                         resetAll()
                     }
                     return
@@ -457,14 +485,23 @@ final public class PremiumHubModel: ObservableObject {
             }
     }
     
+    func initLoop() {
+        guard tick == nil else { return }
+        resetLoop()
+    }
+    
     private func resetLoop() {
+        self.stop()
         self.mainSecondsLeft = self.mainRoundLength
         self.discoveredLetters = []
         self.gameHistory = []
         self.vm.word = .empty
+        self.showNewWordToast = false
+        self.newWordAnimation()
         self.lastWordLetterFoundAt = Date()
         if let email {
-            Task.detached(priority: .userInitiated) { [weak self] in
+            newWordTask?.cancel()
+            newWordTask = Task(priority: .userInitiated) { [weak self] in
                 guard let self else { return }
                 guard let solved = await vm.getScore(email: email) else { await vm.word(email: email); return }
                 await vm.word(email: email)
@@ -472,8 +509,28 @@ final public class PremiumHubModel: ObservableObject {
                 UserDefaults.standard.set(solved.rank, forKey: "wins_rank")
                 await MainActor.run { [weak self] in
                     guard let self else { return }
+                    start()
                     solvedWords = solved.value
                     withAnimation(.easeInOut(duration: 0.3)) { self.rank = solved.rank }
+                }
+            }
+        }
+    }
+    
+    private func newWordAnimation() {
+        newWordAnimationTask?.cancel()
+        newWordAnimationTask = Task(priority: .high) { [weak self] in
+            guard let self else { return }
+            try? await Task.sleep(nanoseconds: 300_000_000)
+            await MainActor.run {
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                    self.showNewWordToast = true
+                }
+            }
+            try? await Task.sleep(nanoseconds: 1_000_000_000)
+            await MainActor.run {
+                withAnimation(.easeOut(duration: 0.25)) {
+                    self.showNewWordToast = false
                 }
             }
         }
@@ -484,7 +541,7 @@ final public class PremiumHubModel: ObservableObject {
         resetLoop()
     }
     
-    func stop() { tick?.cancel(); tick = nil }
+    func stop() { newWordAnimationTask?.cancel(); newWordTask?.cancel(); tick?.cancel(); tick = nil }
     
     // Visual grid mapping
     func slot(atVisualIndex r: Int, _ c: Int) -> MiniSlot? {
@@ -585,6 +642,24 @@ private struct Grid3x3: View {
     }
 }
 
+private struct NewWordToast: View {
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "sparkles")
+                .font(.system(.largeTitle, design: .rounded).weight(.semibold))
+            Text("New Round")
+                .font(.system(.largeTitle, design: .rounded).weight(.semibold))
+        }
+        .padding(.horizontal, 46)
+        .padding(.vertical, 42)
+        .foregroundStyle(.white)
+        .background(.ultraThinMaterial, in: Capsule())
+        .overlay(Capsule().stroke(Color.white.opacity(0.18), lineWidth: 1))
+        .shadow(color: .black.opacity(0.35), radius: 12, y: 6)
+        .accessibilityLabel("New Round")
+    }
+}
+
 // MARK: - Main button in the middle (unchanged + hook for post-GameView reset)
 private struct MainRoundCircle: View {
     @EnvironmentObject private var router: Router
@@ -596,6 +671,9 @@ private struct MainRoundCircle: View {
     @State private var ripple  = false
     
     var body: some View {
+        let word = vm.wordValue
+        let isReady = !word.isEmpty && word.lettersAreSubset(of: hub.discoveredLetters)
+        
         Button {
             UIImpactFeedbackGenerator(style: .soft).impactOccurred()
             shimmer = true; ripple = true
@@ -604,17 +682,18 @@ private struct MainRoundCircle: View {
                 shimmer = false; ripple = false
                 try? await Task.sleep(nanoseconds: 60_000_000)
                 await MainActor.run {
-                    router.navigateTo(.premiumGame(
-                        word: vm.wordValue,
-                        history: hub.gameHistory,
-                        allowedLetters: String(hub.discoveredLetters).lowercased()
-                    ))
+                    router.navigateTo(
+                        .premiumGame(
+                            word: vm.wordValue,
+                            canBeSolved: isReady,
+                            history: hub.gameHistory,
+                            allowedLetters: String(hub.discoveredLetters).lowercased()
+                        )
+                    )
                 }
             }
         } label: {
             ZStack {
-                let word = vm.wordValue
-                let isReady = !word.isEmpty && word.lettersAreSubset(of: hub.discoveredLetters)
                 Circle()
                     .fill(isReady ? LinearGradient.ready : LinearGradient.notReady)
                     .overlay(Circle().stroke(Color.white.opacity(0.5), lineWidth: 1.5).blur(radius: 0.4))
@@ -647,17 +726,9 @@ private struct MainRoundCircle: View {
         .tint(.black)
         .onAppear {
             PremiumCoplitionHandler.shared.onForceEndPremium = { history, reset in
-                if reset {
-                    hub.resetAll() // Timer will animate internally via identity bump
-                } else if let history {
-                    hub.gameHistory = history
-                    hub.isBackFromGame = true
-                    
-                    Task(priority: .high) {
-                        try? await Task.sleep(nanoseconds: 300_000_000)
-                        hub.isBackFromGame = false
-                    }
-                }
+                hub.skipProgressAnimation()
+                if reset { hub.resetAll() }
+                else if let history { hub.gameHistory = history }
             }
         }
     }
@@ -716,12 +787,12 @@ private struct MiniGameSheet: View {
     let slot: MiniSlot
     @ObservedObject var hub: PremiumHubModel
     var onDone: (MiniResult) -> Void
-
+    
     @State private var closed = false
     @GestureState private var handlePressed = false
-
+    
     private let catalog = MiniGameCatalog()
-
+    
     var body: some View {
         VStack(spacing: 16) {
             // === Grabber / indicator ===
@@ -734,14 +805,26 @@ private struct MiniGameSheet: View {
                 .overlay { Image(systemName: "xmark").padding(.top, 9).font(.callout.bold()) }
                 .accessibilityLabel(Text("Close"))
                 .accessibilityAddTraits(.isButton)
-
-            Spacer()
+            
+            HStack(spacing: 4) {
+                Text("Time left:")
+                    .font(.system(.headline, design: .rounded).weight(.semibold))
+                    .foregroundStyle(.white)
+                let timeLeft = slot.secondsLeft
+                Text("\(timeLeft)s")
+                    .font(.system(.headline, design: .rounded).weight(.semibold))
+                    .foregroundStyle(timeLeft <= 5 ? .red : .white)
+                Spacer()
+            }
+            .padding(.horizontal)
+            .padding(.bottom, 8)
             
             // Header
             HStack {
                 Label(slot.kind.title, systemImage: slot.kind.icon)
                     .labelStyle(.titleAndIcon)
                     .font(.system(.headline, design: .rounded).weight(.semibold))
+                    .foregroundStyle(.white)
                 Spacer()
                 if slot.containsLetter {
                     Text("Contains letter")
@@ -756,7 +839,7 @@ private struct MiniGameSheet: View {
                 }
             }
             .padding(.horizontal)
-
+            
             // Mini content
             catalog.view(for: slot, hub: hub, onDone: onDone)
                 .padding(.horizontal)
@@ -781,7 +864,7 @@ private struct MiniGameSheet: View {
         }
         .environment(\.layoutDirection, .leftToRight)
     }
-
+    
     // MARK: - Handle gesture: tap or short downward pull to close
     private var handleGesture: some Gesture {
         DragGesture(minimumDistance: 0)
@@ -793,14 +876,13 @@ private struct MiniGameSheet: View {
                 if isTap || pulledDown { close(.close) }
             }
     }
-
+    
     private func close(_ result: MiniResult) {
         guard !closed else { return }
         closed = true
         onDone(result)
     }
 }
-
 
 // MARK: - Timer view (professional reset animation inside the view, no layout change)
 

@@ -26,7 +26,7 @@ final class PremiumHubGameVM: WordViewModel {
 }
 
 private enum Alpha {
-    static let enOrder: [Character] = Array("ABCDEFGHIJKLMNOPQRSTUVWXYZ".lowercased())
+    static let enOrder: [Character] = Array("abcdefghijklmnopqrstuvwxyz")
     static let heOrder: [Character] = Array("אבגדהוזחטיכלמנסעפצקרשת")
     static let enSet = Set(enOrder)
     static let heSet = Set(heOrder)
@@ -46,7 +46,16 @@ struct PremiumHubGameView<VM: PremiumHubGameVM>: View {
     private let rows = 5
     private let length: Int
     
+    private let IRIS_CLOSE_DURATION: Double = 0.58
+    
     private var initilizeHistory: [[String]]
+    private let canBeSolved: Bool
+    
+    private let IRIS_OPEN_DUR:  Double = 0.65
+    private let IRIS_CLOSE_DUR: Double = 0.50
+    
+    @State private var irisClose = false
+    @State private var irisDone = false
     @State private var matrix: [[String]]
     @State private var colors: [[CharColor]]
     @State private var current: Int = 0
@@ -76,11 +85,12 @@ struct PremiumHubGameView<VM: PremiumHubGameVM>: View {
     private var scriptSet: Set<Character> { isHE ? Alpha.heSet : Alpha.enSet }
     private var toastText: String { "Use allowed letters only".localized }
     
-    init(vm: VM, history: [[String]], allowedLetters: Set<Character>, onForceEnd: @escaping ([[String]]?, Bool) -> Void) {
+    init(vm: VM,canBeSolved: Bool, history: [[String]], allowedLetters: Set<Character>, onForceEnd: @escaping ([[String]]?, Bool) -> Void) {
         _vm = State(initialValue: vm)
         self.onForceEnd = onForceEnd
         self.length = vm.wordValue.count
         self.initilizeHistory = history
+        self.canBeSolved = canBeSolved
         
         var seedMatrix = Array(repeating: Array(repeating: "", count: vm.wordValue.count), count: rows)
         var seedColors = Array(repeating: Array(repeating: CharColor.noGuess, count: vm.wordValue.count), count: rows)
@@ -102,10 +112,18 @@ struct PremiumHubGameView<VM: PremiumHubGameVM>: View {
     
     var body: some View {
         contant()
+            .overlay(
+                IrisVignetteGate(isClosing: $irisClose,
+                                 isDone: $irisDone,
+                                 canBeSolved: canBeSolved,
+                                 openDuration: IRIS_OPEN_DUR,
+                                 closeDuration: IRIS_CLOSE_DUR,
+                                 maxDimOpacity: 0.45)
+            )
             .onAppear {
                 isVisible = true
                 withTransaction(Transaction(animation: nil)) {
-                    secondsLeftLocal = timer.secondsLeft
+                    secondsLeftLocal = max(0, timer.secondsLeft)
                 }
                 startAmbient()
                 
@@ -115,11 +133,12 @@ struct PremiumHubGameView<VM: PremiumHubGameVM>: View {
                     .sink { _ in
                         guard isVisible, !endBannerUp else { return }
                         if timer.secondsLeft != secondsLeftLocal {
-                            secondsLeftLocal = timer.secondsLeft
+                            secondsLeftLocal = max(0, timer.secondsLeft)
                             return
                         }
                         if secondsLeftLocal > 0 {
                             secondsLeftLocal -= 1
+                            secondsLeftLocal = max(0, secondsLeftLocal)
                             timer.set(secondsLeftLocal, total: timer.total)
                         } else {
                             loseResetFlag = false
@@ -135,12 +154,10 @@ struct PremiumHubGameView<VM: PremiumHubGameVM>: View {
                 localTickerCancellable = nil
             }
             .onReceive(timer.$secondsLeft.removeDuplicates()) { new in
-                secondsLeftLocal = new
-                guard isVisible, !endBannerUp else { return }
-                if new == timer.total && new > 0 { forceEnd(asFail: true, reset: false) }
+                secondsLeftLocal = max(0, new)
             }
             .onReceive(timer.$total.removeDuplicates()) { _ in
-                secondsLeftLocal = timer.secondsLeft
+                secondsLeftLocal = max(0, timer.secondsLeft)
             }
             .toolbar {
                 ToolbarItem(placement: .keyboard) {
@@ -169,13 +186,13 @@ struct PremiumHubGameView<VM: PremiumHubGameVM>: View {
                     .frame(maxHeight: .infinity)
                 
                 if showWinBanner {
-                    WinCelebrationView(wins: wins) { forceEnd(asFail: false, reset: true) }
+                    WinCelebrationView(wins: wins) { forceEnd(reset: true) }
                         .transition(.scale.combined(with: .opacity))
                         .zIndex(2)
                 }
                 
                 if showLoseBanner {
-                    LoseCelebrationView { forceEnd(asFail: true, reset: loseResetFlag) }
+                    LoseCelebrationView { forceEnd(reset: loseResetFlag) }
                         .transition(.scale.combined(with: .opacity))
                         .zIndex(2)
                 }
@@ -201,7 +218,7 @@ struct PremiumHubGameView<VM: PremiumHubGameVM>: View {
         HStack(spacing: 12) {
             BackButton(title: "Close" ,
                        icon: "xmark",
-                       action: { forceEnd(asFail: false, reset: false, withHistory: true) })
+                       action: { forceEnd(reset: false, withHistory: true) })
             .environment(\.colorScheme, .dark)
             .padding(.trailing, 11)
             
@@ -249,7 +266,7 @@ struct PremiumHubGameView<VM: PremiumHubGameVM>: View {
                     current: $current,
                     length: length,
                     word: $matrix[i],
-                    gainFocus: Binding(get: { current == i && !endBannerUp }, set: { _ in }),
+                    gainFocus: Binding(get: { current == i && !endBannerUp && irisDone }, set: { _ in }),
                     colors: $colors[i]
                 ) {
                     guard i == current, !endBannerUp else { return }
@@ -272,13 +289,15 @@ struct PremiumHubGameView<VM: PremiumHubGameVM>: View {
         audio.playSound(sound: "backround", type: "mp3", loop: true)
     }
     
-    private func forceEnd(asFail: Bool, reset: Bool, withHistory: Bool = false) {
+    private func forceEnd(reset: Bool, withHistory: Bool = false) {
         isVisible = false
         audio.stop()
-        if asFail { audio.playSound(sound: "fail", type: "wav") }
-        onForceEnd(withHistory ? history : nil, reset)
         UIApplication.shared.hideKeyboard()
-        router.navigateBack()
+        irisClose = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + IRIS_CLOSE_DUR) {
+            onForceEnd(withHistory ? history : nil, reset)
+            router.navigateBack()
+        }
     }
     
     private func nextLine(i: Int) {
@@ -684,3 +703,95 @@ private struct DebrisPiece: View {
             }
     }
 }
+
+private struct IrisVignetteGate: View {
+    @Binding var isClosing: Bool
+    @Binding var isDone: Bool
+    let canBeSolved: Bool
+    var openDuration: Double = 0.18
+    var closeDuration: Double = 0.15
+    var maxDimOpacity: Double = 0.45
+
+    @State private var t: CGFloat = 0.0
+    @State private var shimmer: CGFloat = 1
+
+    private var ringColors: [Color] {
+        canBeSolved
+        ? [Color(red:1.00, green:0.95, blue:0.70),
+           Color(red:1.00, green:0.84, blue:0.00),
+           Color(red:0.80, green:0.50, blue:0.00),
+           Color(red:1.00, green:0.95, blue:0.70)]
+        : [Color(red:0.90, green:0.92, blue:0.95),
+           Color(red:0.66, green:0.71, blue:0.76),
+           Color(red:0.42, green:0.47, blue:0.52),
+           Color(red:0.90, green:0.92, blue:0.95)]
+    }
+
+    var body: some View {
+        GeometryReader { geo in
+            let w = geo.size.width
+            let h = geo.size.height
+            let diag = sqrt(w*w + h*h)
+            let yShift: CGFloat = -h * 0.14
+
+            let minR: CGFloat = 16
+            let maxR: CGFloat = diag * 0.65
+
+            // Smooth eased progress for radius (prevents “pop” at start/end)
+            let eased: CGFloat = {
+                let x = max(0, min(1, t))
+                return x * x * (3 - 2 * x)    // smoothstep
+            }()
+
+            let radius = minR + (maxR - minR) * eased
+
+            // Hold dim almost full until ~85% open, then release (no mid-open flash)
+            let dimHoldEnd: CGFloat = 0.85
+            let dimPhase = max(0, min(1, (t - dimHoldEnd) / (1 - dimHoldEnd)))
+            let dimFade = dimPhase * dimPhase * (3 - 2 * dimPhase) // smoothstep
+            let dim = maxDimOpacity * (1 - dimFade)
+
+            ZStack {
+                ZStack {
+                    Rectangle().fill(Color.black.opacity(dim))
+                    Circle()
+                        .frame(width: radius * 2, height: radius * 2)
+                        .offset(y: yShift)
+                        .blendMode(.destinationOut) // keep the main cutout
+                }
+                .compositingGroup()
+                .allowsHitTesting(false)
+
+                // IMPORTANT: ring is decorative; do NOT cut a hole with it
+                Circle()
+                    .stroke(
+                        AngularGradient(
+                            colors: ringColors,
+                            center: .center,
+                            angle: .degrees(Double(shimmer) * 360)
+                        ),
+                        lineWidth: 2.5
+                    )
+                    .frame(width: radius * 2, height: radius * 2)
+                    .offset(y: yShift)
+                    .opacity(0.9 - 0.85 * Double(eased))
+                    .blendMode(.plusLighter) // was .destinationOut (caused flash)
+                    .allowsHitTesting(false)
+            }
+            .frame(width: w, height: h)
+            .onAppear {
+                t = 0
+                withAnimation(.easeOut(duration: openDuration)) { t = 1 }
+            }
+            .task {
+                try? await Task.sleep(nanoseconds: 100_000_000)
+                await MainActor.run { isDone = true }
+            }
+            .onChange(of: isClosing) { _, closing in
+                guard closing else { return }
+                withAnimation(.easeIn(duration: closeDuration)) { t = 0 }
+            }
+        }
+    }
+}
+

@@ -1,6 +1,6 @@
 //
 //  GameSessionManager.swift
-//  Word Guess
+//  WordZap
 //
 //  Created by Barak Ben Hur on 30/09/2025.
 //

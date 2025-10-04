@@ -1,6 +1,6 @@
 //
 //  SubscriptionPaywallView.swift
-//  Word Guess
+//  WordZap
 //
 //  Created by Barak Ben Hur on 14/09/2025.
 //

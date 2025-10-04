@@ -24,25 +24,32 @@ struct LoginView<VM: LoginViewModel>: View {
         GeometryReader { _ in
             GameViewBackguard().ignoresSafeArea()
             
-            VStack(spacing: 40) {
+            VStack {
                 Spacer()
-                AppTitle(size: 44)
-                
-                VStack(spacing: 16) {
-                    Button(action: appleAction, label: { appleLabel })
-                        .buttonStyle(appleStyle)
-                        .shadow(color: .black.opacity(0.12), radius: 8, y: 4)
-                        .frame(maxWidth: .infinity)
-                    
-                    Button(action: googleAction, label: { googleLabel })
-                        .buttonStyle(googleStyle)
-                        .shadow(color: .black.opacity(0.12), radius: 8, y: 4)
-                        .frame(maxWidth: .infinity)
+                GlassContainer(corner: 32) {
+                    VStack(spacing: 34) {
+                        AppTitle(size: 44)
+                            .shadow(color: .black.opacity(0.12), radius: 8, y: 4)
+                        VStack(spacing: 12) {
+                            Button(action: appleAction, label: { appleLabel })
+                                .buttonStyle(appleStyle)
+                                .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                                .shadow(color: .black.opacity(0.12), radius: 8, y: 4)
+                                .frame(maxWidth: .infinity)
+                            
+                            Button(action: googleAction, label: { googleLabel })
+                                .buttonStyle(googleStyle)
+                                .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                                .shadow(color: .black.opacity(0.12), radius: 8, y: 4)
+                                .frame(maxWidth: .infinity)
+                        }
+                    }
+                    .padding(14)
                 }
-                
+                .frame(maxHeight: 420)
                 Spacer()
             }
-            .padding(.horizontal, 40)
+            .padding(.horizontal, 20)
             .ignoresSafeArea(.keyboard)
             .loading(show: loading)
         }

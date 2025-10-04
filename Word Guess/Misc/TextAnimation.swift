@@ -1,6 +1,6 @@
 //
 //  TextAnimation.swift
-//  Word Guess
+//  WordZap
 //
 //  Created by Barak Ben Hur on 21/10/2024.
 //

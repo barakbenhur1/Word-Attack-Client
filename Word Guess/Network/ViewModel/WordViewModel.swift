@@ -1,6 +1,6 @@
 //
 //  VM.swift
-//  Word Guess
+//  WordZap
 //
 //  Created by Barak Ben Hur on 17/08/2025.
 //

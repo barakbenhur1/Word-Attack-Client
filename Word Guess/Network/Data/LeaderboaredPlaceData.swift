@@ -1,6 +1,6 @@
 //
 //  LeaderboaredPlaceData.swift
-//  Word Guess
+//  WordZap
 //
 //  Created by Barak Ben Hur on 30/08/2025.
 //

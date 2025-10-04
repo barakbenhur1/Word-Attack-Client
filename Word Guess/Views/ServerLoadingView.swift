@@ -13,7 +13,7 @@ public struct ServerLoadingView: View {
     @ViewBuilder private func contant() -> some View {
         VStack {
             Spacer()
-            AppTitle()
+            AppTitle(animated: true)
                 .opacity(opacity)
             Spacer()
         }

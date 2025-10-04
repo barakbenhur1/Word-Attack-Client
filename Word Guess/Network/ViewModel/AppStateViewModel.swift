@@ -1,6 +1,6 @@
 //
 //  AppStateViewModel.swift
-//  Word Guess
+//  WordZap
 //
 
 import Foundation

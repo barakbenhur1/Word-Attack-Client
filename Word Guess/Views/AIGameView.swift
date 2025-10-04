@@ -1,6 +1,6 @@
 //
 //  AIGameView.swift
-//  Word Guess
+//  WordZap
 //
 //  Created by Barak Ben Hur on 04/08/2025.
 //
@@ -30,7 +30,7 @@ struct AIGameView<VM: AIWordViewModel>: View {
     private var length: Int { DifficultyType.ai.getLength() }
     
     private var email: String? { loginHandeler.model?.email }
-    private var interstitialAdManager: InterstitialAdsManager? = AdProvider.interstitialAdsManager(id: "GameInterstitial")
+   
     
     private let fullHP :Int = 100
     private let hitPoints = 10
@@ -44,6 +44,7 @@ struct AIGameView<VM: AIWordViewModel>: View {
     @State private var aiHpAnimation: HpAnimationParams = (0, CGFloat(0), CGFloat(0), CGFloat(30))
     @State private var playerHpAnimation: HpAnimationParams = (0, CGFloat(0), CGFloat(0), CGFloat(30))
     
+    @State private var interstitialAdManager: InterstitialAdsManager?
     @State private var disabled: Bool = false
     @State private var showGameEndPopup: Bool
     @State private var showExitPopup: Bool
@@ -209,6 +210,7 @@ struct AIGameView<VM: AIWordViewModel>: View {
         aiTypeToken = UUID()
         gender = loginHandeler.model?.gender ?? "male"
         session.startNewRound(id: .ai)
+        interstitialAdManager = AdProvider.interstitialAdsManager(id: "GameInterstitial")
         if let interstitialAdManager {
             interstitialAdManager.displayInitialInterstitialAd {
                 Task.detached(priority: .userInitiated) {
@@ -254,7 +256,6 @@ struct AIGameView<VM: AIWordViewModel>: View {
         ai?.release()
         audio.stop()
         session.finishRound()
-        interstitialAdManager?.initialInterstitialAdLoaded = false
         
         if vm.fatalError || ai == nil || !ai!.isReadyToGuess {
             router.navigateBack()
@@ -605,6 +606,10 @@ struct AIGameView<VM: AIWordViewModel>: View {
             .onDisappear {
                 isVisible = false
                 cancelAllTasks()
+                screenManager.keepScreenOn = false
+                ai?.release()
+                audio.stop()
+                session.finishRound()
                 aiTypeToken = UUID()
             }
             .onChange(of: vm.aiDownloaded, initializeAI)

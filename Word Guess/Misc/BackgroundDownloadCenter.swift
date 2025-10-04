@@ -1,6 +1,6 @@
 //
 //  BackgroundDownloadCenter.swift
-//  Word Guess
+//  WordZap
 //
 //  Created by Barak Ben Hur on 06/09/2025.
 //

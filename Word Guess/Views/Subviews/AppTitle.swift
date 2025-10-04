@@ -1,6 +1,6 @@
 //
 //  AppTitle.swift
-//  Word Guess
+//  WordZap
 //
 //  Created by Barak Ben Hur on 21/10/2024.
 //
@@ -8,70 +8,81 @@
 import SwiftUI
 
 struct AppTitle: View {
-    private let title = "Word Guess".localized
-    var size: CGFloat = 40
-    var isWidget: Bool = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     
-    let wordZapColors: [CharColor] = [
+    private let title = "Word Guess".localized
+    private let size: CGFloat
+    private let isWidget: Bool
+    private let animated: Bool
+    
+    private let wordZapColors: [CharColor] = [
         .exactMatch,
         .partialMatch,
         .noMatch,
     ]
     
+    @State private var wordZapColorsForAnimation: [[CharColor]] = []
+    @State private var comp: [String]
+    
+    init(size: CGFloat = 40, animated: Bool = false, isWidget: Bool = false) {
+        self.size = size
+        self.isWidget = isWidget
+        self.animated = animated
+        _comp = State(initialValue: title.split(whereSeparator: { $0.isWhitespace }).map(String.init))
+    }
+    
     var body: some View {
-        let start = String(title[0..<4])
-        let end = String(title[4..<title.count])
-        VStack(spacing: 0) {
-            HStack(spacing: 0) {
-                let array = start.toArray()
-                ForEach(.constant(array), id: \.self) { c in
-                    if let i = array.firstIndex(of: c.wrappedValue) {
-                        ZStack {
-                            wordZapColors[i % wordZapColors.count].color
-                            Text(c.wrappedValue)
-                                .font(.largeTitle)
-                                .accessibilityHidden(true)
-                        }
-                        .frame(width: size)
-                        .clipShape(RoundedRectangle(cornerRadius: 4))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 4)
-                                .stroke(Color.black,
-                                        lineWidth: 1)
-                        )
-                    }
-                }
+        LazyVStack(alignment: .center, spacing: 0) {
+            ForEach(comp.indices, id: \.self) { i in
+                word(i: i, item: comp[i])
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .layoutPriority(1)
             }
-            .environment(\.layoutDirection, .leftToRight)
-            
-            HStack(spacing: 0) {
-                let array = end.toArray()
-                ForEach(.constant(array), id: \.self) { c in
-                    if let i = array.firstIndex(of: c.wrappedValue) {
-                        ZStack {
-                            wordZapColors[i % wordZapColors.count].color
-                            Text(c.wrappedValue)
-                                .font(.largeTitle)
-                                .accessibilityHidden(true)
-                        }
-                        .frame(width: size)
-                        .clipShape(RoundedRectangle(cornerRadius: 4))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 4)
-                                .stroke(Color.black,
-                                        lineWidth: 1)
-                        )
-                    }
-                }
-            }
-            .environment(\.layoutDirection, .leftToRight)
         }
-        .fixedSize()
-        .scaleEffect(.init(width: !isWidget && UIDevice.isPad ? 1.6 : 1, height: !isWidget && UIDevice.isPad ? 1.6 : 1))
-        // Provide a single concise accessibility label
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(Text("Word Guess".localized))
-        .accessibilityAddTraits(.isHeader)
+        .frame(maxWidth: .infinity, alignment: .center)
+        .environment(\.layoutDirection, .leftToRight)
+        .task {
+            if animated {
+                wordZapColorsForAnimation = comp.map { Array(repeating: .noGuess, count: $0.count) }
+                
+                for i in 0..<wordZapColorsForAnimation.count {
+                    if !reduceMotion {
+                        try? await Task.sleep(nanoseconds: 200_000_000)
+                    }
+                    for j in 0..<wordZapColorsForAnimation[i].count {
+                        if !reduceMotion {
+                            try? await Task.sleep(nanoseconds: 150_000_000)
+                        }
+                        wordZapColorsForAnimation[i][j] = wordZapColors[j % wordZapColors.count]
+                    }
+                }
+            }
+        }
+    }
+
+    @ViewBuilder private func word(i: Int, item: String) -> some View {
+        LazyHStack(spacing: 0) {
+            let chars = item.toArray()
+            ForEach(Array(chars.enumerated()), id: \.offset) { j, ch in
+                ZStack {
+                    if animated, !wordZapColorsForAnimation.isEmpty {
+                        let r = i % wordZapColorsForAnimation.count
+                        let c = j % wordZapColorsForAnimation[r].count
+                        wordZapColorsForAnimation[r][c].color
+                    } else {
+                        let idx = j % wordZapColors.count
+                        wordZapColors[idx].color
+                    }
+                    Text(ch)
+                        .font(.largeTitle)
+                        .accessibilityHidden(true)
+                }
+                .frame(width: size)
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+                .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.black, lineWidth: 1))
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .center) // FIX: make each HStack occupy a full line
     }
 }
 
@@ -89,9 +100,7 @@ extension String {
     subscript(range: PartialRangeThrough<Int>) -> SubSequence { self[...index(startIndex, offsetBy: range.upperBound)] }
     subscript(range: PartialRangeUpTo<Int>) -> SubSequence { self[..<index(startIndex, offsetBy: range.upperBound)] }
     
-    var localized: String {
-        return NSLocalizedString(self, comment: "")
-    }
+    var localized: String { NSLocalizedString(self, comment: "") }
 }
 
 extension String {
@@ -111,9 +120,7 @@ extension String {
         return replacingOccurrences(of: "Word_Guess.", with: "")
     }
     
-    func toArray() -> [String] {
-        return map { String($0) }
-    }
+    func toArray() -> [String] { map { String($0) } }
     
     mutating func limitText(_ upper: Int) {
         guard count > upper else { return }
@@ -130,7 +137,7 @@ extension String {
     }
     
     func initals() -> String {
-        return components(separatedBy: " ").map { !$0.isEmpty ? $0[0] : "" }.joined()
+        components(separatedBy: " ").map { !$0.isEmpty ? $0[0] : "" }.joined()
     }
     
     func returnChar(isFinal: Bool) -> String {
@@ -144,14 +151,13 @@ extension String {
     }
     
     func toSuffixChars() -> String {
-        return map { String.suffixs[String($0)] ?? String($0) }.joined()
+        map { String.suffixs[String($0)] ?? String($0) }.joined()
     }
     
     func correctSuffix() -> String {
-        return map { $0 == last ? String.suffixs[String($0)] ?? String($0) : String($0) }.joined()
+        map { $0 == last ? String.suffixs[String($0)] ?? String($0) : String($0) }.joined()
     }
 }
-
 
 extension CharacterSet {
     static let hebrewLetters: CharacterSet = {
@@ -184,8 +190,8 @@ extension CharacterSet {
 }
 
 struct CharColor: Comparable {
-    static func == (lhs: CharColor, rhs: CharColor) -> Bool { return lhs.id == rhs.id}
-    static func < (lhs: CharColor, rhs: CharColor) -> Bool { return lhs.id > rhs.id }
+    static func == (lhs: CharColor, rhs: CharColor) -> Bool { lhs.id == rhs.id }
+    static func < (lhs: CharColor, rhs: CharColor) -> Bool { lhs.id > rhs.id }
     
     let id: Int
     let color: LinearGradient
@@ -222,16 +228,13 @@ struct CharColor: Comparable {
     
     func getColor() -> String {
         switch self {
-        case let i where i.id == CharColor.partialMatch.id : return "🟨"
-        case let i where i.id == CharColor.exactMatch.id : return "🟩"
-        default: return "⬜"
+        case let i where i.id == CharColor.partialMatch.id: return "🟨"
+        case let i where i.id == CharColor.exactMatch.id :  return "🟩"
+        default:                                            return "⬜"
         }
     }
 }
 
 extension UIDevice {
-    static var isPad: Bool {
-        UIDevice.current.userInterfaceIdiom == .pad
-    }
+    static var isPad: Bool { UIDevice.current.userInterfaceIdiom == .pad }
 }
-

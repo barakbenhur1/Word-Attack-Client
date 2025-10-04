@@ -1,6 +1,6 @@
 //
 //  KVTextDecoder.swift
-//  Word Guess
+//  WordZap
 //
 //  Created by Barak Ben Hur on 16/08/2025.
 //

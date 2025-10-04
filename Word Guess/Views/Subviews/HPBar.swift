@@ -1,6 +1,6 @@
 //
 //  HPBar.swift
-//  Word Guess
+//  WordZap
 //
 //  Created by Barak Ben Hur on 27/08/2025.
 //
