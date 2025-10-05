@@ -61,8 +61,6 @@ struct GameView<VM: DifficultyWordViewModel>: View {
     
     // Task/cancel management
     @State private var isVisible = false
-    @State private var delayedSoundTask: Task<Void, Never>?
-    @State private var newWordTask: Task<Void, Never>?
     
     private func guardVisible() -> Bool { isVisible && !Task.isCancelled }
     
@@ -78,6 +76,7 @@ struct GameView<VM: DifficultyWordViewModel>: View {
     }
     
     private func handleWordChange() {
+        guard vm.word != .empty else { return }
         initMatrixState()
         
         switch diffculty {
@@ -94,15 +93,15 @@ struct GameView<VM: DifficultyWordViewModel>: View {
     }
     
     private func handleInterstitial() {
-        guard interstitialAdManager?.interstitialAdLoaded == true else { return }
-        interstitialAdManager?.displayInterstitialAd {
+        guard let interstitialAdManager = interstitialAdManager, interstitialAdManager.interstitialAdLoaded else { return }
+        interstitialAdManager.displayInterstitialAd {
             initalConfigirationForWord()
             handleTimeAttackIfNeeded()
         }
     }
     
     private func handleTimeAttackIfNeeded() {
-        guard interstitialAdManager?.interstitialAdLoaded == false else { return }
+        guard interstitialAdManager == nil || !interstitialAdManager!.interstitialAdLoaded else { return }
         switch diffculty {
         case .tutorial: break
         default:
@@ -112,8 +111,10 @@ struct GameView<VM: DifficultyWordViewModel>: View {
             Task {
                 try? await Task.sleep(nanoseconds: 2_000_000_000)
                 guard guardVisible() else { return }
-                timeAttackAnimationDone = true
-                timeAttackAnimation = false
+                await MainActor.run {
+                    timeAttackAnimation = false
+                    timeAttackAnimationDone = true
+                }
                 try? await Task.sleep(nanoseconds: 300_000_000)
                 guard guardVisible() else { return }
                 audio.playSound(sound: "tick",
@@ -139,19 +140,27 @@ struct GameView<VM: DifficultyWordViewModel>: View {
         guard !didStart && (interstitialAdManager == nil || !interstitialAdManager!.initialInterstitialAdLoaded) else { return }
         switch diffculty {
         case .tutorial: coreData.new()
-        default: break
+        default: session.startNewRound(id: diffculty)
         }
-        session.startNewRound(id: diffculty)
         interstitialAdManager = AdProvider.interstitialAdsManager(id: "GameInterstitial")
         if let interstitialAdManager, diffculty != .tutorial {
             interstitialAdManager.displayInitialInterstitialAd {
+                guard guardVisible() else { return }
                 Task.detached(priority: .userInitiated) {
                     await handleNewWord(email: email)
+                    await MainActor.run {
+                        endFetchAnimation = true
+                        didStart = vm.word != .empty
+                    }
                 }
             }
         } else {
             Task.detached(priority: .userInitiated) {
                 await handleNewWord(email: email)
+                await MainActor.run {
+                    endFetchAnimation = true
+                    didStart = vm.word != .empty
+                }
             }
         }
     }
@@ -159,7 +168,6 @@ struct GameView<VM: DifficultyWordViewModel>: View {
     private func handleNewWord(email: String) async {
         await vm.getScore(diffculty: diffculty, email: email)
         await vm.word(diffculty: diffculty, email: email)
-        await MainActor.run { didStart = vm.word != .empty }
     }
     
     private func afterTimeAttack() {
@@ -186,14 +194,9 @@ struct GameView<VM: DifficultyWordViewModel>: View {
             .onAppear { isVisible = true }
             .onDisappear {
                 isVisible = false
-                // stop audio that might be looping
-                UIApplication.shared.hideKeyboard()
                 audio.stop()
-                session.finishRound()
                 // cancel outstanding tasks
                 scoreAnimation = (0, CGFloat(0), CGFloat(0), CGFloat(30))
-                delayedSoundTask?.cancel(); delayedSoundTask = nil
-                newWordTask?.cancel(); newWordTask = nil
             }
             .customAlert("Network error",
                          type: .fail,
@@ -234,11 +237,11 @@ struct GameView<VM: DifficultyWordViewModel>: View {
     }
     
     @ViewBuilder private func background() -> some View {
-        GameViewBackguard()
+        GameViewBackground()
             .ignoresSafeArea()
     }
     
-    @ViewBuilder private func toturialTop() -> some View {
+    @ViewBuilder private func tutorialTop() -> some View {
         VStack {
             // Title
             Text("Tutorial")
@@ -274,6 +277,7 @@ struct GameView<VM: DifficultyWordViewModel>: View {
             ZStack {
                 let gainFocus = Binding(get: { current == i && endFetchAnimation && timeAttackAnimationDone },
                                         set: { _ in })
+                
                 WordView(cleanCells: $cleanCells,
                          current: $current,
                          length: length,
@@ -303,7 +307,7 @@ struct GameView<VM: DifficultyWordViewModel>: View {
         ZStack(alignment: .bottom) {
             ZStack(alignment: .top) {
                 switch diffculty {
-                case .tutorial: toturialTop()
+                case .tutorial: tutorialTop()
                 default:        gameTop()
                 }
             }
@@ -382,7 +386,6 @@ struct GameView<VM: DifficultyWordViewModel>: View {
                 
                 Spacer()
                 
-                // Right: Words count
                 VStack {
                     Spacer()
                     Text("words: \(vm.word.number)")
@@ -447,13 +450,10 @@ struct GameView<VM: DifficultyWordViewModel>: View {
     private func initalConfigirationForWord() {
         switch diffculty {
         case .tutorial: break
-        default:
-            guard guardVisible() else { return }
-            audio.playSound(sound: "backround",
-                            type: "mp3",
-                            loop: true)
+        default: audio.playSound(sound: "backround",
+                                 type: "mp3",
+                                 loop: true)
         }
-        endFetchAnimation = true
         current = vm.word.word.guesswork.count
     }
     
@@ -497,7 +497,10 @@ struct GameView<VM: DifficultyWordViewModel>: View {
     private func navBack() {
         UIApplication.shared.hideKeyboard()
         audio.stop()
-        session.finishRound()
+        switch diffculty {
+        case .tutorial: break
+        default:  session.finishRound()
+        }
         router.navigateBack()
     }
     
@@ -510,54 +513,41 @@ struct GameView<VM: DifficultyWordViewModel>: View {
             current = .max
             audio.stop()
             
-            let correct = guess.lowercased() == vm.word.word.value.lowercased()
+            let isCorrect = guess.lowercased() == vm.word.word.value.lowercased()
+            
+            let sound = isCorrect ? "success" : "fail"
+            audio.playSound(sound: sound,
+                            type: "wav")
             
             switch diffculty {
             case .tutorial:
-                // Replace chained sleeps with a single guarded Task
-                newWordTask?.cancel()
-                newWordTask = Task(priority: .userInitiated) {
-                    do {
-                        try await Task.sleep(nanoseconds: 200_000_000)
-                        guard guardVisible() else { return }
-                        let sound = correct ? "success" : "fail"
-                        audio.playSound(sound: sound,
-                                        type: "wav")
-                        try await Task.sleep(nanoseconds: 1_000_000_000)
-                        guard guardVisible() else { return }
-                        router.navigateBack()
-                    } catch { /* cancelled */ }
+                Task(priority: .userInitiated) {
+                    try? await Task.sleep(nanoseconds: 1_000_000_000)
+                    guard guardVisible() else { return }
+                    navBack()
                 }
             default:
-                if correct {
-                    let points = vm.word.isTimeAttack ? 40 : 20
-                    score(value: rows * points - i * points)
-                } else { score(value: 0) }
-                
-                // schedule sound with guard
-                delayedSoundTask?.cancel()
-                delayedSoundTask = Task {
-                    do {
-                        try await Task.sleep(nanoseconds: 800_000_000)
-                        guard guardVisible() else { return }
-                        let sound = correct ? "success" : "fail"
-                        audio.playSound(sound: sound,
-                                        type: "wav")
-                    } catch { /* cancelled */ }
-                }
-                
-                guard let email else { return }
+                let email = email
+                let isTimeAttack = vm.word.isTimeAttack
+                let rows = rows
                 Task.detached(priority: .userInitiated) {
-                    if !correct { await vm.addGuess(diffculty: diffculty, email: email, guess: guess) }
-                    await vm.score(diffculty: diffculty, email: email)
-                    try? await Task.sleep(nanoseconds: 500_000_000)
+                    let points = isCorrect ? (isTimeAttack ? 40 : 20) : 0
+                    let total = rows * points
+                    let currentRow = i * points
+                    let scoreValue = total - currentRow
+                    await score(value: scoreValue)
+                    guard let email else { return }
+                    await vm.addGuess(diffculty: diffculty, email: email, guess: guess)
+                    await vm.score(diffculty: diffculty, email: email, isCorrect: isCorrect)
                     await handleNewWord(email: email)
                 }
             }
         } else if i == current && i + 1 > vm.word.word.guesswork.count {
             guard let email else { return }
             current = i + 1
-            Task(priority: .userInitiated) { await vm.addGuess(diffculty: diffculty, email: email, guess: guess) }
+            Task(priority: .userInitiated) {
+                await vm.addGuess(diffculty: diffculty, email: email, guess: guess)
+            }
         }
     }
     
@@ -571,30 +561,35 @@ struct GameView<VM: DifficultyWordViewModel>: View {
         cleanCells = false
     }
     
-    private func score(value: Int) {
+    private func score(value: Int) async {
         scoreAnimation.value = value
-        withAnimation(.linear(duration: 1.4)) {
+        withAnimation(.linear(duration: 1.44)) {
             scoreAnimation.offset = 5
             scoreAnimation.opticity = 0.85
             scoreAnimation.scale = 0.9
         }
         
-        Task {
-            try? await Task.sleep(nanoseconds: 1_440_000_000)
-            guard guardVisible() else { scoreAnimation = (0, CGFloat(0), CGFloat(0), CGFloat(30)); return }
-            if scoreAnimation.opticity == 0.85 {
-                withAnimation(.linear(duration: 0.2)) {
-                    scoreAnimation.opticity = 0
-                    scoreAnimation.scale = 0
-                }
+        try? await Task.sleep(nanoseconds: 1_440_000_000)
+        guard guardVisible() else { scoreAnimation = (0, CGFloat(0), CGFloat(0), CGFloat(30)); return }
+        if scoreAnimation.opticity == 0.85 {
+            withAnimation(.linear(duration: 0.2)) {
+                scoreAnimation.opticity = 0
+                scoreAnimation.scale = 0
             }
-            try? await Task.sleep(nanoseconds: 200_000_000)
-            guard guardVisible() else { scoreAnimation = (0, CGFloat(0), CGFloat(0), CGFloat(30)); return }
-            vm.score += value
-            vm.word.number += 1
-            scoreAnimation.value = 0
-            scoreAnimation.offset = 30
         }
+        try? await Task.sleep(nanoseconds: 300_000_000)
+        guard guardVisible() else { scoreAnimation = (0, CGFloat(0), CGFloat(0), CGFloat(30)); return }
+        let score = vm.score
+        if value > 1 {
+            let nanoseconds = 500_000_000 / UInt64(value)
+            for i in 1...value {
+                try? await Task.sleep(nanoseconds: nanoseconds)
+                vm.score = score + i
+            }
+        } else { vm.score = score + value }
+        
+        scoreAnimation.value = 0
+        scoreAnimation.offset = 30
     }
 }
 

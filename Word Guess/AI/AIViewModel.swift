@@ -78,7 +78,13 @@ extension AIViewModel {
     func getFeedback(for difficulty: AIDifficulty) async -> String? {
         guard let solver else { return nil }
         do { return try solver.guessNext(history: history, lang: lang, difficulty: difficulty) }
-        catch { fatalError(error.localizedDescription) }
+        catch {
+            #if DEBUG
+            fatalError(error.localizedDescription)
+            #else
+            return generateWord(for: lang)
+            #endif
+        }
     }
     
     @MainActor

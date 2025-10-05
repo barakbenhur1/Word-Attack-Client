@@ -69,7 +69,8 @@ class DifficultyWordViewModel: WordViewModel {
         }
     }
     
-    func score(diffculty: DifficultyType, email: String) async {
+    func score(diffculty: DifficultyType, email: String, isCorrect: Bool) async {
+        guard isCorrect else { return }
         let value: EmptyModel? = await scoreService.score(diffculty: diffculty, email: email)
         await MainActor.run { [weak self] in
             guard let self else { return }

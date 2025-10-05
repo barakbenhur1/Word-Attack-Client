@@ -143,17 +143,35 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
                 completionHandler(changed ? .newData : .noData)
             }
         }
-
-     // <-- This is called when the user taps the notification (or an action)
+    
+    final class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate {
+        func userNotificationCenter(_ center: UNUserNotificationCenter,
+                                    willPresent notification: UNNotification,
+                                    withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+            
+            let kind = notification.request.content.userInfo["kind"] as? String
+            
+            // Never present DailyInactivity while foreground
+            if kind == "DailyInactivityReminder" {
+                completionHandler([]) // suppress while app is active
+                return
+            }
+            
+            // For other reminders (like resume game), you can still show a banner if you want:
+            completionHandler([/* .banner, .sound */]) // or [] to suppress all in-foreground
+        }
+    }
+    
+    // <-- This is called when the user taps the notification (or an action)
     func userNotificationCenter(_ center: UNUserNotificationCenter,
-                                   didReceive response: UNNotificationResponse,
+                                didReceive response: UNNotificationResponse,
                                 withCompletionHandler completion: @escaping () -> Void) {
         if let s = response.notification.request.content.userInfo[NotifKeys.deeplink] as? String,
            let url = URL(string: s) {
             Task { await DeepLinkInbox.shared.push(url) }
         }
         completion()
-       }
+    }
     
     // Optional: if you also post visible notifications while foregrounded.
     func userNotificationCenter(

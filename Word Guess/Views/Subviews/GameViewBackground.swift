@@ -7,7 +7,7 @@
 
 import SwiftUI
 
-struct GameViewBackguard: View {
+struct GameViewBackground: View {
     var body: some View { background() }
     
     @ViewBuilder private func background() -> some View {

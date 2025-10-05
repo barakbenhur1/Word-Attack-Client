@@ -22,7 +22,7 @@ struct ElevatedModifier: ViewModifier {
             .background(
                 RoundedRectangle(cornerRadius: cornerRadius,
                                  style: .continuous)
-                .fill(Color.white.opacity(0.4))
+                .fill(Color.black.opacity(0.8))
                 .shadow(color: shadowColor,
                         radius: shadowRadius,
                         x: 0,
@@ -37,27 +37,28 @@ struct ElevatedModifier: ViewModifier {
 
 struct RealisticCellModifier: ViewModifier {
     let color: Color
+    let cornerRadius: CGFloat
     func body(content: Content) -> some View {
         content
             .background(
-                RoundedRectangle(cornerRadius: 8)
+                RoundedRectangle(cornerRadius: cornerRadius)
                     .fill(LinearGradient(gradient: Gradient(colors: [color,
                                                                      color.opacity(0.15)]),
                                          startPoint: .topLeading,
                                          endPoint: .bottomTrailing))
             )
-            .overlay(RoundedRectangle(cornerRadius: 8)
+            .overlay(RoundedRectangle(cornerRadius: cornerRadius)
                 .stroke(color.opacity(0.3),
                         lineWidth: 1))
-            .shadow(color: .black.opacity(0.15),
-                    radius: 6,
+            .shadow(color: .black.opacity(0.35),
+                    radius: 2,
                     x: 3,
                     y: 3)
-            .shadow(color: .white.opacity(0.7),
-                    radius: 6,
+            .shadow(color: .white.opacity(0.35),
+                    radius: 2,
                     x: -3,
-                    y: -3) // top-left glow
-            .padding(4)
+                    y: -3)
+            .padding(3)
     }
 }
 
@@ -544,7 +545,7 @@ private struct PremiumAttention: ViewModifier {
 
 extension View {
     func circleReveal(trigger: Binding<Bool>) -> some View { modifier(CenterPinnedBurstModifier(trigger: trigger)) }
-    func realisticCell(color: Color) -> some View { modifier(RealisticCellModifier(color: color)) }
+    func realisticCell(color: Color, cornerRadius: CGFloat) -> some View { modifier(RealisticCellModifier(color: color, cornerRadius: cornerRadius)) }
     func elevated(cornerRadius: CGFloat) -> some View { modifier(ElevatedModifier(cornerRadius: cornerRadius)) }
     func loading(show: Bool) -> some View { modifier(LoadingViewModifier(show: show)) }
     func brickBorder(color: Color = .gray, lineWidth: CGFloat = 6, brickLength: CGFloat = 24, gapLength: CGFloat = 8, cornerRadius: CGFloat = 8) -> some View { modifier(BrickBorderModifier(color: color, lineWidth: lineWidth, brickLength: brickLength, gapLength: gapLength, cornerRadius: cornerRadius)) }

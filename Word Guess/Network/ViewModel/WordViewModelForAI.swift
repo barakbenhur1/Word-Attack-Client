@@ -11,19 +11,24 @@ import Alamofire
 @Observable
 class AIWordViewModel: WordViewModel {
     private let provider: WordProvider
-    var word: SimpleWord
     var aiDownloaded: Bool = false
-    var fatalError: Bool { errorCount >= maxErrorCount }
-    var numberOfErrors: Int { errorCount }
     
     private let maxErrorCount: Int
     private var errorCount: Int
+    var fatalError: Bool { errorCount >= maxErrorCount }
+    var numberOfErrors: Int { errorCount }
     
-    override var wordValue: String { word.value }
+    private var wordNumber: Int
+    var wordCount: Int { wordNumber }
+    
+    private var aiWord: SimpleWord
+    var word: SimpleWord { aiWord }
+    override var wordValue: String { aiWord.value }
     
     required override init() {
         provider = .init()
-        word = .empty
+        aiWord = .empty
+        wordNumber = UserDefaults.standard.integer(forKey: "aiWordNumber")
         maxErrorCount = 3
         errorCount = 0
         aiDownloaded = ModelStorage.localHasUsableModels()
@@ -33,20 +38,23 @@ class AIWordViewModel: WordViewModel {
         await MainActor.run { [weak self] in
             guard let self else { return }
             let local = LanguageSetting()
-            guard let language = local.locale.identifier.components(separatedBy: "_").first else { word = .init(value: "abcde"); return }
-            guard let l: Language = .init(rawValue: language) else { word = .init(value: language == "he" ? "אבגדה" : "abcde"); return }
-            word = .init(value: generateWord(for: l))
+            guard let language = local.locale.identifier.components(separatedBy: "_").first else { aiWord = .init(value: "abcde"); return }
+            guard let l: Language = .init(rawValue: language) else { aiWord = .init(value: language == "he" ? "אבגדה" : "abcde"); return }
+            aiWord = .init(value: generateWord(for: l))
         }
     }
     
-    func word(email: String) async {
+    func word(email: String, newWord: Bool = true) async {
         let value: SimpleWord? = await provider.word(email: email)
         guard let value else { await handleError(); return }
         await MainActor.run { [weak self] in
             guard let self else { return }
             Trace.log("🛟", "word is \(value.value)", Fancy.mag)
             errorCount = 0
-            word = value
+            aiWord = value
+            
+            guard newWord else { return }
+            incraseAndSaveWordNumber()
         }
     }
     
@@ -61,6 +69,13 @@ class AIWordViewModel: WordViewModel {
     @MainActor
     private func handleError() {
         errorCount += 1
-        word = .empty
+        aiWord = .empty
+    }
+    
+    @MainActor
+    private func incraseAndSaveWordNumber() {
+        guard aiWord != .empty else { return }
+        wordNumber += 1
+        UserDefaults.standard.set(wordNumber, forKey: "aiWordNumber")
     }
 }

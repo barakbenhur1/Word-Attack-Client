@@ -22,7 +22,7 @@ struct LoginView<VM: LoginViewModel>: View {
     
     var body: some View {
         GeometryReader { _ in
-            GameViewBackguard().ignoresSafeArea()
+            GameViewBackground().ignoresSafeArea()
             
             VStack {
                 Spacer()

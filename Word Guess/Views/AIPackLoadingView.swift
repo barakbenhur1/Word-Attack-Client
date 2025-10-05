@@ -47,74 +47,81 @@ public struct AIPackLoadingView: View {
     }
     
     public var body: some View {
-        VStack(spacing: 18) {
-            VStack(spacing: 16) {
-                Spacer()
-                
-                Text(title)
-                    .font(.system(size: 21, design: .rounded).weight(.semibold))
-                    .foregroundStyle(Palette.titleFill(scheme))
-                    .multilineTextAlignment(.center)
-                    .minimumScaleFactor(0.9)
-                    .accessibilityAddTraits(.isHeader)
-                    .padding(.top, 14)
-                    .padding(.horizontal, 16)
-                
-                if show {
-                    WarmupOrb(size: orbSize, enableSparks: enableFancy)
-                        .padding(.top, 2)
-                        .transition(.scale.combined(with: .opacity))
-                        .opacity(show ? 1 : 0.001)
-                        .accessibilityHidden(true)
-                } else {
-                    WarmupOrbLight(size: orbSize)
-                        .accessibilityHidden(true)
-                        .padding(.top, 7)
-                }
-                
-                StatusTicker(messages: messages,
-                             cycleEvery: cycleEvery,
-                             appearDate: $appearDate)
-                .padding(.top, 2)
-                
-                if showsCancel {
-                    Button {
-                        guard let onCancel, appeared else { return }
-                        Task { await MainActor.run { onCancel() } }
-                    } label: {
-                        Label("Cancel".localized, systemImage: "xmark.circle.fill")
-                            .labelStyle(.titleAndIcon)
-                            .font(.system(size: 15, weight: .medium, design: .rounded))
-                            .padding(.horizontal, 14)
-                            .padding(.vertical, 8)
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .tint(Palette.buttonTint)
-                    .buttonBorderShape(.capsule)
-                    .accessibilityLabel("Cancel".localized)
-                }
-                
-                Spacer(minLength: 8)
-            }
-            .padding(.horizontal, 20)
+        GeometryReader { proxy in
+            GameViewBackground().ignoresSafeArea()
             
-            Spacer()
-        }
-        .padding(20)
-        .onAppear {
-            screenManager.keepScreenOn = true
-            appeared = true
-            appearDate = Date()
-            let h = UIImpactFeedbackGenerator(style: .soft)
-            h.prepare()
-            h.impactOccurred()
-            withAnimation(.spring(duration: 0.3)) {
-                show = true
+            VStack(spacing: 18) {
+                VStack(spacing: 16) {
+                    Spacer()
+                    
+                    Text(title)
+                        .font(.system(size: 21, design: .rounded).weight(.semibold))
+                        .foregroundStyle(Palette.titleFill(scheme))
+                        .multilineTextAlignment(.center)
+                        .minimumScaleFactor(0.9)
+                        .accessibilityAddTraits(.isHeader)
+                        .padding(.top, 14)
+                        .padding(.horizontal, 16)
+                    
+                    if show && !reduceMotion {
+                        WarmupOrb(size: orbSize, enableSparks: enableFancy)
+                            .padding(.top, 2)
+                            .transition(.scale.combined(with: .opacity))
+                            .opacity(show ? 1 : 0.001)
+                            .accessibilityHidden(true)
+                    } else {
+                        WarmupOrbLight(size: orbSize)
+                            .accessibilityHidden(true)
+                            .padding(.top, 7)
+                    }
+                    
+                    StatusTicker(messages: messages,
+                                 cycleEvery: cycleEvery,
+                                 appearDate: $appearDate)
+                    .padding(.top, 2)
+                    
+                    if showsCancel {
+                        Button {
+                            guard let onCancel, appeared else { return }
+                            Task { await MainActor.run { onCancel() } }
+                        } label: {
+                            Label("Cancel".localized, systemImage: "xmark.circle.fill")
+                                .labelStyle(.titleAndIcon)
+                                .font(.system(size: 15, weight: .medium, design: .rounded))
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 8)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(Palette.buttonTint)
+                        .buttonBorderShape(.capsule)
+                        .accessibilityLabel("Cancel".localized)
+                    }
+                    
+                    Spacer(minLength: 8)
+                }
+                .padding(.horizontal, 20)
+                
+                Spacer()
             }
-        }
-        .onDisappear {
-            screenManager.keepScreenOn = false
-            appeared = false
+            .padding(20)
+            .frame(width: proxy.size.width)
+            .frame(height: proxy.size.height)
+            .onAppear {
+                screenManager.keepScreenOn = true
+                appeared = true
+                appearDate = Date()
+                let h = UIImpactFeedbackGenerator(style: .soft)
+                h.prepare()
+                h.impactOccurred()
+                guard !reduceMotion else { return }
+                withAnimation(.spring(duration: 0.3)) {
+                    show = true
+                }
+            }
+            .onDisappear {
+                screenManager.keepScreenOn = false
+                appeared = false
+            }
         }
     }
 }
@@ -326,17 +333,17 @@ enum Palette {
         scheme == .dark ? AnyShapeStyle(.ultraThinMaterial) : AnyShapeStyle(.regularMaterial)
     }
     static func cardStroke(_ scheme: ColorScheme) -> Color {
-        scheme == .dark ? Color.white.opacity(0.10) : Color.black.opacity(0.06)
+        scheme == .dark ? Color.black.opacity(0.06) : Color.black.opacity(0.06)
     }
     static func cardShadow(_ scheme: ColorScheme) -> Color {
         scheme == .dark ? Color.black.opacity(0.28) : Color.black.opacity(0.20)
     }
     
     static func titleFill(_ scheme: ColorScheme) -> Color {
-        scheme == .dark ? Color.white.opacity(0.95) : Color.black.opacity(0.88)
+        scheme == .dark ? Color.white.opacity(0.95) : Color.white.opacity(0.95)
     }
     static func subtitleFill(_ scheme: ColorScheme) -> Color {
-        scheme == .dark ? Color.white.opacity(0.80) : Color.black.opacity(0.65)
+        scheme == .dark ? Color.white.opacity(0.80) : Color.white.opacity(0.80)
     }
     
     static var buttonTint: Color { Color(hue: 0.56, saturation: 0.55, brightness: 0.95) }

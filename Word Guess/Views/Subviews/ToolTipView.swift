@@ -14,6 +14,7 @@ public struct Tooltip<Content: View>: View {
     private let autoDismissAfter: Double?
     private let arrowSize: CGSize
     private let cornerRadius: CGFloat
+    private let offsetY: CGFloat = -5
     private let padding: CGFloat
     private let background: AnyShapeStyle
     private let foreground: Color
@@ -56,6 +57,7 @@ public struct Tooltip<Content: View>: View {
         autoDismissAfter: Double? = nil,
         arrowSize: CGSize = .init(width: 12, height: 8),
         cornerRadius: CGFloat = 12,
+        offsetY: CGFloat = -5,
         padding: CGFloat = 10,
         background: some ShapeStyle = .ultraThinMaterial,
         foreground: Color = .primary,
@@ -88,7 +90,7 @@ public struct Tooltip<Content: View>: View {
     private func setPresented(_ v: Bool) { if let b = externalIsPresented { b.wrappedValue = v } else { isPresentedLocal = v } }
     
     public var body: some View {
-        HostSizeReader(size: $hostSize) {                          // ✅ single writer for host size
+        HostSizeReader(size: $hostSize) {                           // ✅ single writer for host size
             content()
                 .background(GlobalFrameReader(frame: $hostFrame))   // ✅ debounced global frame
                 .overlay(alignment: .center) {
@@ -96,7 +98,7 @@ public struct Tooltip<Content: View>: View {
                         let isEN = (language == .en)
                         tooltipRow
                             .fixedSize()
-                            .offset(x: horizontalOffsetUsingClampedWidth(), y: 0)
+                            .offset(x: horizontalOffsetUsingClampedWidth(), y: offsetY)
                         // appear/disappear
                             .scaleEffect(pop ? 1.0 : 0.85, anchor: isEN ? .leading : .trailing)
                             .opacity(pop ? 1.0 : 0.0)

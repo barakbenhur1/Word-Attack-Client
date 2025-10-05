@@ -2709,6 +2709,12 @@
     "No letters yet" : {
       "extractionState" : "manual",
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "no letters yet"
+          }
+        },
         "he" : {
           "stringUnit" : {
             "state" : "translated",

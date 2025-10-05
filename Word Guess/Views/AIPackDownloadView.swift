@@ -18,8 +18,8 @@ private struct CapsuleProgressBar: View {
         GeometryReader { geo in
             let w = max(0, min(1, progress)) * geo.size.width
             ZStack(alignment: .leading) {
-                Capsule().fill(.secondary.opacity(0.25))
-                Capsule().fill(LinearGradient(colors: [.yellow, .green],
+                Capsule().fill(.white.opacity(0.25))
+                Capsule().fill(LinearGradient(colors: [.white.opacity(0.7), Palette.buttonTint.opacity(0.7)],
                                               startPoint: .leading,
                                               endPoint: .trailing))
                 .frame(width: w)
@@ -52,85 +52,90 @@ struct AIPackDownloadView: View {
     }
     
     var body: some View {
-        VStack {
-            VStack(spacing: 24) {
-                SafeSymbol("icloud.and.arrow.down.fill")
-                    .font(.system(size: 56, weight: .semibold))
-                    .foregroundStyle(LinearGradient(colors: [.yellow, .green], startPoint: .top, endPoint: .bottom))
-                    .symbolRenderingMode(.multicolor)
-                    .shadow(radius: 6, y: 2)
-                
-                Text(isLoadingModel ? "Saving AI Model" : "Downloading AI Pack")
-                    .font(.largeTitle.bold())
-                    .multilineTextAlignment(.center)
-                
-                VStack(alignment: .leading, spacing: 10) {
-                    CapsuleProgressBar(progress: progressValue > 0.01 ? progressValue : 0, height: 20)
+        GeometryReader { _ in
+            GameViewBackground().ignoresSafeArea()
+            VStack {
+                VStack(spacing: 24) {
+                    SafeSymbol("icloud.and.arrow.down.fill")
+                        .font(.system(size: 56, weight: .semibold))
+                        .foregroundStyle(LinearGradient(colors: [.white.opacity(0.7), Palette.buttonTint.opacity(0.7)], startPoint: .top, endPoint: .bottom))
+                        .symbolRenderingMode(.multicolor)
+                        .shadow(radius: 6, y: 2)
+                    
+                    Text(isLoadingModel ? "Saving AI Model" : "Downloading AI Pack")
+                        .font(.largeTitle.bold())
+                        .multilineTextAlignment(.center)
+                        .foregroundStyle(.white.opacity(0.95))
+                    
+                    VStack(alignment: .leading, spacing: 10) {
+                        CapsuleProgressBar(progress: progressValue > 0.01 ? progressValue : 0, height: 20)
+                            .frame(maxWidth: 520)
+                            .padding(.horizontal)
+                        HStack {
+                            Text(progressLabel).monospacedDigit().font(.headline)
+                                .foregroundStyle(.white.opacity(0.95))
+                            Spacer()
+                            Text(sizeString(done: mgr.completedBytes, total: mgr.totalBytes))
+                                .monospacedDigit().font(.headline)
+                                .foregroundStyle(.white.opacity(0.65))
+                        }
                         .frame(maxWidth: 520)
                         .padding(.horizontal)
-                    HStack {
-                        Text(progressLabel).monospacedDigit().font(.headline)
-                        Spacer()
-                        Text(sizeString(done: mgr.completedBytes, total: mgr.totalBytes))
-                            .monospacedDigit()
-                            .foregroundStyle(.secondary)
                     }
-                    .frame(maxWidth: 520)
-                    .padding(.horizontal)
+                    
+                    if let err = visibleError {
+                        Text(err)
+                            .foregroundStyle(.red)
+                            .font(.footnote)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal)
+                    }
+                    
+                    Button { onCancel() }
+                    label: {
+                        Label("Cancel", systemImage: "xmark.circle.fill")
+                            .labelStyle(.titleAndIcon)
+                            .font(.system(size: 15, weight: .medium, design: .rounded))
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 8)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(Palette.buttonTint)
+                    .buttonBorderShape(.capsule)
+                    .padding(.bottom, 14)
+                    .accessibilityLabel("Cancel")
                 }
-                
-                if let err = visibleError {
-                    Text(err)
-                        .foregroundStyle(.red)
-                        .font(.footnote)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal)
-                }
-                
-                Button { onCancel() }
-                label: {
-                    Label("Cancel", systemImage: "xmark.circle.fill")
-                        .labelStyle(.titleAndIcon)
-                        .font(.system(size: 15, weight: .medium, design: .rounded))
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 8)
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(Palette.buttonTint)
-                .buttonBorderShape(.capsule)
-                .padding(.bottom, 14)
-                .accessibilityLabel("Cancel")
+                .padding(.top, 260)
+                .padding(.horizontal)
+                Spacer()
             }
-            .padding(.top, 280)
-            .padding(.horizontal)
-            Spacer()
-        }
-        .task {
-            BackgroundDownloadCenter.shared.setMode(.foreground)
-            if ModelStorage.localHasUsableModels() { downloaded = true }
-            else { mgr.ensurePackReady() }
-        }
-        .onAppear {
-            screenManager.keepScreenOn = true
-            mgr.migrateIfNeeded()
-        }
-        .onDisappear {
-            screenManager.keepScreenOn = false
-            mgr.cancel()
-        }
-        .onChange(of: mgr.isReady) { _, ready in
-            guard ready else { return }
-            validateThenPersistAll(forceReplaceFrom: nil)
+            .task {
+                BackgroundDownloadCenter.shared.setMode(.foreground)
+                if ModelStorage.localHasUsableModels() { downloaded = true }
+                else { mgr.ensurePackReady() }
+            }
+            .onAppear {
+                screenManager.keepScreenOn = true
+                mgr.migrateIfNeeded()
+            }
+            .onDisappear {
+                screenManager.keepScreenOn = false
+                mgr.cancel()
+            }
+            .onChange(of: mgr.isReady) { _, ready in
+                guard ready else { return }
+                validateThenPersistAll(forceReplaceFrom: nil)
+            }
         }
     }
     
     private func SafeSymbol(_ name: String) -> Image {
-      #if targetEnvironment(simulator)
-      if #available(iOS 18.1, *) {
-        return Image(systemName: name).renderingMode(.template).symbolRenderingMode(.multicolor)
-      }
-      #endif
-      return Image(systemName: name)
+#if targetEnvironment(simulator)
+        if #available(iOS 18.1, *) {
+            return Image(systemName: name).renderingMode(.template).symbolRenderingMode(.multicolor)
+        }
+#endif
+        return Image(systemName: name)
     }
     
     /// Final check after downloader says ready; we only validate and set the install root.

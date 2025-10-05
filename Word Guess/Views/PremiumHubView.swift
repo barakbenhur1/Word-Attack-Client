@@ -74,6 +74,7 @@ public struct PremiumHubView: View {
     private func closeView() {
         PremiumCoplitionHandler.shared.onForceEndPremium = { _, _ in }
         hub.stop()
+        hub.resume()
         router.navigateBack()
     }
     
@@ -120,24 +121,18 @@ public struct PremiumHubView: View {
                             .font(.system(.title3, design: .rounded))
                             .foregroundStyle(.white.opacity(0.7))
                             .padding(.top, 8)
+                            .padding(.horizontal, 8)
                         
                         Grid3x3(hub: hub, presentedSlot: $presentedSlot, engine: engine)
                         
-                        if !hub.discoveredLetters.isEmpty {
-                            VStack(alignment: .leading, spacing: 8) {
-                                Text("Available letters")
-                                    .font(.footnote.weight(.semibold))
-                                    .foregroundStyle(.white.opacity(0.7))
-                                DiscoveredBeltView(letters: Array(hub.discoveredLetters).sorted())
-                            }
-                            .padding(.top, 4)
-                        } else {
-                            Text("No letters yet")
-                                .font(.subheadline)
-                                .foregroundStyle(.white.opacity(0.6))
-                                .padding(.top, 8)
-                                .padding(.leading, 8)
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("Available letters")
+                                .font(.footnote.weight(.semibold))
+                                .foregroundStyle(.white.opacity(0.7))
+                            DiscoveredBeltView(letters: Array(hub.discoveredLetters).sorted())
                         }
+                        .padding(.horizontal, 8)
+                        .padding(.top, 4)
                         
                         if !UIDevice.isPad {
                             Button { lightTap(engine) } label: {
@@ -150,10 +145,10 @@ public struct PremiumHubView: View {
                                 .foregroundStyle(.white)
                                 .padding(.horizontal, 16)
                                 .frame(height: 56)
-                                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                                .background(LinearGradient(colors: [Color.black, Color(hue: 0.64, saturation: 0.25, brightness: 0.18)],
+                                                           startPoint: .topLeading, endPoint: .bottomTrailing), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
                                 .overlay(RoundedRectangle(cornerRadius: 18).stroke(.white.opacity(0.08)))
                             }
-                            .padding(.top, 8)
                         }
                     }
                     .padding(.horizontal, 12)
@@ -173,10 +168,10 @@ public struct PremiumHubView: View {
                         .foregroundStyle(.white)
                         .padding(.horizontal, 16)
                         .frame(height: 56)
-                        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                        .background(LinearGradient(colors: [Color.black, Color(hue: 0.64, saturation: 0.25, brightness: 0.18)],
+                                                   startPoint: .topLeading, endPoint: .bottomTrailing), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
                         .overlay(RoundedRectangle(cornerRadius: 18).stroke(.white.opacity(0.08)))
                     }
-                    .padding(.top, 8)
                     .padding(.bottom, 80)
                 }
             }
@@ -231,11 +226,12 @@ public struct PremiumHubView: View {
             }
         }
         .onAppear {
-            hub.isShown = true
+            hub.show()
+            
+            guard hub.vm.word == .empty else { hub.start(); return }
+            
             PremiumHubModel.configureFor(language: language)
             timerBridge.set(hub.mainSecondsLeft, total: hub.mainRoundLength)
-            hub.show()
-            guard hub.vm.word == .empty else { hub.start(); return }
             
             if !UserDefaults.standard.bool(forKey: "hasSeenHubTutorial_v1") {
                 Task {
@@ -244,7 +240,9 @@ public struct PremiumHubView: View {
                 }
             } else { hub.initLoop() }
         }
-        .onDisappear { hub.isShown = false }
+        .onDisappear {
+            hub.hide()
+        }
         .onChange(of: local.locale) {
             PremiumHubModel.configureFor(language: language)
             hub.resetAll()
@@ -261,7 +259,7 @@ public struct PremiumHubView: View {
                 }
                 .transition(.opacity)
             } else if hub.showNewWordToast {
-                NewWordToast()
+                NewWordToast(offsetY: -60)
                     .transition(.scale(scale: 0.7).combined(with: .opacity))
                     .zIndex(2)
             }
@@ -298,7 +296,7 @@ public struct PremiumHubView: View {
 // MARK: - Top bar
 private struct BackPill: View {
     var action: () -> Void
-    var body: some View { BackButton(action: action).environment(\.colorScheme, .dark) }
+    var body: some View { BackButton(title: "Exit" ,action: action).environment(\.colorScheme, .dark) }
 }
 
 // 🏆 Pill (unchanged)
@@ -409,9 +407,10 @@ final public class PremiumHubModel: ObservableObject {
     
     @Published private(set) var slots: [MiniSlot] = []
     @Published private(set) var mainSecondsLeft: Int = PremiumHubModel.staticMainRoundLength
+    @Published private(set) var gameHistory: [[String]] = []
+    @Published private(set) var isPaused: Bool = false
     
     @Published var discoveredLetters: Set<Character> = []
-    @Published var gameHistory: [[String]] = []
     @Published var canInteract: Bool = true
     @Published var aiDifficulty: AIDifficulty? = nil
     @Published var solvedWords: Int = 0
@@ -419,10 +418,6 @@ final public class PremiumHubModel: ObservableObject {
     @Published var showNewWordToast = false
     
     @Published private var skipAnimationForProgress: Bool = false
-    
-    var isSkipProgressAnimation: Bool { skipAnimationForProgress }
-    
-    var isShown = false
     
     private var newWordTask: Task<Void, Never>?
     private var newWordAnimationTask: Task<Void, Never>?
@@ -437,7 +432,11 @@ final public class PremiumHubModel: ObservableObject {
     // Provider
     private let catalog = MiniGameCatalog()
     
+    private var isShown = false
+    
     let vm = VM()
+    
+    var isSkipProgressAnimation: Bool { skipAnimationForProgress }
     
     init(email: String?) {
         self.email = email
@@ -445,6 +444,7 @@ final public class PremiumHubModel: ObservableObject {
     }
     
     func show() {
+        isShown = true
         if slots.isEmpty {
             slots = catalog.uniqueInitialSlots(hasAI: aiDifficulty != nil, hub: self)
         } else if aiDifficulty == nil {
@@ -452,19 +452,34 @@ final public class PremiumHubModel: ObservableObject {
         }
     }
     
+    func hide() {
+        isShown = false
+    }
+
+    func setGameHistoryForRound(history: [[String]]) {
+        gameHistory = history
+    }
+    
     func skipProgressAnimation() {
         skipAnimationForProgress = true
     }
+    
+    func pause()  { isPaused = true }
+    func resume() { isPaused = false }
+    func sync(time: Int) { mainSecondsLeft = time }
     
     func start() {
         guard tick == nil else { return }
         tick = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
             .sink { [weak self] _ in
                 guard let self else { return }
-                self.mainSecondsLeft -= 1
-                self.mainSecondsLeft = max(0, self.mainSecondsLeft)
-                self.skipAnimationForProgress = false
-                if self.mainSecondsLeft == 0 {
+                // === PAUSE GUARD ===
+                guard !isPaused else { return }
+                
+                mainSecondsLeft -= 1
+                mainSecondsLeft = max(0, self.mainSecondsLeft)
+                skipAnimationForProgress = false
+                if mainSecondsLeft == 0 {
                     Task.detached { @MainActor [weak self] in
                         guard let self else { return }
                         guard isShown else { return }
@@ -481,7 +496,7 @@ final public class PremiumHubModel: ObservableObject {
                     }
                     return s
                 }
-                self.slots = refreshed
+                slots = refreshed
             }
     }
     
@@ -521,13 +536,13 @@ final public class PremiumHubModel: ObservableObject {
         newWordAnimationTask?.cancel()
         newWordAnimationTask = Task(priority: .high) { [weak self] in
             guard let self else { return }
-            try? await Task.sleep(nanoseconds: 300_000_000)
+            try? await Task.sleep(nanoseconds: 100_000_000)
             await MainActor.run {
                 withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
                     self.showNewWordToast = true
                 }
             }
-            try? await Task.sleep(nanoseconds: 1_000_000_000)
+            try? await Task.sleep(nanoseconds: 800_000_000)
             await MainActor.run {
                 withAnimation(.easeOut(duration: 0.25)) {
                     self.showNewWordToast = false
@@ -643,12 +658,13 @@ private struct Grid3x3: View {
 }
 
 private struct NewWordToast: View {
+    let offsetY: CGFloat
     var body: some View {
         HStack(spacing: 10) {
             Image(systemName: "sparkles")
-                .font(.system(.largeTitle, design: .rounded).weight(.semibold))
+                .font(.system(.title, design: .rounded).weight(.semibold))
             Text("New Round")
-                .font(.system(.largeTitle, design: .rounded).weight(.semibold))
+                .font(.system(.title, design: .rounded).weight(.semibold))
         }
         .padding(.horizontal, 46)
         .padding(.vertical, 42)
@@ -656,6 +672,7 @@ private struct NewWordToast: View {
         .background(.ultraThinMaterial, in: Capsule())
         .overlay(Capsule().stroke(Color.white.opacity(0.18), lineWidth: 1))
         .shadow(color: .black.opacity(0.35), radius: 12, y: 6)
+        .offset(y: offsetY)
         .accessibilityLabel("New Round")
     }
 }
@@ -682,6 +699,8 @@ private struct MainRoundCircle: View {
                 shimmer = false; ripple = false
                 try? await Task.sleep(nanoseconds: 60_000_000)
                 await MainActor.run {
+                    hub.pause()
+                    
                     router.navigateTo(
                         .premiumGame(
                             word: vm.wordValue,
@@ -727,8 +746,14 @@ private struct MainRoundCircle: View {
         .onAppear {
             PremiumCoplitionHandler.shared.onForceEndPremium = { history, reset in
                 hub.skipProgressAnimation()
+                
+                hub.resume()
+                
+                let time = max(0, timerBridge.secondsLeft)
+                hub.sync(time: time)
+                
                 if reset { hub.resetAll() }
-                else if let history { hub.gameHistory = history }
+                else if let history { hub.setGameHistoryForRound(history: history) }
             }
         }
     }
@@ -1068,24 +1093,31 @@ private struct HubTutorialOverlay: View {
     }
 }
 
-// ============================================================================
-// =====================  ADDED: Missing Helpers  =============================
-// ============================================================================
-
 // MARK: - Discovered letters belt
 private struct DiscoveredBeltView: View {
     let letters: [Character]
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
-                ForEach(letters, id: \.self) { ch in
-                    Text(String(ch))
-                        .font(.system(.callout, design: .rounded).weight(.bold))
-                        .foregroundStyle(.black)
-                        .frame(width: 30, height: 30)
-                        .background(Circle().fill(PremiumPalette.accent))
-                        .overlay(Circle().stroke(.white.opacity(0.4), lineWidth: 1))
-                        .shadow(radius: 3, y: 2)
+                if letters.isEmpty {
+                    VStack {
+                        Text("No letters yet")
+                            .font(.system(.callout, design: .rounded).weight(.bold))
+                            .foregroundStyle(.white.opacity(0.6))
+                            .shadow(radius: 3, y: 2)
+                        Spacer()
+                    }
+                    .frame(height: 30)
+                } else {
+                    ForEach(letters, id: \.self) { ch in
+                        Text(String(ch))
+                            .font(.system(.callout, design: .rounded).weight(.bold))
+                            .foregroundStyle(.black)
+                            .frame(width: 30, height: 30)
+                            .background(Circle().fill(PremiumPalette.accent))
+                            .overlay(Circle().stroke(.white.opacity(0.4), lineWidth: 1))
+                            .shadow(radius: 3, y: 2)
+                    }
                 }
             }
         }

@@ -34,10 +34,15 @@ final class PremiumManager: PremiumManagerProtocol {
     @Published var isPurchasing:     Bool = false
     @Published var isPremium:        Bool = false
     @Published var justDone:         Bool = false
-
-    // MARK: - Config (your product IDs)
-    private let monthlyID = "WordZap.Premium.Monthly"
-    private let yearlyID  = "WordZap.Premium.Yearly"      // OK if missing in ASC; view will still work
+    
+    private enum AutoRenewableID: String {
+        case monthly = "WordZap.Premium.Monthly", yearly = "WordZap.Premium.Yearly"
+    }
+    
+    private let premiumAutoRenewableIDs: Set<AutoRenewableID> = [
+        .monthly,
+        .yearly
+    ]
 
     // MARK: - Cache
     private var monthlyProduct: Product?
@@ -55,15 +60,19 @@ final class PremiumManager: PremiumManagerProtocol {
 
     func loadProducts() async {
         do {
-            let ids: Set<String> = [monthlyID, yearlyID]
+            let stringIDs = premiumAutoRenewableIDs.map { $0.rawValue }
+            let ids: Set<String> = Set(stringIDs)
             let products = try await Product.products(for: Array(ids))
-
+            
             // map
             for p in products {
-                if p.id == monthlyID { monthlyProduct = p }
-                if p.id == yearlyID  { yearlyProduct  = p }
+                guard let id = AutoRenewableID(rawValue: p.id) else { continue }
+                switch id {
+                case .monthly: monthlyProduct = p
+                case .yearly: yearlyProduct  = p
+                }
             }
-
+            
             // localized prices
             monthlyPriceText = monthlyProduct?.displayPrice ?? "—"
             yearlyPriceText  = yearlyProduct?.displayPrice  ?? "—"
@@ -174,7 +183,7 @@ final class PremiumManager: PremiumManagerProtocol {
         case .verified(let safe): return safe
         }
     }
-
+    
     /// Treat ANY active auto-renewable sub as premium (keeps it simple & robust).
     private func updateEntitlement() async {
         var active = false
@@ -184,7 +193,7 @@ final class PremiumManager: PremiumManagerProtocol {
             }
         }
         await MainActor.run {
-            self.isPremium = true
+            self.isPremium = active
         }
     }
 }

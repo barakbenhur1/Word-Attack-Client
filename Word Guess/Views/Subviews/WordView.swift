@@ -205,7 +205,7 @@ struct WordView<VM: WordViewModel>: View {
     
     @ViewBuilder
     private func placeHoldersView(placeHolderForCell: [Guess], i: Int) -> some View {
-        HStack(alignment: .center, spacing: 0) {
+        HStack(alignment: .center, spacing: -4) {
             ForEach(0..<placeHolderForCell.count, id: \.self) { j in
                 let char = placeHolderForCell[j]
                 if char.color != .noGuess && char.color != .noMatch {
@@ -242,11 +242,8 @@ struct WordView<VM: WordViewModel>: View {
         }
         .clipShape(RoundedRectangle(cornerRadius: 4))
         .animation(.easeOut(duration: 0.8), value: cleanCells)
-        .realisticCell(color: cleanCells ? .white.opacity(0.8) : colors[i].baseColor.opacity(0.8))
+        .realisticCell(color: cleanCells ? .white.opacity(0.8) : colors[i].baseColor.opacity(0.8), cornerRadius: 4)
         .elevated(cornerRadius: 4)
-//        .realStone(cornerRadius: 4,
-//                   crackCount: Int.random(in: 3...6),
-//                   seed: UInt64.random(in: 1337...2337))
         .premiumTile(cornerRadius: 4)
         .focusGlow(fieldFocus?.rawValue == i, cornerRadius: 4)
         .accessibilityLabel(Text("Letter cell \(i+1)"))

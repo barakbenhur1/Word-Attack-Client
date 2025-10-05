@@ -11,9 +11,8 @@ import UserNotifications
 // MARK: - Identifiers
 
 enum LocalNotifID {
-    // We keep stable identifiers so we can update/cancel reliably
-    static let dailyInactivity = "com.yourapp.dailyInactivity"
-    static func resumeGame(id: String) -> String { "com.yourapp.resumeGame.\(id)" }
+    static let dailyInactivity = "com.wordzap.dailyInactivity"
+    static func resumeGame(id: String) -> String { "com.zordzap.resumeGame.\(id)" }
 }
 
 enum NotifCategory {
@@ -62,36 +61,46 @@ struct NotificationManager {
     /// Schedules a reminder for *today or tomorrow* at the provided hour/minute.
     /// Call this whenever the app becomes active; it will remove the previous one and create a fresh one.
     /// `deeplink` is where the app should navigate when the user taps the notification.
-    func scheduleDailyInactivityReminder(
-        hour: Int = 19,
-        minute: Int = 0,
-        title: String = "Miss you today 👋",
-        body: String = "Jump back in and keep your streak!",
-        deeplink: String = "wordzap://home?src=notif-inactivity"
-    ) async {
+    // Schedules at next 19:00 local (today if in the future, otherwise tomorrow)
+    func scheduleDailyInactivityReminder(hour: Int, minute: Int) async {
         let center = UNUserNotificationCenter.current()
         center.removePendingNotificationRequests(withIdentifiers: [LocalNotifID.dailyInactivity])
-        
-        let nextTriggerDate = Self.nextTriggerDate(hour: hour, minute: minute)
-        let comps = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute], from: nextTriggerDate)
-        
+
+        guard let fireDate = nextOccurrence(hour: hour, minute: minute) else { return }
+
+        var date = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute], from: fireDate)
+        date.second = 0
+
+        let trigger = UNCalendarNotificationTrigger(dateMatching: date, repeats: false)
+
         let content = UNMutableNotificationContent()
-        content.title = title
-        content.body  = body
-        content.sound = .default
-        content.threadIdentifier = "daily" // groups in Notification Center
-        if #available(iOS 15.0, *) { content.interruptionLevel = .active }
-        content.categoryIdentifier = NotifCategory.openDeeplink
-        content.userInfo = [NotifKeys.deeplink: deeplink]
-        
-        let trigger = UNCalendarNotificationTrigger(dateMatching: comps, repeats: false)
+        content.title = "We miss you at WordZap"
+        content.body  = "Jump back in and keep your streak alive!"
+        content.userInfo = ["kind": "DailyInactivityReminder"]
+
         let req = UNNotificationRequest(identifier: LocalNotifID.dailyInactivity, content: content, trigger: trigger)
         do { try await center.add(req) } catch { print("❌ scheduleDailyInactivityReminder failed: \(error)") }
     }
-    
-    /// Cancels today’s inactivity reminder (e.g., when user opened the app).
+
     func cancelDailyInactivityReminder() async {
-        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [LocalNotifID.dailyInactivity])
+        let center = UNUserNotificationCenter.current()
+        center.removePendingNotificationRequests(withIdentifiers: [LocalNotifID.dailyInactivity])
+    }
+
+    private func nextOccurrence(hour: Int, minute: Int) -> Date? {
+        let cal = Calendar.current
+        let now = Date()
+        var comps = cal.dateComponents([.year, .month, .day], from: now)
+        comps.hour = hour; comps.minute = minute; comps.second = 0
+        let todayAtTime = cal.date(from: comps)!
+
+        // If that time already passed *or* we are within a small grace window while foreground,
+        // schedule for tomorrow.
+        if todayAtTime <= now {
+            return cal.date(byAdding: .day, value: 1, to: todayAtTime)
+        } else {
+            return todayAtTime
+        }
     }
     
     private static func nextTriggerDate(hour: Int, minute: Int) -> Date {

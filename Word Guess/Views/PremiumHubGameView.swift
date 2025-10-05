@@ -46,19 +46,23 @@ struct PremiumHubGameView<VM: PremiumHubGameVM>: View {
     private let rows = 5
     private let length: Int
     
-    private let IRIS_CLOSE_DURATION: Double = 0.58
-    
+    // Guess history
     private var initilizeHistory: [[String]]
+    
+    // Open/Close
     private let canBeSolved: Bool
+    private let openDuration: Double = 0.3
+    private let closeDuration: Double = 0.3
     
-    private let IRIS_OPEN_DUR:  Double = 0.65
-    private let IRIS_CLOSE_DUR: Double = 0.50
+    @State private var reveld = false
+    @State private var isClosing = false
     
-    @State private var irisClose = false
-    @State private var irisDone = false
+    // Table
     @State private var matrix: [[String]]
     @State private var colors: [[CharColor]]
     @State private var current: Int = 0
+    
+    // VM
     @State private var vm: VM
     
     private var history: [[String]] { current > 0 ? Array(matrix.prefix(current)) : [] }
@@ -111,71 +115,69 @@ struct PremiumHubGameView<VM: PremiumHubGameVM>: View {
     }
     
     var body: some View {
-        contant()
-            .overlay(
-                IrisVignetteGate(isClosing: $irisClose,
-                                 isDone: $irisDone,
-                                 canBeSolved: canBeSolved,
-                                 openDuration: IRIS_OPEN_DUR,
-                                 closeDuration: IRIS_CLOSE_DUR,
-                                 maxDimOpacity: 0.45)
-            )
-            .onAppear {
-                isVisible = true
-                withTransaction(Transaction(animation: nil)) {
+        CircularRevealGate(isClosing: $isClosing, isDone: $reveld, openDuration: openDuration, closeDuration: closeDuration) {
+            contant()
+                .onAppear {
+                    isVisible = true
+                    withTransaction(Transaction(animation: nil)) {
+                        secondsLeftLocal = max(0, timer.secondsLeft)
+                    }
+                    startAmbient()
+                    
+                    // Ensure only a single local ticker subscription and cancel on disappear
+                    localTickerCancellable?.cancel()
+                    localTickerCancellable = localTicker
+                        .sink { _ in
+                            guard isVisible, !endBannerUp else { return }
+                            if timer.secondsLeft != secondsLeftLocal {
+                                secondsLeftLocal = max(0, timer.secondsLeft)
+                                return
+                            }
+                            if secondsLeftLocal > 0 {
+                                secondsLeftLocal -= 1
+                                secondsLeftLocal = max(0, secondsLeftLocal)
+                                timer.set(secondsLeftLocal, total: timer.total)
+                            } else {
+                                loseResetFlag = false
+                                audio.stop()
+                                audio.playSound(sound: "fail", type: "wav")
+                                withAnimation(.spring(response: 0.55, dampingFraction: 0.75)) { showLoseBanner = true }
+                            }
+                        }
+                }
+                .onDisappear {
+                    isVisible = false
+                    audio.stop()
+                    UIApplication.shared.hideKeyboard()
+                    localTickerCancellable?.cancel()
+                    localTickerCancellable = nil
+                    secondsLeftLocal = max(0, secondsLeftLocal)
+                    timer.set(secondsLeftLocal, total: timer.total)
+                }
+                .onReceive(timer.$secondsLeft.removeDuplicates()) { new in
+                    secondsLeftLocal = max(0, new)
+                }
+                .onReceive(timer.$total.removeDuplicates()) { _ in
                     secondsLeftLocal = max(0, timer.secondsLeft)
                 }
-                startAmbient()
-                
-                // Ensure only a single local ticker subscription and cancel on disappear
-                localTickerCancellable?.cancel()
-                localTickerCancellable = localTicker
-                    .sink { _ in
-                        guard isVisible, !endBannerUp else { return }
-                        if timer.secondsLeft != secondsLeftLocal {
-                            secondsLeftLocal = max(0, timer.secondsLeft)
-                            return
+                .toolbar {
+                    ToolbarItem(placement: .keyboard) {
+                        AllowedBeltView(
+                            letters: beltLetters(),
+                            pulse: invalidPulse
+                        )
+                        .overlay {
+                            if toastVisible {
+                                CapsuleToast(text: toastText)
+                                    .transition(.move(edge: .top).combined(with: .opacity))
+                            }
                         }
-                        if secondsLeftLocal > 0 {
-                            secondsLeftLocal -= 1
-                            secondsLeftLocal = max(0, secondsLeftLocal)
-                            timer.set(secondsLeftLocal, total: timer.total)
-                        } else {
-                            loseResetFlag = false
-                            audio.stop()
-                            audio.playSound(sound: "fail", type: "wav")
-                            withAnimation(.spring(response: 0.55, dampingFraction: 0.75)) { showLoseBanner = true }
-                        }
+                        .background(.ultraThinMaterial)
+                        .frame(maxWidth: .infinity, alignment: .center)
+                        .frame(height: 30)
                     }
-            }
-            .onDisappear {
-                isVisible = false
-                localTickerCancellable?.cancel()
-                localTickerCancellable = nil
-            }
-            .onReceive(timer.$secondsLeft.removeDuplicates()) { new in
-                secondsLeftLocal = max(0, new)
-            }
-            .onReceive(timer.$total.removeDuplicates()) { _ in
-                secondsLeftLocal = max(0, timer.secondsLeft)
-            }
-            .toolbar {
-                ToolbarItem(placement: .keyboard) {
-                    AllowedBeltView(
-                        letters: beltLetters(),
-                        pulse: invalidPulse
-                    )
-                    .overlay {
-                        if toastVisible {
-                            CapsuleToast(text: toastText)
-                                .transition(.move(edge: .top).combined(with: .opacity))
-                        }
-                    }
-                    .background(.ultraThinMaterial)
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .frame(height: 30)
                 }
-            }
+        }
     }
     
     @ViewBuilder private func contant() -> some View {
@@ -266,7 +268,7 @@ struct PremiumHubGameView<VM: PremiumHubGameVM>: View {
                     current: $current,
                     length: length,
                     word: $matrix[i],
-                    gainFocus: Binding(get: { current == i && !endBannerUp && irisDone }, set: { _ in }),
+                    gainFocus: Binding(get: { current == i && !endBannerUp && reveld }, set: { _ in }),
                     colors: $colors[i]
                 ) {
                     guard i == current, !endBannerUp else { return }
@@ -281,7 +283,7 @@ struct PremiumHubGameView<VM: PremiumHubGameVM>: View {
     }
     
     @ViewBuilder private func background() -> some View {
-        GameViewBackguard()
+        GameViewBackground()
             .ignoresSafeArea()
     }
     
@@ -293,8 +295,12 @@ struct PremiumHubGameView<VM: PremiumHubGameVM>: View {
         isVisible = false
         audio.stop()
         UIApplication.shared.hideKeyboard()
-        irisClose = true
-        DispatchQueue.main.asyncAfter(deadline: .now() + IRIS_CLOSE_DUR) {
+        isClosing = true
+        localTickerCancellable?.cancel()
+        localTickerCancellable = nil
+        secondsLeftLocal = max(0, secondsLeftLocal)
+        timer.set(secondsLeftLocal, total: timer.total)
+        DispatchQueue.main.asyncAfter(deadline: .now() + closeDuration) {
             onForceEnd(withHistory ? history : nil, reset)
             router.navigateBack()
         }
@@ -704,93 +710,60 @@ private struct DebrisPiece: View {
     }
 }
 
-private struct IrisVignetteGate: View {
+struct CircularRevealGate<Content: View>: View {
     @Binding var isClosing: Bool
     @Binding var isDone: Bool
-    let canBeSolved: Bool
-    var openDuration: Double = 0.18
-    var closeDuration: Double = 0.15
-    var maxDimOpacity: Double = 0.45
-
-    @State private var t: CGFloat = 0.0
-    @State private var shimmer: CGFloat = 1
-
-    private var ringColors: [Color] {
-        canBeSolved
-        ? [Color(red:1.00, green:0.95, blue:0.70),
-           Color(red:1.00, green:0.84, blue:0.00),
-           Color(red:0.80, green:0.50, blue:0.00),
-           Color(red:1.00, green:0.95, blue:0.70)]
-        : [Color(red:0.90, green:0.92, blue:0.95),
-           Color(red:0.66, green:0.71, blue:0.76),
-           Color(red:0.42, green:0.47, blue:0.52),
-           Color(red:0.90, green:0.92, blue:0.95)]
+    
+    private let openDuration: Double
+    private let closeDuration: Double
+    
+    @State private var progress: CGFloat = 0.0
+    
+    let content: Content
+    
+    init(isClosing: Binding<Bool>, isDone: Binding<Bool>,
+         openDuration: Double = 0.35, closeDuration: Double = 0.35,
+         @ViewBuilder content: () -> Content) {
+        self._isClosing = isClosing
+        self._isDone = isDone
+        self.openDuration = openDuration
+        self.closeDuration = closeDuration
+        self.content = content()
     }
-
+    
     var body: some View {
         GeometryReader { geo in
             let w = geo.size.width
             let h = geo.size.height
             let diag = sqrt(w*w + h*h)
-            let yShift: CGFloat = -h * 0.14
-
-            let minR: CGFloat = 16
-            let maxR: CGFloat = diag * 0.65
-
-            // Smooth eased progress for radius (prevents “pop” at start/end)
-            let eased: CGFloat = {
-                let x = max(0, min(1, t))
-                return x * x * (3 - 2 * x)    // smoothstep
-            }()
-
-            let radius = minR + (maxR - minR) * eased
-
-            // Hold dim almost full until ~85% open, then release (no mid-open flash)
-            let dimHoldEnd: CGFloat = 0.85
-            let dimPhase = max(0, min(1, (t - dimHoldEnd) / (1 - dimHoldEnd)))
-            let dimFade = dimPhase * dimPhase * (3 - 2 * dimPhase) // smoothstep
-            let dim = maxDimOpacity * (1 - dimFade)
-
-            ZStack {
-                ZStack {
-                    Rectangle().fill(Color.black.opacity(dim))
+            
+            LinearGradient(colors: [Color.black, Color(hue: 0.64, saturation: 0.25, brightness: 0.18)],
+                           startPoint: .topLeading, endPoint: .bottomTrailing)
+            .ignoresSafeArea()
+            
+            content
+                .mask(
                     Circle()
-                        .frame(width: radius * 2, height: radius * 2)
-                        .offset(y: yShift)
-                        .blendMode(.destinationOut) // keep the main cutout
+                        .frame(width: progress * diag * 2,
+                               height: progress * diag * 2)
+                        .position(x: w/2, y: h/2)
+                        .offset(y: -h * 0.14)
+                )
+                .onAppear {
+                    progress = 0
+                    withAnimation(.easeOut(duration: openDuration)) {
+                        progress = 1
+                    }
+                    DispatchQueue.main.asyncAfter(deadline: .now() + openDuration) {
+                        isDone = true
+                    }
                 }
-                .compositingGroup()
-                .allowsHitTesting(false)
-
-                // IMPORTANT: ring is decorative; do NOT cut a hole with it
-                Circle()
-                    .stroke(
-                        AngularGradient(
-                            colors: ringColors,
-                            center: .center,
-                            angle: .degrees(Double(shimmer) * 360)
-                        ),
-                        lineWidth: 2.5
-                    )
-                    .frame(width: radius * 2, height: radius * 2)
-                    .offset(y: yShift)
-                    .opacity(0.9 - 0.85 * Double(eased))
-                    .blendMode(.plusLighter) // was .destinationOut (caused flash)
-                    .allowsHitTesting(false)
-            }
-            .frame(width: w, height: h)
-            .onAppear {
-                t = 0
-                withAnimation(.easeOut(duration: openDuration)) { t = 1 }
-            }
-            .task {
-                try? await Task.sleep(nanoseconds: 100_000_000)
-                await MainActor.run { isDone = true }
-            }
-            .onChange(of: isClosing) { _, closing in
-                guard closing else { return }
-                withAnimation(.easeIn(duration: closeDuration)) { t = 0 }
-            }
+                .onChange(of: isClosing) { _, closing in
+                    guard closing else { return }
+                    withAnimation(.easeIn(duration: closeDuration)) {
+                        progress = 0
+                    }
+                }
         }
     }
 }

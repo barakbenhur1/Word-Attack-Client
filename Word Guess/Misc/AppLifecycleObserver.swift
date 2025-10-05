@@ -13,7 +13,7 @@ struct AppLifecycleObserver: ViewModifier {
     @AppStorage("lastOpenDay") private var lastOpenDay: String = "" // "yyyy-MM-dd"
     @ObservedObject var session: GameSessionManager
     
-    var inactivityHour: Int = 19  // 7pm local
+    var inactivityHour: Int = 19
     var inactivityMinute: Int = 0
     
     func body(content: Content) -> some View {
@@ -22,15 +22,10 @@ struct AppLifecycleObserver: ViewModifier {
                 switch newPhase {
                 case .active:
                     Task {
-                        // Update last open stamp immediately
                         lastOpenDay = Self.todayKey()
-                        // Ask permission once; safe to call again
                         try? await NotificationManager.shared.requestAuthorization()
-                        // Re-schedule today's inactivity reminder (fires later if user doesn't reopen)
+                        // Always cancel on entering foreground so it can't fire while open
                         await NotificationManager.shared.cancelDailyInactivityReminder()
-                        await NotificationManager.shared.scheduleDailyInactivityReminder(hour: inactivityHour,
-                                                                                         minute: inactivityMinute)
-                        // If we returned to the app, cancel any resume reminder for current game
                         if let gid = session.activeGameID {
                             await NotificationManager.shared.cancelResumeGameReminder(gameID: gid)
                         }
@@ -38,10 +33,16 @@ struct AppLifecycleObserver: ViewModifier {
                     
                 case .background:
                     Task {
-                        // If the user has a game in progress, set a resume reminder
+                        // Only schedule when user LEAVES the app
+                        await NotificationManager.shared.scheduleDailyInactivityReminder(
+                            hour: inactivityHour,
+                            minute: inactivityMinute
+                        )
                         if let gid = session.activeGameID {
-                            // Example: ping in 30 minutes
-                            await NotificationManager.shared.scheduleResumeGameReminder(gameID: gid, delay: 60 * 30)
+                            // e.g. ping in 30 minutes
+                            await NotificationManager.shared.scheduleResumeGameReminder(
+                                gameID: gid, delay: 60 * 30
+                            )
                         }
                     }
                     
@@ -53,9 +54,7 @@ struct AppLifecycleObserver: ViewModifier {
     
     private static func todayKey() -> String {
         let df = DateFormatter()
-        df.calendar = .current
-        df.locale = .current
-        df.timeZone = .current
+        df.calendar = .current; df.locale = .current; df.timeZone = .current
         df.dateFormat = "yyyy-MM-dd"
         return df.string(from: Date())
     }
