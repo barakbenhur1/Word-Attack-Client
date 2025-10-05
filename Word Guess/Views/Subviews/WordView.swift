@@ -189,14 +189,14 @@ struct WordView<VM: WordViewModel>: View {
         }
         .onChange(of: current) {
             wordBakup = [String](repeating: "", count: $word.wrappedValue.count)
-            fieldFocus = .one
+            if gainFocus { fieldFocus = .one } else { fieldFocus = nil }
         }
         .onChange(of: gainFocus) {
             if gainFocus { fieldFocus = .one } else { fieldFocus = nil }
         }
         .onAppear {
-            guard !isAI && gainFocus else { return }
-            fieldFocus = .one
+            guard !isAI else { return }
+            if gainFocus { fieldFocus = .one } else { fieldFocus = nil }
         }
         .environment(\.layoutDirection, language == "he" ? .rightToLeft : .leftToRight)
     }

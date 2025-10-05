@@ -247,29 +247,81 @@ extension CustomAlertView where T == Never {
     }
 }
 
-// MARK: - Preview (optional)
-#if DEBUG
-struct CustomAlertView_Previews: PreviewProvider {
-    struct Demo: View {
-        @State private var show = true
-        var body: some View {
-            ZStack {
-                Color.gray.opacity(0.1).ignoresSafeArea()
-                Button("Show Alert") { show = true }
-            }
-            .overlay(
-                CustomAlertView<Never, Text>(
-                    type: .success,
-                    "Great Success!",
-                    $show,
-                    actionTextKey: "OK",
-                    cancelButtonTextKey: "Cancel",
-                    action: { print("Action ran AFTER close") },
-                    message: { Text("This is a message.\nClose anim runs first, then action.") }
-                )
+extension View {
+    /// Presents an alert with a message when a given condition is true, using a localized string key for a title.
+    /// - Parameters:
+    ///   - titleKey: The key for the localized string that describes the title of the alert.
+    ///   - isPresented: A binding to a Boolean value that determines whether to present the alert.
+    ///   - data: An optional binding of generic type T value, this data will populate the fields of an alert that will be displayed to the user.
+    ///   - actionText: The key for the localized string that describes the text of alert's action button.
+    ///   - action: The alert’s action given the currently available data.
+    ///   - message: A ViewBuilder returning the message for the alert given the currently available data.
+    func customAlert<M, T: Any>(
+        _ titleKey: LocalizedStringKey,
+        type: AlertType,
+        isPresented: Binding<Bool>,
+        returnedValue data: T?,
+        actionText: LocalizedStringKey,
+        cancelButtonText: LocalizedStringKey? = nil,
+        action: @escaping (T) -> (),
+        @ViewBuilder message: @escaping (T?) -> M
+    ) -> some View where M: View {
+        fullScreenCover(isPresented: isPresented) {
+            CustomAlertView(
+                type: type,
+                titleKey,
+                isPresented,
+                returnedValue: data,
+                actionTextKey: actionText,
+                cancelButtonTextKey: cancelButtonText,
+                action: action,
+                message: message
             )
+            .presentationBackground(.clear)
+        }
+        .transaction { transaction in
+            if isPresented.wrappedValue {
+                // disable the default FullScreenCover animation
+                transaction.disablesAnimations = true
+                // add custom animation for presenting and dismissing the FullScreenCover
+                transaction.animation = .linear(duration: 0.1)
+            }
         }
     }
-    static var previews: some View { Demo() }
+    
+    /// Presents an alert with a message when a given condition is true, using a localized string key for a title.
+    /// - Parameters:
+    ///   - titleKey: The key for the localized string that describes the title of the alert.
+    ///   - isPresented: A binding to a Boolean value that determines whether to present the alert.
+    ///   - actionText: The key for the localized string that describes the text of alert's action button.
+    ///   - action: Returning the alert’s actions.
+    ///   - message: A ViewBuilder returning the message for the alert.
+    func customAlert<M>(
+        _ titleKey: LocalizedStringKey,
+        type: AlertType,
+        isPresented: Binding<Bool>,
+        actionText: LocalizedStringKey,
+        cancelButtonText: LocalizedStringKey? = nil,
+        action: (() -> ())? = nil,
+        @ViewBuilder message: @escaping () -> M
+    ) -> some View where M: View {
+        fullScreenCover(isPresented: isPresented) {
+            CustomAlertView(
+                type: type,
+                titleKey,
+                isPresented,
+                actionTextKey: actionText,
+                cancelButtonTextKey: cancelButtonText,
+                action: action,
+                message: message
+            )
+            .presentationBackground(.clear)
+        }
+        .transaction { transaction in
+            if isPresented.wrappedValue {
+                transaction.disablesAnimations = true
+                transaction.animation = .linear(duration: 0.1)
+            }
+        }
+    }
 }
-#endif

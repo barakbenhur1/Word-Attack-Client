@@ -43,24 +43,27 @@ struct GameView<VM: DifficultyWordViewModel>: View {
     private let diffculty: DifficultyType
     private var length: Int { return diffculty.getLength() }
     private var email: String? { return loginHandeler.model?.email }
+    
+    
+    private typealias ScoreAnimationParams = (value: Int, opticity: CGFloat, scale: CGFloat, offset: CGFloat)
 
     @State private var interstitialAdManager: InterstitialAdsManager?
-    @State private var current: Int = 0
-    @State private var score: Int = 0
-    @State private var scoreAnimation: (value: Int, opticity: CGFloat, scale: CGFloat, offset: CGFloat) = (0, CGFloat(0), CGFloat(0), CGFloat(30))
+    @State private var current: Int
+    @State private var scoreAnimation: ScoreAnimationParams
     @State private var matrix: [[String]]
     @State private var colors: [[CharColor]]
     @State private var vm = VM()
-    @State private var didStart = false
-    @State private var timeAttackAnimation = false
-    @State private var timeAttackAnimationDone = true
-    @State private var endFetchAnimation = false
-    @State private var showError: Bool = false
     
-    @State private var cleanCells = false
+    @State private var didStart: Bool
+    @State private var timeAttackAnimation: Bool
+    @State private var timeAttackAnimationDone: Bool
+    @State private var endFetchAnimation: Bool
+    @State private var showError: Bool
+    
+    @State private var cleanCells: Bool
     
     // Task/cancel management
-    @State private var isVisible = false
+    @State private var isVisible: Bool
     
     private func guardVisible() -> Bool { isVisible && !Task.isCancelled }
     
@@ -170,12 +173,6 @@ struct GameView<VM: DifficultyWordViewModel>: View {
         await vm.word(diffculty: diffculty, email: email)
     }
     
-    private func afterTimeAttack() {
-        guard !vm.word.isTimeAttack else { return }
-        guard interstitialAdManager == nil || !interstitialAdManager!.shouldShowInterstitial(for: vm.word.number) else { return }
-        initalConfigirationForWord()
-    }
-    
     init(diffculty: DifficultyType) {
         self.diffculty = diffculty
         
@@ -185,6 +182,15 @@ struct GameView<VM: DifficultyWordViewModel>: View {
         self.colors = [[CharColor]](repeating: [CharColor](repeating: .noGuess,
                                                            count: diffculty.getLength()),
                                     count: rows)
+        
+        self.didStart = false
+        self.timeAttackAnimation = false
+        self.timeAttackAnimationDone = true
+        self.endFetchAnimation = false
+        self.showError = false
+        self.cleanCells = false
+        self.isVisible = false
+        self.scoreAnimation = (0, CGFloat(0), CGFloat(0), CGFloat(30))
         self.current = 0
     }
     
@@ -437,7 +443,6 @@ struct GameView<VM: DifficultyWordViewModel>: View {
                     .onChange(of: vm.isError, handleError)
                     .onChange(of: vm.word.word, handleWordChange)
                     .onChange(of: vm.word.word.guesswork, handleGuessworkChage)
-                    .onChange(of: vm.word.isTimeAttack, afterTimeAttack)
                     .onAppear { onAppear(email: email) }
                     .disabled(!endFetchAnimation || !didStart || vm.isError)
                     .opacity(endFetchAnimation && didStart && !vm.isError ? 1 : 0.7)
@@ -515,10 +520,6 @@ struct GameView<VM: DifficultyWordViewModel>: View {
             
             let isCorrect = guess.lowercased() == vm.word.word.value.lowercased()
             
-            let sound = isCorrect ? "success" : "fail"
-            audio.playSound(sound: sound,
-                            type: "wav")
-            
             switch diffculty {
             case .tutorial:
                 Task(priority: .userInitiated) {
@@ -531,6 +532,12 @@ struct GameView<VM: DifficultyWordViewModel>: View {
                 let isTimeAttack = vm.word.isTimeAttack
                 let rows = rows
                 Task.detached(priority: .userInitiated) {
+                    try? await Task.sleep(nanoseconds: 1_000_000_000)
+                    await MainActor.run {
+                        let sound = isCorrect ? "success" : "fail"
+                        audio.playSound(sound: sound,
+                                        type: "wav")
+                    }
                     let points = isCorrect ? (isTimeAttack ? 40 : 20) : 0
                     let total = rows * points
                     let currentRow = i * points
@@ -581,99 +588,17 @@ struct GameView<VM: DifficultyWordViewModel>: View {
         guard guardVisible() else { scoreAnimation = (0, CGFloat(0), CGFloat(0), CGFloat(30)); return }
         let score = vm.score
         if value > 1 {
-            let nanoseconds = 500_000_000 / UInt64(value)
+            let nanoseconds = 80000000 / value
             for i in 1...value {
-                try? await Task.sleep(nanoseconds: nanoseconds)
-                vm.score = score + i
+                try? await Task.sleep(for: .nanoseconds(nanoseconds))
+                withAnimation(.easeInOut) {
+                    vm.score = score + i
+                }
             }
         } else { vm.score = score + value }
         
         scoreAnimation.value = 0
         scoreAnimation.offset = 30
-    }
-}
-
-//#Preview {
-//    GameView(diffculty: .regular)
-//        .environment(\.managedObjectContext, PersistenceController.preview.container.viewContext)
-//}
-
-extension View {
-    /// Presents an alert with a message when a given condition is true, using a localized string key for a title.
-    /// - Parameters:
-    ///   - titleKey: The key for the localized string that describes the title of the alert.
-    ///   - isPresented: A binding to a Boolean value that determines whether to present the alert.
-    ///   - data: An optional binding of generic type T value, this data will populate the fields of an alert that will be displayed to the user.
-    ///   - actionText: The key for the localized string that describes the text of alert's action button.
-    ///   - action: The alert’s action given the currently available data.
-    ///   - message: A ViewBuilder returning the message for the alert given the currently available data.
-    func customAlert<M, T: Any>(
-        _ titleKey: LocalizedStringKey,
-        type: AlertType,
-        isPresented: Binding<Bool>,
-        returnedValue data: T?,
-        actionText: LocalizedStringKey,
-        cancelButtonText: LocalizedStringKey? = nil,
-        action: @escaping (T) -> (),
-        @ViewBuilder message: @escaping (T?) -> M
-    ) -> some View where M: View {
-        fullScreenCover(isPresented: isPresented) {
-            CustomAlertView(
-                type: type,
-                titleKey,
-                isPresented,
-                returnedValue: data,
-                actionTextKey: actionText,
-                cancelButtonTextKey: cancelButtonText,
-                action: action,
-                message: message
-            )
-            .presentationBackground(.clear)
-        }
-        .transaction { transaction in
-            if isPresented.wrappedValue {
-                // disable the default FullScreenCover animation
-                transaction.disablesAnimations = true
-                // add custom animation for presenting and dismissing the FullScreenCover
-                transaction.animation = .linear(duration: 0.1)
-            }
-        }
-    }
-    
-    /// Presents an alert with a message when a given condition is true, using a localized string key for a title.
-    /// - Parameters:
-    ///   - titleKey: The key for the localized string that describes the title of the alert.
-    ///   - isPresented: A binding to a Boolean value that determines whether to present the alert.
-    ///   - actionText: The key for the localized string that describes the text of alert's action button.
-    ///   - action: Returning the alert’s actions.
-    ///   - message: A ViewBuilder returning the message for the alert.
-    func customAlert<M>(
-        _ titleKey: LocalizedStringKey,
-        type: AlertType,
-        isPresented: Binding<Bool>,
-        actionText: LocalizedStringKey,
-        cancelButtonText: LocalizedStringKey? = nil,
-        action: (() -> ())? = nil,
-        @ViewBuilder message: @escaping () -> M
-    ) -> some View where M: View {
-        fullScreenCover(isPresented: isPresented) {
-            CustomAlertView(
-                type: type,
-                titleKey,
-                isPresented,
-                actionTextKey: actionText,
-                cancelButtonTextKey: cancelButtonText,
-                action: action,
-                message: message
-            )
-            .presentationBackground(.clear)
-        }
-        .transaction { transaction in
-            if isPresented.wrappedValue {
-                transaction.disablesAnimations = true
-                transaction.animation = .linear(duration: 0.1)
-            }
-        }
     }
 }
 

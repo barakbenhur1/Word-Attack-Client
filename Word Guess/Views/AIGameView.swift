@@ -39,9 +39,9 @@ struct AIGameView<VM: AIWordViewModel>: View {
     private let noGuessHitPoints = 40
     
     @State private var vm = VM()
-    @State private var endFetchAnimation = false
-    @State private var didStart = false
-    @State private var gender: String = "male"
+    @State private var endFetchAnimation: Bool
+    @State private var didStart: Bool
+    @State private var gender: String
     
     @State private var turnFX = TurnFX()
     
@@ -49,7 +49,7 @@ struct AIGameView<VM: AIWordViewModel>: View {
     @State private var playerHpAnimation: HpAnimationParams = (0, CGFloat(0), CGFloat(0), CGFloat(30))
     
     @State private var interstitialAdManager: InterstitialAdsManager?
-    @State private var disabled: Bool = false
+    @State private var disabled: Bool
     @State private var showGameEndPopup: Bool
     @State private var showExitPopup: Bool
     @State private var showCelebrate: Bool
@@ -57,7 +57,7 @@ struct AIGameView<VM: AIWordViewModel>: View {
     @State private var showError: Bool
     
     // player params
-    @State private var current: Int = 0
+    @State private var current: Int
     @State private var matrix: [[String]]
     @State private var colors: [[CharColor]]
     @State private var playerHP: Int
@@ -67,7 +67,7 @@ struct AIGameView<VM: AIWordViewModel>: View {
     @State private var aiColors: [[CharColor]]
     @State private var aiHP: Int
     @State private var ai: AIViewModel?
-    @State private var showPhrase: Bool = false
+    @State private var showPhrase: Bool
     @State private var showAiIntro: Bool
     @State private var aiDifficulty: AIDifficulty {
         didSet {
@@ -81,8 +81,8 @@ struct AIGameView<VM: AIWordViewModel>: View {
     @State private var aiDifficultyPanding: AIDifficulty
     @State private var aiDifficultyShow: AIDifficulty
     
-    @State private var cleanCells = false
-    @State private var aiIntroDone = false
+    @State private var cleanCells: Bool
+    @State private var aiIntroDone: Bool
     
     @State private var gameState: GameState {
         didSet {
@@ -122,7 +122,7 @@ struct AIGameView<VM: AIWordViewModel>: View {
     }
     
     // MARK: - Task control
-    @State private var isVisible = false
+    @State private var isVisible: Bool
     @State private var hitTaskPlayer: Task<Void, Never>?
     @State private var hitTaskAI: Task<Void, Never>?
     @State private var delayedNavTask: Task<Void, Never>?
@@ -396,6 +396,14 @@ struct AIGameView<VM: AIWordViewModel>: View {
         self.showCelebrate = false
         self.showMourn = false
         self.showError = false
+        self.cleanCells = false
+        self.aiIntroDone = false
+        self.showPhrase = false
+        self.endFetchAnimation = false
+        self.didStart = false
+        self.disabled = false
+        self.isVisible = false
+        self.gender = "male"
         self.current = 0
         self.aiHP = fullHP
         
@@ -562,13 +570,18 @@ struct AIGameView<VM: AIWordViewModel>: View {
         colors[i] = vm.calculateColors(with: matrix[i])
         saveToHistory(for: .player)
         if chackWord(index: i, matrix: matrix) {
-            audio.playSound(sound: "success", type: "wav")
-            makeHitOnAI(hitPoints: rows * hitPoints - current * hitPoints)
-            guard aiDifficultyPanding == aiDifficulty else { return }
             Task(priority: .userInitiated) {
                 try? await Task.sleep(nanoseconds: 1_000_000_000)
-                guard let email, guardVisible() else { return }
-                await vm.word(email: email)
+                await MainActor.run {
+                    audio.playSound(sound: "success", type: "wav")
+                    makeHitOnAI(hitPoints: rows * hitPoints - current * hitPoints)
+                    guard aiDifficultyPanding == aiDifficulty else { return }
+                    Task(priority: .userInitiated) {
+                        try? await Task.sleep(nanoseconds: 1_000_000_000)
+                        guard let email, guardVisible() else { return }
+                        await vm.word(email: email)
+                    }
+                }
             }
         } else {
             if current == rows - 1 {
@@ -588,27 +601,37 @@ struct AIGameView<VM: AIWordViewModel>: View {
         aiColors[i] = vm.calculateColors(with: aiMatrix[i])
         saveToHistory(for: .ai)
         if chackWord(index: i, matrix: aiMatrix) {
-            audio.playSound(sound: "fail", type: "wav")
-            makeHitOnPlayer(hitPoints: rows * hitPoints - current * hitPoints)
-            guard aiDifficultyPanding == aiDifficulty else { return }
             Task(priority: .userInitiated) {
                 try? await Task.sleep(nanoseconds: 1_000_000_000)
-                animatedTurnSwitch(to: .player)
-                guard let email, guardVisible() else { return }
-                await vm.word(email: email)
+                await MainActor.run {
+                    audio.playSound(sound: "fail", type: "wav")
+                    makeHitOnPlayer(hitPoints: rows * hitPoints - current * hitPoints)
+                    guard aiDifficultyPanding == aiDifficulty else { return }
+                    Task(priority: .userInitiated) {
+                        try? await Task.sleep(nanoseconds: 1_000_000_000)
+                        animatedTurnSwitch(to: .player)
+                        guard let email, guardVisible() else { return }
+                        await vm.word(email: email)
+                    }
+                }
             }
         }
         else if current < rows - 1 { current = i + 1 }
         else if current == rows - 1 {
-            audio.playSound(sound: "fail", type: "wav")
-            makeHitOnPlayer(hitPoints: noGuessHitPoints)
-            makeHitOnAI(hitPoints: noGuessHitPoints)
-            guard aiDifficultyPanding == aiDifficulty else { return }
             Task(priority: .userInitiated) {
                 try? await Task.sleep(nanoseconds: 1_000_000_000)
-                animatedTurnSwitch(to: .player)
-                guard let email, guardVisible() else { return }
-                await vm.word(email: email)
+                await MainActor.run {
+                    audio.playSound(sound: "fail", type: "wav")
+                    makeHitOnPlayer(hitPoints: noGuessHitPoints)
+                    makeHitOnAI(hitPoints: noGuessHitPoints)
+                    guard aiDifficultyPanding == aiDifficulty else { return }
+                    Task(priority: .userInitiated) {
+                        try? await Task.sleep(nanoseconds: 1_000_000_000)
+                        animatedTurnSwitch(to: .player)
+                        guard let email, guardVisible() else { return }
+                        await vm.word(email: email)
+                    }
+                }
             }
         }
     }
