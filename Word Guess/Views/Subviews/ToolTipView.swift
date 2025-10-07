@@ -141,7 +141,7 @@ public struct Tooltip<Content: View>: View {
         HStack {
             if isEN {
                 Arrow(direction: .left)
-                    .fill(.regularMaterial)
+                    .fill(.ultraThinMaterial)
                     .frame(width: arrowSize.width, height: arrowSize.height)
                     .shadow(radius: shadowRadius * 0.6, y: 0.5)
                 
@@ -154,7 +154,7 @@ public struct Tooltip<Content: View>: View {
                     .zIndex(2)
                 
                 Arrow(direction: .right)
-                    .fill(.regularMaterial)
+                    .fill(.ultraThinMaterial)
                     .offset(x: -contentGap)
                     .frame(width: arrowSize.width, height: arrowSize.height)
                     .shadow(radius: shadowRadius * 0.6, y: 0.5)

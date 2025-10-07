@@ -157,7 +157,7 @@ public struct HPBar: View {
     private var labelText: String { "\("HP".localized) \(Int(value))/\(Int(maxValue))" }
 
     private var inBarTextColor: Color {
-        pct >= 0.45 ? .white : .primary
+        pct >= 0.45 ? Color.dynamicWhite : .primary
     }
 
     // MARK: - Colors

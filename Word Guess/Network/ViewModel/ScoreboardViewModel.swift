@@ -18,10 +18,10 @@ class ScoreboardViewModel: ObservableObject {
         network = Network(root: .score)
     }
     
-    func items(email: String) async {
-        guard !email.isEmpty else { return }
+    func items(uniqe: String) async {
+        guard !uniqe.isEmpty else { return }
         let value: [Day]? = await network.send(route: .scoreboard,
-                                               parameters: ["email": email])
+                                               parameters: ["uniqe": uniqe])
         guard let value else { return }
         data = value
     }

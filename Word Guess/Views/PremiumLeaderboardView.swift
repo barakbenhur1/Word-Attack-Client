@@ -16,17 +16,15 @@ struct PremiumLeaderboardView<VM: PremiumScoreboardViewModel>: View {
     @EnvironmentObject private var loginHandeler: LoginHandeler
     @Environment(\.horizontalSizeClass) private var hSize
     
-    private var email: String? { loginHandeler.model?.email }
-    private var myEmailLower: String { (email ?? "").lowercased() }
+    private var uniqe: String? { loginHandeler.model?.uniqe }
+    private var myuniqeLower: String { (uniqe ?? "").lowercased() }
     
     @State private var vm = VM()
     
     var body: some View {
         ZStack(alignment: .top) {
-            // PremiumHub background
-            LinearGradient(colors: [Color.black, Color(hue: 0.64, saturation: 0.25, brightness: 0.18)],
-                           startPoint: .topLeading, endPoint: .bottomTrailing)
-            .ignoresSafeArea()
+            PremiumBackground()
+                .ignoresSafeArea()
             
             VStack(alignment: .leading, spacing: 26) {
                 header
@@ -56,12 +54,12 @@ struct PremiumLeaderboardView<VM: PremiumScoreboardViewModel>: View {
             .padding(.top, 4)
         }
         .task {
-            guard let email else { return }
-            await vm.items(email: email)
+            guard let uniqe else { return }
+            await vm.items(uniqe: uniqe)
         }
         .refreshable {
-            guard let email else { return }
-            await vm.items(email: email)
+            guard let uniqe else { return }
+            await vm.items(uniqe: uniqe)
         }
         .navigationBarTitleDisplayMode(.inline)
     }
@@ -73,7 +71,6 @@ struct PremiumLeaderboardView<VM: PremiumScoreboardViewModel>: View {
             let isPadLike = (hSize == .regular) || UIDevice.current.userInterfaceIdiom == .pad
             
             BackButton(action: router.navigateBack)
-                .environment(\.colorScheme, .dark)
             
             HStack(spacing: 4) {
                 Spacer()
@@ -85,7 +82,7 @@ struct PremiumLeaderboardView<VM: PremiumScoreboardViewModel>: View {
                 Text("Premium Leaderboard")
                     .font(.system(size: isPadLike ? 27 : 22, weight: .bold, design: .rounded))
                     .multilineTextAlignment(.center)
-                    .foregroundStyle(.white.opacity(0.92))
+                    .foregroundStyle(Color.dynamicBlack.opacity(0.92))
                 Spacer()
             }
         }
@@ -96,11 +93,11 @@ struct PremiumLeaderboardView<VM: PremiumScoreboardViewModel>: View {
     private func listBody(items: [PremiumScoreData], proxy: ScrollViewProxy) -> some View {
         // Only non-negative scores; highest first
         let sorted = items.filter { $0.value >= 0 }.sorted { $0.rank < $1.rank }
-        let hasMe  = sorted.contains(where: { $0.email.lowercased() == myEmailLower })
+        let hasMe  = sorted.contains(where: { $0.uniqe.lowercased() == myuniqeLower })
         
         return VStack(spacing: 12) {
             // Optional jump-to-me helper
-            if hasMe && !myEmailLower.isEmpty {
+            if hasMe && !myuniqeLower.isEmpty {
                 Button {
                     scrollToMe(proxy: proxy, items: sorted)
                 } label: {
@@ -116,16 +113,18 @@ struct PremiumLeaderboardView<VM: PremiumScoreboardViewModel>: View {
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 10) {
                     ForEach(Array(sorted.enumerated()), id: \.element.id) { idx, entry in
-                        if let email {
+                        if let uniqe {
                             LeaderboardRow(
                                 rank: entry.rank,
                                 entry: entry,
-                                isCurrentUser: entry.email.caseInsensitiveCompare(email) == .orderedSame
+                                isCurrentUser: entry.uniqe.caseInsensitiveCompare(uniqe) == .orderedSame
                             )
-                            .id(rowKey(for: entry.email)) // ← make each row scroll-addressable
+                            .id(rowKey(for: entry.uniqe)) // ← make each row scroll-addressable
                         }
                     }
                 }
+                .padding(.top, 2)
+                .padding(.horizontal, 1)
                 .padding(.bottom, 24)
             }
         }
@@ -146,10 +145,10 @@ struct PremiumLeaderboardView<VM: PremiumScoreboardViewModel>: View {
         VStack(spacing: 8) {
             Text("No scores yet")
                 .font(.headline)
-                .foregroundStyle(.white)
+                .foregroundStyle(Color.dynamicWhite)
             Text("Play premium rounds to climb the board.")
                 .font(.subheadline)
-                .foregroundStyle(.white.opacity(0.7))
+                .foregroundStyle(Color.dynamicWhite.opacity(0.7))
         }
         .frame(maxWidth: .infinity, alignment: .center)
         .padding(.vertical, 40)
@@ -159,13 +158,13 @@ struct PremiumLeaderboardView<VM: PremiumScoreboardViewModel>: View {
 // MARK: - Scroll helpers
 
 private extension PremiumLeaderboardView {
-    func rowKey(for email: String) -> String { "row-\(email.lowercased())" }
+    func rowKey(for uniqe: String) -> String { "row-\(uniqe.lowercased())" }
     
     func scrollToMe(proxy: ScrollViewProxy, items: [PremiumScoreData]) {
-        guard !myEmailLower.isEmpty else { return }
-        guard items.contains(where: { $0.email.lowercased() == myEmailLower }) else { return }
+        guard !myuniqeLower.isEmpty else { return }
+        guard items.contains(where: { $0.uniqe.lowercased() == myuniqeLower }) else { return }
         withAnimation(.easeInOut) {
-            proxy.scrollTo(rowKey(for: myEmailLower), anchor: .center)
+            proxy.scrollTo(rowKey(for: myuniqeLower), anchor: .center)
         }
     }
 }
@@ -186,18 +185,14 @@ private struct LeaderboardRow: View {
             HStack(spacing: 12) {
                 RankBadge(rank: rank)
                 
-                Avatar(email: entry.email)
+                Avatar(uniqe: entry.uniqe)
                     .frame(width: 36, height: 36)
                 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(entry.name)
                         .font(.system(.subheadline, design: .rounded).weight(.semibold))
-                        .foregroundStyle(.white.opacity(0.95))
+                        .foregroundStyle(Color.dynamicBlack.opacity(0.95))
                         .lineLimit(2)
-//                    Text(entry.email)
-//                        .font(.caption2)
-//                        .foregroundStyle(.white.opacity(0.55))
-//                        .lineLimit(1)
                 }
                 
                 Spacer()
@@ -211,22 +206,12 @@ private struct LeaderboardRow: View {
             Group {
                 if isCurrentUser {
                     RoundedRectangle(cornerRadius: 16)
-                        .stroke(glowColor.opacity(0.35), lineWidth: 1)
-                        .shadow(color: glowColor.opacity(0.4), radius: 8, y: 3)
+                        .stroke(PremiumPaletteSafe.accent2.opacity(0.35), lineWidth: 1)
+                        .shadow(color: PremiumPaletteSafe.accent2.opacity(0.4), radius: 8, y: 3)
                 }
             }
         )
-        .accessibilityLabel("\(rank). \(entry.email), \(entry.value) points")
-    }
-    
-    private var glowColor: Color {
-        if isCurrentUser { return PremiumPaletteSafe.accent2 }
-        switch rank {
-        case 1: return .yellow
-        case 2: return .gray
-        case 3: return .orange
-        default: return .clear
-        }
+        .accessibilityLabel("\(rank). \(entry.uniqe), \(entry.value) points")
     }
 }
 
@@ -264,9 +249,9 @@ private struct RankBadge: View {
 }
 
 private struct Avatar: View {
-    let email: String
+    let uniqe: String
     var body: some View {
-        let initials = String(email.prefix(1)).uppercased()
+        let initials = String(uniqe.prefix(1)).uppercased()
         ZStack {
             Circle()
                 .fill(LinearGradient(colors: [PremiumPaletteSafe.accent.opacity(0.55),
@@ -307,14 +292,14 @@ private struct SkeletonRow: View {
                 .fill(PremiumPaletteSafe.card)
                 .overlay(RoundedRectangle(cornerRadius: 16).stroke(PremiumPaletteSafe.stroke, lineWidth: 1))
             HStack(spacing: 12) {
-                Circle().fill(.white.opacity(0.25)).frame(width: 28, height: 28)
-                Circle().fill(.white.opacity(0.18)).frame(width: 36, height: 36)
+                Circle().fill(Color.dynamicBlack.opacity(0.25)).frame(width: 28, height: 28)
+                Circle().fill(Color.dynamicBlack.opacity(0.18)).frame(width: 36, height: 36)
                 VStack(alignment: .leading, spacing: 6) {
-                    RoundedRectangle(cornerRadius: 4).fill(.white.opacity(0.22)).frame(width: 140, height: 10)
-                    RoundedRectangle(cornerRadius: 4).fill(.white.opacity(0.16)).frame(width: 100, height: 8)
+                    RoundedRectangle(cornerRadius: 4).fill(Color.dynamicBlack.opacity(0.22)).frame(width: 140, height: 10)
+                    RoundedRectangle(cornerRadius: 4).fill(Color.dynamicBlack.opacity(0.16)).frame(width: 100, height: 8)
                 }
                 Spacer()
-                RoundedRectangle(cornerRadius: 12).fill(.white.opacity(0.18)).frame(width: 66, height: 24)
+                RoundedRectangle(cornerRadius: 12).fill(Color.dynamicBlack.opacity(0.18)).frame(width: 66, height: 24)
             }
             .padding(.horizontal, 12).padding(.vertical, 10)
         }
@@ -332,8 +317,8 @@ private struct SkeletonRow: View {
 
 // MARK: - Helpers
 
-private func displayName(_ email: String) -> String {
-    let local = email.split(separator: "@").first.map(String.init) ?? email
+private func displayName(_ uniqe: String) -> String {
+    let local = uniqe.split(separator: "@").first.map(String.init) ?? uniqe
     guard local.count > 6 else { return local }
     let head = local.prefix(3)
     let tail = local.suffix(3)
@@ -348,7 +333,7 @@ private struct Shimmer: ViewModifier {
             .overlay(
                 LinearGradient(stops: [
                     .init(color: .clear, location: phase),
-                    .init(color: .white.opacity(0.22), location: phase + 0.15),
+                    .init(color: Color.dynamicBlack.opacity(0.22), location: phase + 0.15),
                     .init(color: .clear, location: phase + 0.30),
                 ], startPoint: .topLeading, endPoint: .bottomTrailing)
                 .blendMode(.plusLighter)

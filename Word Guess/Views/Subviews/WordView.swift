@@ -8,7 +8,6 @@
 import SwiftUI
 
 // MARK: - Micro Styles
-
 private struct HairlineStroke: ViewModifier {
     let cornerRadius: CGFloat
     func body(content: Content) -> some View {
@@ -63,13 +62,13 @@ private struct FocusGlow: ViewModifier {
         content
             .overlay(
                 RoundedRectangle(cornerRadius: cornerRadius)
-                    .stroke(isFocused ? Color.white.opacity(0.70) : .clear, lineWidth: 1.0)
-                    .shadow(color: isFocused ? .white.opacity(0.55) : .clear, radius: 4)
+                    .stroke(isFocused ? Color.yellow.opacity(0.25) : .clear, lineWidth: 1.0)
+                    .shadow(color: isFocused ? .yellow.opacity(0.10) : .clear, radius: 2)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: cornerRadius)
-                    .stroke(isFocused ? Color.white.opacity(0.10) : .clear, lineWidth: 6)
-                    .blur(radius: 6)
+                    .stroke(isFocused ? Color.yellow.opacity(0.3) : .clear, lineWidth: 6)
+                    .blur(radius: 2)
             )
             .animation(.easeOut(duration: 0.18), value: isFocused)
     }
@@ -202,7 +201,6 @@ struct WordView<VM: WordViewModel>: View {
     }
     
     // MARK: - Placeholders
-    
     @ViewBuilder
     private func placeHoldersView(placeHolderForCell: [Guess], i: Int) -> some View {
         HStack(alignment: .center, spacing: -4) {
@@ -216,7 +214,6 @@ struct WordView<VM: WordViewModel>: View {
     }
     
     // MARK: - Cells
-    
     @ViewBuilder
     private func charView(i: Int) -> some View {
         let placeHolderForCell = placeHolderForCell(i)
@@ -224,28 +221,39 @@ struct WordView<VM: WordViewModel>: View {
         let playerPlaceHolder = !isAI && (placeHolderData == nil || placeHolderForCell.filter { _, color in color != .noGuess && color != .noMatch }.isEmpty)
         let usePlaceHolderText = cleanCells || aiPlaceHolder || playerPlaceHolder
         
-        CharView(
-            text: cleanCells ? .constant("") : $word[i],
-            usePlaceHolder: usePlaceHolderText,
-            didType: { text in onDidType(text: text, index: i) }
-        )
-        .frame(maxHeight: .infinity)
-        .textInputAutocapitalization(i == 0 ? .sentences : .never)
-        .autocorrectionDisabled()
-        .focused($fieldFocus, equals: FieldFocus(rawValue: i))
-        .onSubmit {
-            let next = min(i + 1, length - 1)
-            fieldFocus = FieldFocus(rawValue: next)
+        ZStack {
+            CharView(
+                text: cleanCells ? .constant("") : $word[i],
+                usePlaceHolder: usePlaceHolderText,
+                didType: { text in onDidType(text: text, index: i) }
+            )
+            .frame(maxHeight: .infinity)
+            .textInputAutocapitalization(i == 0 ? .sentences : .never)
+            .autocorrectionDisabled()
+            .textSelection(.disabled)
+            .contextMenu { }
+            .focused($fieldFocus, equals: FieldFocus(rawValue: i))
+            .onSubmit {
+                let next = min(i + 1, length - 1)
+                fieldFocus = FieldFocus(rawValue: next)
+            }
+            .onTapGesture {
+                fieldFocus = FieldFocus(rawValue: i)
+            }
+            .clipShape(RoundedRectangle(cornerRadius: 4))
+            .animation(.easeOut(duration: 0.8), value: cleanCells)
+            .realisticCell(color: cleanCells ? .white.opacity(0.8) : colors[i].baseColor.opacity(0.8), cornerRadius: 4)
+            .elevated(cornerRadius: 4)
+            .premiumTile(cornerRadius: 4)
+            .focusGlow(fieldFocus == .init(rawValue: i), cornerRadius: 4)
+            
+            Rectangle().opacity(0.001)
+                .onTapGesture {
+                    let current = min(i , length - 1)
+                    fieldFocus = FieldFocus(rawValue: current)
+                }
+                .allowsHitTesting(true)
         }
-        .onTapGesture {
-            fieldFocus = FieldFocus(rawValue: i)
-        }
-        .clipShape(RoundedRectangle(cornerRadius: 4))
-        .animation(.easeOut(duration: 0.8), value: cleanCells)
-        .realisticCell(color: cleanCells ? .white.opacity(0.8) : colors[i].baseColor.opacity(0.8), cornerRadius: 4)
-        .elevated(cornerRadius: 4)
-        .premiumTile(cornerRadius: 4)
-        .focusGlow(fieldFocus?.rawValue == i, cornerRadius: 4)
         .accessibilityLabel(Text("Letter cell \(i+1)"))
         .accessibilityHint(Text("Double tap to edit"))
     }
@@ -275,56 +283,38 @@ struct WordView<VM: WordViewModel>: View {
             .premiumTile(cornerRadius: 4)
     }
     
-    // MARK: - Logic (unchanged)
-    
+    // MARK: - Logic
     private func handleWordWriting(value: String, current: Int) {
         guard wordBakup[current] != word[current] else { return }
-        
-        if current == 0 {
-            let c = value.returnChar(isFinal: false)
-            if allowed == nil || allowed!.set.contains(c.lowercased()) {
-                word[current] = c.returnChar(isFinal: current == length - 1)
-            } else {
-                word[current] = ""
-                if value.count == 1 {
-                    allowed?.onInvalid()
-                }
-            }
-        }
-        
-        if !value.isEmpty {
-            if current < length - 1 && fieldFocus != FieldFocus(rawValue: length - 1) && wordBakup[current].count == 1 || value.count > 1 {
-                var next: Int = current
-                if !value.isEmpty {
-                    let c = value[0].returnChar(isFinal: false)
-                    if allowed == nil || allowed!.set.contains(c.lowercased()) {
-                        word[next] = c.returnChar(isFinal: current == length - 1)
-                        next += 1
-                    } else {
-                        word[next] = ""
-                        allowed?.onInvalid()
-                    }
-                    
-                    guard next < wordBakup.count && wordBakup[next].isEmpty else { return }
-                    
-                    if value.count > 1 {
-                        let string = String(value.suffix(value.count - 1))
-                        for i in 0..<string.count {
-                            guard next < word.count else { continue }
-                            let c = string[i].returnChar(isFinal: false)
-                            guard allowed == nil || allowed!.set.contains(c.lowercased()) else { word[next] = ""; allowed?.onInvalid(); continue }
-                            word[next] = c.returnChar(isFinal: next == length - 1)
-                            next += 1
-                        }
-                    }
-                }
-                
-                fieldFocus = FieldFocus(rawValue: next - 1)
-            }
-        } else {
-            if current > 0 && fieldFocus != .one && !word[current - 1].isEmpty {
+        if value.isEmpty {
+            if current > 0 && fieldFocus != .one {
                 fieldFocus = FieldFocus(rawValue: current - 1)
             }
+        } else if current < length && fieldFocus != FieldFocus(rawValue: length) {
+            var value = value
+            let last = value.popLast()
+            let lastChar = last != nil ? String(last!) : ""
+            var fixedValue = wordBakup[current] == lastChar ? lastChar + value : value + lastChar
+            guard let first = fixedValue.first else  { return }
+            if wordBakup[current] == String(first) { fixedValue.remove(at: fixedValue.startIndex) }
+            if current == 0 { fixedValue = fixedValue.capitalizedFirst }
+            var next: Int = current
+            for v in fixedValue {
+                guard next < word.count else { continue }
+                let char = String(v).returnChar(isFinal: false)
+                guard allowed == nil || allowed!.set.contains(char.lowercased()) else { word[next] = ""; allowed?.onInvalid(); continue }
+                word[next] = char.returnChar(isFinal: next == length - 1)
+                next += 1
+            }
+            
+            guard next < length else { return }
+            //            word[next] = .invisible
+            fieldFocus = FieldFocus(rawValue: next)
         }
     }
+}
+
+extension String {
+    static let invisible = " "
+    var strippingInvisible: String { filter { String($0) != .invisible } }
 }

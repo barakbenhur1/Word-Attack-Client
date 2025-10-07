@@ -21,7 +21,7 @@ struct Diffculty: Codable, Hashable {
 }
 
 struct Member: Codable, Hashable {
-    let email: String
+    let uniqe: String
     let name: String
     let totalScore: Int
     let words: [FullWord]

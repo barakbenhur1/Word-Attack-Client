@@ -90,18 +90,16 @@ struct LeaderboardView<VM: ScoreboardViewModel>: View {
     @State private var cardWidth: CGFloat = 0
     
     private var language: String? { local.locale.identifier.components(separatedBy: "_").first }
+    private var uniqe: String? { loginHandeler.model?.uniqe }
     private var isRTL: Bool { language == "he" }
-    private var myEmailLower: String { (loginHandeler.model?.email ?? "").lowercased() }
+    private var myuniqeLower: String { (loginHandeler.model?.uniqe ?? "").lowercased() }
     
     var body: some View {
         let isPadLike = (hSize == .regular) || UIDevice.current.userInterfaceIdiom == .pad
         
         ZStack {
-            LinearGradient(
-                colors: [Color(.systemBackground), Color(.secondarySystemBackground)],
-                startPoint: .topLeading, endPoint: .bottomTrailing
-            )
-            .ignoresSafeArea()
+            GameViewBackground()
+                .ignoresSafeArea()
             
             VStack(spacing: isPadLike ? 16 : 12) {
                 // Title bar
@@ -134,11 +132,11 @@ struct LeaderboardView<VM: ScoreboardViewModel>: View {
                             LeaderboardRowModel(
                                 rank: idx + 1,
                                 name: m.name,
-                                email: m.email,
+                                uniqe: m.uniqe,
                                 score: m.totalScore,
                                 guessed: max(m.words.count - 1, 0),
                                 total: max(totalWords - 2, 0),
-                                isMe: m.email.lowercased() == myEmailLower
+                                isMe: m.uniqe.lowercased() == myuniqeLower
                             )
                         }
                     }
@@ -166,7 +164,7 @@ struct LeaderboardView<VM: ScoreboardViewModel>: View {
                             .environment(\.layoutDirection, isRTL ? .rightToLeft : .leftToRight)
                             .padding(.horizontal, isPadLike ? 4 : 0)
                             
-                            if !myEmailLower.isEmpty {
+                            if !myuniqeLower.isEmpty {
                                 Button {
                                     scrollToMe(proxy: proxy, rowsPerDifficulty: rowsPerDifficulty)
                                 } label: {
@@ -183,39 +181,62 @@ struct LeaderboardView<VM: ScoreboardViewModel>: View {
                                     selectedIndex: $selectedDifficultyIndex
                                 )
                                 .frame(maxWidth: isPadLike ? 520 : .infinity)
+                                .padding(.horizontal, 8)
                                 .transition(.opacity)
                             }
                         }
                         
-                        // ---- TABLE AREA — the ONLY scrollable region ----
-                        ScrollView(.vertical) {
+                        VStack(spacing: 0) {
+                            // Header row
                             let cols = LBLayout.columns(for: cardWidth, isPadLike: isPadLike)
-                            LeaderboardCard(
-                                rows: rowsPerDifficulty[safe: selectedDifficultyIndex] ?? [],
-                                isRTL: isRTL,
-                                cols: cols,
-                                isPadLike: isPadLike
+                            HStack(spacing: LBLayout.hSpacing) {
+                                header("Place", isPadLike: isPadLike).frame(width: cols.place)
+                                if isPadLike { header("Name", isPadLike: isPadLike).frame(width: cols.name, alignment: .leading) }
+                                else { header("Name", isPadLike: isPadLike).frame(maxWidth: .infinity, alignment: .leading) }
+                                header("Score", isPadLike: isPadLike).frame(width: cols.score)
+                                header("Guessed", isPadLike: isPadLike).frame(width: cols.guessed)
+                                header("Total", isPadLike: isPadLike).frame(width: cols.total)
+                            }
+                            .padding(.horizontal, isPadLike ? 14 : 12)
+                            .padding(.vertical, isPadLike ? 11 : 9)
+                            .background(Color.primary.opacity(0.06))
+                            .cornerRadius(16)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                    .strokeBorder(Color.primary.opacity(0.08), lineWidth: 1)
                             )
-                            .frame(maxWidth: .infinity, alignment: .center)
-                            .modifier(WidthReporter())
-                            .onPreferenceChange(WidthKey.self) { cardWidth = $0 }
-                            .padding(.bottom, 8)
+                            
+                            // ---- TABLE AREA — the ONLY scrollable region ----
+                            ScrollView(.vertical) {
+                                LeaderboardCard(
+                                    rows: rowsPerDifficulty[safe: selectedDifficultyIndex] ?? [],
+                                    isRTL: isRTL,
+                                    cols: cols,
+                                    isPadLike: isPadLike
+                                )
+                                .frame(maxWidth: .infinity, alignment: .center)
+                                .padding(.top, 4)
+                                .padding(.horizontal, 1)
+                                .modifier(WidthReporter())
+                                .onPreferenceChange(WidthKey.self) { cardWidth = $0 }
+                                .padding(.bottom, 8)
+                            }
+                            .scrollIndicators(.visible)
+                            .contentMargins(.bottom, 50)
+                            .onAppear { scrollToMe(proxy: proxy, rowsPerDifficulty: rowsPerDifficulty) }
+                            .onChange(of: selectedDifficultyIndex) {
+                                scrollToMe(proxy: proxy, rowsPerDifficulty: rowsPerDifficulty)
+                            }
                         }
-                        .scrollIndicators(.visible)
-                        .contentMargins(.bottom, 56)
-                        .onAppear { scrollToMe(proxy: proxy, rowsPerDifficulty: rowsPerDifficulty) }
-                        .onChange(of: selectedDifficultyIndex) {
-                            scrollToMe(proxy: proxy, rowsPerDifficulty: rowsPerDifficulty)
-                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity) // take leftover height so inner scroll works
+                        .padding(.horizontal, isPadLike ? 16 : 14)
+                        .frame(maxWidth: 900)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                     }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity) // take leftover height so inner scroll works
-                    .padding(.horizontal, isPadLike ? 22 : 16)
-                    .frame(maxWidth: 900)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                     
                 } else {
                     EmptyStateCard()
-                        .padding(.horizontal, isPadLike ? 22 : 16)
+                        .padding(.horizontal, isPadLike ? 16 : 14)
                         .frame(maxWidth: 900)
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                 }
@@ -228,10 +249,13 @@ struct LeaderboardView<VM: ScoreboardViewModel>: View {
                 .background(.clear)
         }
         .environment(\.layoutDirection, isRTL ? .rightToLeft : .leftToRight)
-        // Move banner to safe-area inset so it doesn't consume layout height or block scroll
+        .refreshable {
+            guard let uniqe else { return }
+            await vm.items(uniqe: uniqe)
+        }
         .task {
-            guard let email = loginHandeler.model?.email else { return }
-            await vm.items(email: email)
+            guard let uniqe else { return }
+            await vm.items(uniqe: uniqe)
         }
         .onAppear {
             guard interstitialAdManager == nil || !interstitialAdManager!.initialInterstitialAdLoaded else { return }
@@ -243,11 +267,21 @@ struct LeaderboardView<VM: ScoreboardViewModel>: View {
             selectedDifficultyIndex = 0
         }
     }
+    
+    private func header(_ text: LocalizedStringKey, isPadLike: Bool) -> some View {
+        Text(text)
+            .font(isPadLike ? .subheadline : .footnote)
+            .fontWeight(.semibold)
+            .multilineTextAlignment(.center)
+            .textCase(.uppercase)
+            .foregroundStyle(.secondary)
+            .monospacedDigit()
+    }
 }
 
 // MARK: - Scroll helpers inside LeaderboardView
 private extension LeaderboardView {
-    /// Compute rows for current day & selection and return the target key for the signed-in email.
+    /// Compute rows for current day & selection and return the target key for the signed-in uniqe.
     func rowsForCurrentSelection() -> (rows: [LeaderboardRowModel], targetKey: String)? {
         guard current < vm.data.count, vm.data.indices.contains(current) else { return nil }
         let day = vm.data[current]
@@ -262,22 +296,22 @@ private extension LeaderboardView {
                 LeaderboardRowModel(
                     rank: idx + 1,
                     name: m.name,
-                    email: m.email,
+                    uniqe: m.uniqe,
                     score: m.totalScore,
                     guessed: max(m.words.count - 1, 0),
                     total: max(totalWords - 2, 0),
-                    isMe: m.email.lowercased() == myEmailLower // NEW
+                    isMe: m.uniqe.lowercased() == myuniqeLower // NEW
                 )
             }
         }
         let rows = rowsPerDifficulty[safe: selectedDifficultyIndex] ?? []
-        let myKey = "row-\(myEmailLower)"
+        let myKey = "row-\(myuniqeLower)"
         guard rows.contains(where: { $0.key == myKey }) else { return nil }
         return (rows, myKey)
     }
     
     func scrollToMe(proxy: ScrollViewProxy, rowsPerDifficulty: [[LeaderboardRowModel]]) {
-        let myKey = "row-\(myEmailLower)"
+        let myKey = "row-\(myuniqeLower)"
         let rows = rowsPerDifficulty[safe: selectedDifficultyIndex] ?? []
         guard rows.contains(where: { $0.key == myKey }) else { return }
         withAnimation(.easeInOut) {
@@ -355,19 +389,6 @@ private struct LeaderboardCard: View {
     
     var body: some View {
         VStack(spacing: 0) {
-            // Header row
-            HStack(spacing: LBLayout.hSpacing) {
-                header("Place").frame(width: cols.place)
-                if isPadLike { header("Name").frame(width: cols.name, alignment: .leading) }
-                else { header("Name").frame(maxWidth: .infinity, alignment: .leading) }
-                header("Score").frame(width: cols.score)
-                header("Guessed").frame(width: cols.guessed)
-                header("Total").frame(width: cols.total)
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, isPadLike ? 11 : 9)
-            .background(Color.primary.opacity(0.06))
-            
             if rows.isEmpty {
                 VStack(spacing: 10) {
                     Text("No results yet")
@@ -391,16 +412,6 @@ private struct LeaderboardCard: View {
         )
         .shadow(color: Color.black.opacity(0.05), radius: 12, y: 6)
     }
-    
-    private func header(_ text: LocalizedStringKey) -> some View {
-        Text(text)
-            .font(isPadLike ? .subheadline : .footnote)
-            .fontWeight(.semibold)
-            .multilineTextAlignment(.center)
-            .textCase(.uppercase)
-            .foregroundStyle(.secondary)
-            .monospacedDigit()
-    }
 }
 
 private struct LeaderboardRow: View {
@@ -414,7 +425,7 @@ private struct LeaderboardRow: View {
             RankBadge(rank: row.rank)
                 .frame(width: cols.place, alignment: .center)
             
-            // Name + email (name single-line, email wraps)
+            // Name + uniqe (name single-line, uniqe wraps)
             VStack(alignment: isRTL ? .trailing : .leading, spacing: 2) {
                 Text(row.name)
                     .multilineTextAlignment(.leading)
@@ -425,8 +436,8 @@ private struct LeaderboardRow: View {
                     .minimumScaleFactor(0.85)
                     .allowsTightening(true)
                 
-//                if !row.email.isEmpty {
-//                    Text(row.email)
+//                if !row.uniqe.isEmpty {
+//                    Text(row.uniqe)
 //                        .font(isPadLike ? .footnote : .caption2)
 //                        .foregroundStyle(.secondary)
 //                        .lineLimit(2)
@@ -460,7 +471,7 @@ private struct LeaderboardRow: View {
         .id(row.key) // ← make each row scroll-addressable
         // NEW: thin border to signify current user
         .overlay(
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .stroke(row.isMe ? Color.accentColor.opacity(0.95) : .clear, lineWidth: 1)
         )
         .accessibilityHint(row.isMe ? Text("This is you") : Text(""))
@@ -540,14 +551,14 @@ private struct LeaderboardRowModel: Identifiable, Equatable {
     let id = UUID()
     let rank: Int
     let name: String
-    let email: String
+    let uniqe: String
     let score: Int
     let guessed: Int
     let total: Int
     let isMe: Bool // NEW: identify current user row
     
     // Stable key for ScrollViewReader
-    var key: String { "row-\(email.lowercased())" }
+    var key: String { "row-\(uniqe.lowercased())" }
 }
 
 private extension Collection {

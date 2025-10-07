@@ -19,27 +19,16 @@ struct CharView: View {
     var body: some View {
         TextField(usePlaceHolder ? "?" : "",
                   text: $text)
-        .accentColor(.black.opacity(0.2))
+        .accentColor(.yellow.opacity(0.08))
         .frame(maxHeight: .infinity)
         .multilineTextAlignment(.center)
+        .onKeyPress(.delete) {
+            didType?("")
+            return .handled
+        }
         .onReceive(Just(text)) { _ in
             text.limitToAllowedCharacters(language: language)
             didType?(text)
-        }
-    }
-}
-
-struct ReadonlyCharCell: View {
-    @Binding var text: String
-    let usePlaceHolder: Bool
-    var body: some View {
-        ZStack {
-            TextField(usePlaceHolder ? "?" : "",
-                      text: $text)
-            .accentColor(.black.opacity(0.2))
-            .frame(maxHeight: .infinity)
-            .multilineTextAlignment(.center)
-            .disabled(true)
         }
     }
 }

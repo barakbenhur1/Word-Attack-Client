@@ -15,33 +15,33 @@ class LoginViewModel: ObservableObject {
         network = Network(root: .login)
     }
     
-    func login(email: String, name: String, gender: String) async -> Bool {
+    func login(uniqe: String, name: String, gender: String) async -> Bool {
         guard let language = Locale.current.identifier.components(separatedBy: "_").first else { return false }
         let value: EmptyModel? = await network.send(route: .root,
-                                                    parameters: ["email": email,
+                                                    parameters: ["uniqe": uniqe,
                                                                  "name": name,
                                                                  "gender": gender,
                                                                  "language": language])
         return value != nil
     }
     
-    func isLoggedin(email: String) async -> Bool {
+    func isLoggedin(uniqe: String) async -> Bool {
         let value: EmptyModel? = await network.send(route: .isLoggedin,
-                                                    parameters: ["email": email])
+                                                    parameters: ["uniqe": uniqe])
         return value != nil
     }
     
-    func gender(email: String) async -> String {
+    func gender(uniqe: String) async -> String {
         let value: GenderData? = await network.send(route: .gender,
-                                                    parameters: ["email": email])
+                                                    parameters: ["uniqe": uniqe])
         return value?.gender ?? "male"
     }
     
     @discardableResult
-    func changeLanguage(email: String) async -> Bool {
+    func changeLanguage(uniqe: String) async -> Bool {
         guard let language = Locale.current.identifier.components(separatedBy: "_").first else { return false }
         let value: EmptyModel? = await network.send(route: .changeLanguage,
-                                                    parameters: ["email": email,
+                                                    parameters: ["uniqe": uniqe,
                                                                  "language": language])
         return value != nil
     }

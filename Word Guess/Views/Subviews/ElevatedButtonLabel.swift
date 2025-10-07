@@ -13,17 +13,26 @@ import UIKit
 public struct ElevatedButtonStyle: ButtonStyle {
     public struct Palette {
         public var gradient: LinearGradient
-        public var content: Color = .white
+        public var content: Color = .dynamicBlack
         public var shadow: Color  = .black.opacity(0.35)
         
-        public init(gradient: LinearGradient, content: Color = .white, shadow: Color = .black.opacity(0.35)) {
+        public init(gradient: LinearGradient, content: Color = .black, shadow: Color = .black.opacity(0.35)) {
             self.gradient = gradient
-            self.content = content
+            self.content = content == .black ? .dynamicBlack : content
             self.shadow = shadow
         }
         
         // Built-ins (✅ with start/end points)
         public static let googleLogin = Palette (
+            gradient: LinearGradient(
+                colors: [
+                    Color(hue: 0.0, saturation: 0.0, brightness: 1.00),
+                    Color(hue: 0.0, saturation: 0.0, brightness: 0.96)
+                ],
+                startPoint: .topLeading, endPoint: .bottomTrailing)
+        )
+        
+        public static let googleLoginDark = Palette (
             gradient: LinearGradient(
                 colors: [
                     Color(hue: 0.0, saturation: 0.0, brightness: 0.08),  // near black
@@ -96,8 +105,8 @@ public struct ElevatedButtonStyle: ButtonStyle {
         public static let share = Palette(
             gradient: LinearGradient(
                 gradient: Gradient(stops: [
-                    .init(color: Color(hue: 0.502, saturation: 1.0, brightness: 0.66), location: 0.00),
-                    .init(color: Color(hue: 0.502, saturation: 1.0, brightness: 0.78), location: 0.60),
+                    .init(color: Color(hue: 0.56, saturation: 0.55, brightness: 0.88), location: 0.00),
+                    .init(color: Color(hue: 0.56, saturation: 0.55, brightness: 0.78), location: 0.60),
                 ]),
                 startPoint: .topLeading, endPoint: .bottomTrailing
             )
@@ -108,7 +117,7 @@ public struct ElevatedButtonStyle: ButtonStyle {
                 colors: [Color(white: 0.30), Color(white: 0.36)],
                 startPoint: .topLeading, endPoint: .bottomTrailing
             ),
-            content: .white
+            content: .dynamicBlack
         )
     }
     
@@ -140,7 +149,7 @@ public struct ElevatedButtonStyle: ButtonStyle {
                         Capsule(style: .continuous)
                             .fill(
                                 LinearGradient(
-                                    colors: [.white.opacity(0.30), .white.opacity(0.06)],
+                                    colors: [Color.dynamicBlack.opacity(0.30), Color.dynamicBlack.opacity(0.06)],
                                     startPoint: .topLeading, endPoint: .bottomTrailing
                                 )
                             )
@@ -149,7 +158,7 @@ public struct ElevatedButtonStyle: ButtonStyle {
                 // highlight edge
                     .overlay(
                         Capsule(style: .continuous)
-                            .strokeBorder(.white.opacity(0.35), lineWidth: 0.8)
+                            .strokeBorder(Color.dynamicBlack .opacity(0.35), lineWidth: 0.8)
                             .blendMode(.overlay)
                     )
                 // layered drop shadows
@@ -186,8 +195,9 @@ public struct ElevatedButtonLabel: View {
         ZStack(alignment: .leading) {
             if let systemImage {
                 Image(systemName: systemImage)
-                    .renderingMode(.original)
                     .resizable()
+                    .renderingMode(.template)
+                    .foregroundStyle(Color.dynamicBlack)
                     .aspectRatio(contentMode: .fit)
                     .frame(width: 25, height: 25)
                     .font(.system(size: 14, weight: .semibold, design: .rounded))
@@ -196,7 +206,7 @@ public struct ElevatedButtonLabel: View {
                 Image(image)
                     .resizable()
                     .renderingMode(.template)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Color.dynamicBlack)
                     .aspectRatio(contentMode: .fit)
                     .frame(width: 30, height: 30)
                     .font(.system(size: 14, weight: .semibold, design: .rounded))
@@ -204,6 +214,7 @@ public struct ElevatedButtonLabel: View {
             }
             Text(title)
                 .multilineTextAlignment(.center)
+                .foregroundStyle(Color.dynamicBlack)
                 .font(.system(size: 18, weight: .semibold, design: .rounded))
                 .frame(maxWidth: .infinity)
                 .padding(40)

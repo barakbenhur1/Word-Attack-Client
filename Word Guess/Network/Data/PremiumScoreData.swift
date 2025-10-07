@@ -9,11 +9,11 @@ import Foundation
 
 struct PremiumScoreData: Codable, Hashable {
     let name: String
-    let email: String
+    let uniqe: String
     let value: Int
     let rank: Int
 }
 
 extension PremiumScoreData {
-    var id: String { email }
+    var id: String { uniqe }
 }

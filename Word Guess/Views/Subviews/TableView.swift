@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct ScoreboardCell: Hashable {
-    let email: String
+    let uniqe: String
     let name: String
     let score: String
     let numberOfWords: String
@@ -84,7 +84,7 @@ struct TableView<Cell: Hashable>: View {
                             
                             Text(item.name.initals().lowercased())
                                 .multilineTextAlignment(.center)
-                                .foregroundStyle(.primary)
+                                .foregroundStyle(Color.dynamicBlack)
                                 .frame(maxWidth: .infinity)
                                 .font(.title2.weight(.medium))
                             
@@ -109,7 +109,7 @@ struct TableView<Cell: Hashable>: View {
                         .padding(.vertical, 14)
                     }
                     .frame(maxWidth: .infinity)
-                    .background(item.email == loginHandeler.model?.email ? .yellow.opacity(0.4) : .clear)
+                    .background(item.uniqe == loginHandeler.model?.uniqe ? .yellow.opacity(0.4) : .clear)
                     .clipShape(RoundedRectangle(cornerRadius: 8))
                     
                     if index < items.count - 1 { saparator(diraction: .horizontal) }

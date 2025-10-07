@@ -42,7 +42,7 @@ struct GameView<VM: DifficultyWordViewModel>: View {
     private let rows: Int = 5
     private let diffculty: DifficultyType
     private var length: Int { return diffculty.getLength() }
-    private var email: String? { return loginHandeler.model?.email }
+    private var uniqe: String? { return loginHandeler.model?.uniqe }
     
     
     private typealias ScoreAnimationParams = (value: Int, opticity: CGFloat, scale: CGFloat, offset: CGFloat)
@@ -139,7 +139,7 @@ struct GameView<VM: DifficultyWordViewModel>: View {
         current = guesswork.count
     }
     
-    private func onAppear(email: String) {
+    private func onAppear(uniqe: String) {
         guard !didStart && (interstitialAdManager == nil || !interstitialAdManager!.initialInterstitialAdLoaded) else { return }
         switch diffculty {
         case .tutorial: coreData.new()
@@ -150,7 +150,7 @@ struct GameView<VM: DifficultyWordViewModel>: View {
             interstitialAdManager.displayInitialInterstitialAd {
                 guard guardVisible() else { return }
                 Task.detached(priority: .userInitiated) {
-                    await handleNewWord(email: email)
+                    await handleNewWord(uniqe: uniqe)
                     await MainActor.run {
                         endFetchAnimation = true
                         didStart = vm.word != .empty
@@ -159,7 +159,7 @@ struct GameView<VM: DifficultyWordViewModel>: View {
             }
         } else {
             Task.detached(priority: .userInitiated) {
-                await handleNewWord(email: email)
+                await handleNewWord(uniqe: uniqe)
                 await MainActor.run {
                     endFetchAnimation = true
                     didStart = vm.word != .empty
@@ -168,9 +168,9 @@ struct GameView<VM: DifficultyWordViewModel>: View {
         }
     }
     
-    private func handleNewWord(email: String) async {
-        await vm.getScore(diffculty: diffculty, email: email)
-        await vm.word(diffculty: diffculty, email: email)
+    private func handleNewWord(uniqe: String) async {
+        await vm.getScore(diffculty: diffculty, uniqe: uniqe)
+        await vm.word(diffculty: diffculty, uniqe: uniqe)
     }
     
     init(diffculty: DifficultyType) {
@@ -252,7 +252,6 @@ struct GameView<VM: DifficultyWordViewModel>: View {
             // Title
             Text("Tutorial")
                 .font(.system(.largeTitle, design: .rounded).weight(.bold))
-                .themedText(.primary)
                 .softTextShadow()
             
             // Subtitle / hint
@@ -330,7 +329,6 @@ struct GameView<VM: DifficultyWordViewModel>: View {
                     Text(diffculty.stringValue)
                         .multilineTextAlignment(.center)
                         .font(.system(.title3, design: .rounded).weight(.semibold))
-                        .themedText(.primary)
                         .softTextShadow()
                         .padding(.bottom, 8)
                         .padding(.leading, 10)
@@ -343,7 +341,7 @@ struct GameView<VM: DifficultyWordViewModel>: View {
                     Text("Score")
                         .multilineTextAlignment(.center)
                         .font(.system(.headline, design: .rounded).weight(.medium))
-                        .themedText(.secondary)
+                        .foregroundStyle(Color.dynamicBlack.opacity(0.78))
                         .softTextShadow()
                         .padding(.top, 5)
                     
@@ -398,7 +396,6 @@ struct GameView<VM: DifficultyWordViewModel>: View {
                         .multilineTextAlignment(.center)
                         .font(.system(.title3, design: .rounded).weight(.semibold))
                         .monospacedDigit()
-                        .themedText(.primary)
                         .softTextShadow()
                         .padding(.bottom, 8)
                         .padding(.trailing, 10)
@@ -436,14 +433,14 @@ struct GameView<VM: DifficultyWordViewModel>: View {
     }
     
     @ViewBuilder private func game() -> some View {
-        if let email {
+        if let uniqe {
             ZStack(alignment: .topLeading) {
                 ZStack(alignment: .topLeading) { gameBody() }
                     .ignoresSafeArea(.keyboard)
                     .onChange(of: vm.isError, handleError)
                     .onChange(of: vm.word.word, handleWordChange)
                     .onChange(of: vm.word.word.guesswork, handleGuessworkChage)
-                    .onAppear { onAppear(email: email) }
+                    .onAppear { onAppear(uniqe: uniqe) }
                     .disabled(!endFetchAnimation || !didStart || vm.isError)
                     .opacity(endFetchAnimation && didStart && !vm.isError ? 1 : 0.7)
                     .grayscale(endFetchAnimation && didStart && !vm.isError ? 0 : 1)
@@ -477,7 +474,6 @@ struct GameView<VM: DifficultyWordViewModel>: View {
                 .padding(.bottom, 10)
             Text("Time Attack")
                 .font(.largeTitle)
-                .themedText(.primary)
                 .softTextShadow()
                 .frame(maxWidth: .infinity)
                 .padding(.bottom, 4)
@@ -528,7 +524,7 @@ struct GameView<VM: DifficultyWordViewModel>: View {
                     navBack()
                 }
             default:
-                let email = email
+                let uniqe = uniqe
                 let isTimeAttack = vm.word.isTimeAttack
                 let rows = rows
                 Task.detached(priority: .userInitiated) {
@@ -543,17 +539,17 @@ struct GameView<VM: DifficultyWordViewModel>: View {
                     let currentRow = i * points
                     let scoreValue = total - currentRow
                     await score(value: scoreValue)
-                    guard let email else { return }
-                    await vm.addGuess(diffculty: diffculty, email: email, guess: guess)
-                    await vm.score(diffculty: diffculty, email: email, isCorrect: isCorrect)
-                    await handleNewWord(email: email)
+                    guard let uniqe else { return }
+                    await vm.addGuess(diffculty: diffculty, uniqe: uniqe, guess: guess)
+                    await vm.score(diffculty: diffculty, uniqe: uniqe, isCorrect: isCorrect)
+                    await handleNewWord(uniqe: uniqe)
                 }
             }
         } else if i == current && i + 1 > vm.word.word.guesswork.count {
-            guard let email else { return }
+            guard let uniqe else { return }
             current = i + 1
             Task(priority: .userInitiated) {
-                await vm.addGuess(diffculty: diffculty, email: email, guess: guess)
+                await vm.addGuess(diffculty: diffculty, uniqe: uniqe, guess: guess)
             }
         }
     }

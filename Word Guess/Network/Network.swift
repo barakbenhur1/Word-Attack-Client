@@ -72,15 +72,15 @@ class Network: Networkble {
             return BaseUrl.value
         }
         
-        static func register(email: String? ,token: String, environment: String, userId: String?) async {
-            guard let email else { return }
+        static func register(uniqe: String? ,token: String, environment: String, userId: String?) async {
+            guard let uniqe else { return }
             guard let url = URL(string: "\(apiBase)/devices/register") else { return }
             var req = URLRequest(url: url)
             req.httpMethod = "POST"
             req.addValue("application/json", forHTTPHeaderField: "Content-Type")
             let body: [String: Any] = [
                 "token": token,
-                "email": email,
+                "uniqe": uniqe,
                 "environment": environment,   // "sandbox" or "prod"
                 "bundleId": "com.barak.wordzap",
                 "userId": userId ?? ""

@@ -56,8 +56,8 @@ struct WordGuessApp: App {
                 deepLinker.preform()
             }
             .onChange(of: local.locale) {
-                guard let email = loginHandeler.model?.email else { return }
-                Task.detached(priority: .high) { await login.changeLanguage(email: email) }
+                guard let uniqe = loginHandeler.model?.uniqe else { return }
+                Task.detached(priority: .high) { await login.changeLanguage(uniqe: uniqe) }
             }
             .onChange(of: deepLinker.inviteRef) {
                 guard deepLinker.inviteRef != nil else { return }
@@ -122,14 +122,14 @@ struct WordGuessApp: App {
     
     private func onAppear() {
         guard let currentUser = Auth.auth().currentUser,
-              let email = currentUser.email else { return }
+              let uniqe = currentUser.email else { return }
         guard loginHandeler.model == nil else { return }
         loginHandeler.model = getInfo(for: currentUser)
         Task.detached(priority: .high) {
-            guard await login.isLoggedin(email: email) else { await notLoggedin(); return }
-            await refreshWordZapPlaces(email: email)
-            await login.changeLanguage(email: email)
-            await loggedin(email: email)
+            guard await login.isLoggedin(uniqe: uniqe) else { await notLoggedin(); return }
+            await refreshWordZapPlaces(uniqe: uniqe)
+            await login.changeLanguage(uniqe: uniqe)
+            await loggedin(uniqe: uniqe)
         }
     }
     
@@ -137,8 +137,8 @@ struct WordGuessApp: App {
         await MainActor.run { loginHandeler.model = nil }
     }
     
-    private func loggedin(email: String) async {
-        let gender = await login.gender(email: email)
+    private func loggedin(uniqe: String) async {
+        let gender = await login.gender(uniqe: uniqe)
         await MainActor.run { loginHandeler.model?.gender = gender }
     }
     
@@ -160,8 +160,9 @@ struct WordGuessApp: App {
         let cached = UserDefaults.standard.string(forKey: "apple.displayName.\(uid)")
         let display = currentUser.displayName ?? cached
         let email = currentUser.email ?? ""
+        let uniqe = currentUser.uid
         
-        // Pick best available name: displayName -> cached -> email local-part -> "Player"
+        // Pick best available name: displayName -> cached -> uniqe local-part -> "Player"
         let fallbackName: String = {
             if let d = display, !d.trimmingCharacters(in: .whitespaces).isEmpty {
                 return d
@@ -179,6 +180,7 @@ struct WordGuessApp: App {
         
         return .init(givenName: givenName,
                      lastName: lastName,
+                     uniqe: uniqe,
                      email: email)
     }
 }

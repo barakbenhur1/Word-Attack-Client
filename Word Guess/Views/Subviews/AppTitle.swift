@@ -65,7 +65,7 @@ struct AppTitle: View {
             let chars = item.toArray()
             ForEach(Array(chars.enumerated()), id: \.offset) { j, ch in
                 ZStack {
-                    if animated, !wordZapColorsForAnimation.isEmpty {
+                    if animated && !wordZapColorsForAnimation.isEmpty {
                         let r = i % wordZapColorsForAnimation.count
                         let c = j % wordZapColorsForAnimation[r].count
                         wordZapColorsForAnimation[r][c].color

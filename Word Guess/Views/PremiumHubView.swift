@@ -10,9 +10,9 @@ import CoreMotion
 import Foundation
 
 enum HubGamePalette {
-    static let card   = Color.white.opacity(0.06)
-    static let stroke = Color.white.opacity(0.09)
-    static let glow   = Color.white.opacity(0.22)
+    static let card   = Color.dynamicBlack.opacity(0.06)
+    static let stroke = Color.dynamicBlack.opacity(0.09)
+    static let glow   = Color.dynamicBlack.opacity(0.22)
     static let accent = Color.cyan
     static let accent2 = Color.mint
 }
@@ -46,13 +46,15 @@ final class HubTimerBridge: ObservableObject {
 // MARK: - Entry
 
 public struct PremiumHubView: View {
+    @Environment(\.colorScheme) private var scheme
+    
     @EnvironmentObject private var timerBridge: HubTimerBridge
     @EnvironmentObject private var router: Router
     @EnvironmentObject private var local: LanguageSetting
     @EnvironmentObject private var loginHandeler: LoginHandeler
     
     private var language: String? { local.locale.identifier.components(separatedBy: "_").first }
-    private var email: String? { loginHandeler.model?.email }
+    private var uniqe: String? { loginHandeler.model?.uniqe }
     
     @StateObject private var hub: PremiumHubModel
     @State private var engine: CHHapticEngine? = try? CHHapticEngine()
@@ -78,15 +80,13 @@ public struct PremiumHubView: View {
         router.navigateBack()
     }
     
-    public init(email: String?) {
-        _hub = StateObject(wrappedValue: PremiumHubModel(email: email))
+    public init(uniqe: String?) {
+        _hub = StateObject(wrappedValue: PremiumHubModel(uniqe: uniqe))
     }
     
     public var body: some View {
         ZStack {
-            LinearGradient(colors: [Color.black, Color(hue: 0.64, saturation: 0.25, brightness: 0.18)],
-                           startPoint: .topLeading, endPoint: .bottomTrailing)
-            .ignoresSafeArea()
+           PremiumBackground()
             
             VStack {
                 HStack(spacing: 12) {
@@ -119,7 +119,7 @@ public struct PremiumHubView: View {
                     VStack(alignment: .leading, spacing: 18) {
                         Text("Discover letters in tactile mini-games. Use them to solve the word.")
                             .font(.system(.title3, design: .rounded))
-                            .foregroundStyle(.white.opacity(0.7))
+                            .foregroundStyle(Color.dynamicBlack.opacity(0.7))
                             .padding(.top, 8)
                             .padding(.horizontal, 8)
                         
@@ -128,7 +128,7 @@ public struct PremiumHubView: View {
                         VStack(alignment: .leading, spacing: 6) {
                             Text("Available letters")
                                 .font(.footnote.weight(.semibold))
-                                .foregroundStyle(.white.opacity(0.7))
+                                .foregroundStyle(Color.dynamicBlack.opacity(0.7))
                             DiscoveredBeltView(letters: Array(hub.discoveredLetters).sorted())
                         }
                         .padding(.horizontal, 8)
@@ -142,19 +142,29 @@ public struct PremiumHubView: View {
                                     Image(systemName: language == "he" ? "arrow.left" : "arrow.right")
                                 }
                                 .font(.system(.headline, design: .rounded))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(Color.dynamicBlack)
                                 .padding(.horizontal, 16)
                                 .frame(height: 56)
-                                .background(LinearGradient(colors: [Color.black, Color(hue: 0.64, saturation: 0.25, brightness: 0.18)],
-                                                           startPoint: .topLeading, endPoint: .bottomTrailing), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-                                .overlay(RoundedRectangle(cornerRadius: 18).stroke(.white.opacity(0.08)))
+                                .background(LinearGradient(
+                                    colors: scheme == .light
+                                    ? [
+                                        Color.white,
+                                        Color(hue: 0.66, saturation: 0.06, brightness: 0.99)
+                                    ]
+                                    : [
+                                        Color.black,
+                                        Color(hue: 0.64, saturation: 0.25, brightness: 0.18)
+                                    ],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing),
+                                            in: RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                )
+                                .overlay(RoundedRectangle(cornerRadius: 18).stroke(Color.dynamicBlack.opacity(0.08)))
                             }
                         }
                     }
                     .padding(.horizontal, 12)
                     .padding(.bottom, 28)
-                    .disabled(hub.vm.word == .empty)
-                    .grayscale(hub.vm.word == .empty ? 1 : 0)
                 }
                 
                 if UIDevice.isPad {
@@ -165,12 +175,24 @@ public struct PremiumHubView: View {
                             Image(systemName: language == "he" ? "arrow.left" : "arrow.right")
                         }
                         .font(.system(.headline, design: .rounded))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(Color.dynamicBlack)
                         .padding(.horizontal, 16)
                         .frame(height: 56)
-                        .background(LinearGradient(colors: [Color.black, Color(hue: 0.64, saturation: 0.25, brightness: 0.18)],
-                                                   startPoint: .topLeading, endPoint: .bottomTrailing), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-                        .overlay(RoundedRectangle(cornerRadius: 18).stroke(.white.opacity(0.08)))
+                        .background(LinearGradient(
+                            colors: scheme == .light
+                            ? [
+                                Color.white,
+                                Color(hue: 0.66, saturation: 0.06, brightness: 0.99)
+                            ]
+                            : [
+                                Color.black,
+                                Color(hue: 0.64, saturation: 0.25, brightness: 0.18)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing),
+                                    in: RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        )
+                        .overlay(RoundedRectangle(cornerRadius: 18).stroke(Color.dynamicBlack.opacity(0.08)))
                     }
                     .padding(.bottom, 80)
                 }
@@ -296,7 +318,7 @@ public struct PremiumHubView: View {
 // MARK: - Top bar
 private struct BackPill: View {
     var action: () -> Void
-    var body: some View { BackButton(title: "Exit" ,action: action).environment(\.colorScheme, .dark) }
+    var body: some View { BackButton(title: "Exit" ,action: action) }
 }
 
 // 🏆 Pill (unchanged)
@@ -317,7 +339,7 @@ struct SolvedCounterPill: View {
             Image(systemName: "trophy.fill").font(.system(size: 12, weight: .bold)).symbolRenderingMode(.hierarchical)
             Text("\(count)").font(.caption.weight(.bold)).monospacedDigit()
         }
-        .foregroundStyle(.white)
+        .foregroundStyle(Color.dynamicBlack)
         .padding(.horizontal, 10).padding(.vertical, 6)
         .background(background)
         .overlay(Capsule().stroke(strokeColor.opacity(overlayA), lineWidth: 1))
@@ -345,12 +367,12 @@ struct SolvedCounterPill: View {
 
 // MARK: - Palette
 enum PremiumPalette {
-    static let card = Color.white.opacity(0.06)
-    static let stroke = Color.white.opacity(0.09)
-    static let glow = Color.white.opacity(0.22)
+    static let card = Color.dynamicBlack.opacity(0.06)
+    static let stroke = Color.dynamicBlack.opacity(0.09)
+    static let glow = Color.dynamicBlack.opacity(0.22)
     static let accent = Color.cyan
     static let accent2 = Color.mint
-    static let frost = Color.white.opacity(0.85)
+    static let frost = Color.dynamicWhite.opacity(0.85)
     static let sand = Color(hue: 0.10, saturation: 0.35, brightness: 0.90)
     static let wax = Color(hue: 0.10, saturation: 0.08, brightness: 0.95)
     static let sonar = Color(hue: 0.58, saturation: 0.85, brightness: 0.75)
@@ -427,7 +449,7 @@ final public class PremiumHubModel: ObservableObject {
     private var windowSeconds: TimeInterval { Double(mainRoundLength) / 8.0 }
     
     private var tick: AnyCancellable?
-    private let email: String?
+    private let uniqe: String?
     
     // Provider
     private let catalog = MiniGameCatalog()
@@ -438,8 +460,8 @@ final public class PremiumHubModel: ObservableObject {
     
     var isSkipProgressAnimation: Bool { skipAnimationForProgress }
     
-    init(email: String?) {
-        self.email = email
+    init(uniqe: String?) {
+        self.uniqe = uniqe
         self.aiDifficulty = loadAIDifficulty()
     }
     
@@ -514,12 +536,12 @@ final public class PremiumHubModel: ObservableObject {
         self.showNewWordToast = false
         self.newWordAnimation()
         self.lastWordLetterFoundAt = Date()
-        if let email {
+        if let uniqe {
             newWordTask?.cancel()
             newWordTask = Task(priority: .userInitiated) { [weak self] in
                 guard let self else { return }
-                guard let solved = await vm.getScore(email: email) else { await vm.word(email: email); return }
-                await vm.word(email: email)
+                guard let solved = await vm.getScore(uniqe: uniqe) else { await vm.word(uniqe: uniqe); return }
+                await vm.word(uniqe: uniqe)
                 UserDefaults.standard.set(solved.value, forKey: "wins_count")
                 UserDefaults.standard.set(solved.rank, forKey: "wins_rank")
                 await MainActor.run { [weak self] in
@@ -668,7 +690,7 @@ private struct NewWordToast: View {
         }
         .padding(.horizontal, 46)
         .padding(.vertical, 42)
-        .foregroundStyle(.white)
+        .foregroundStyle(Color.dynamicBlack)
         .background(.ultraThinMaterial, in: Capsule())
         .overlay(Capsule().stroke(Color.white.opacity(0.18), lineWidth: 1))
         .shadow(color: .black.opacity(0.35), radius: 12, y: 6)
@@ -742,7 +764,9 @@ private struct MainRoundCircle: View {
             }
         }
         .buttonStyle(PressedBounceStyle())
-        .tint(.black)
+        .tint(.dynamicWhite)
+        .disabled(word.isEmpty)
+        .grayscale(word.isEmpty ? 1 : 0)
         .onAppear {
             PremiumCoplitionHandler.shared.onForceEndPremium = { history, reset in
                 hub.skipProgressAnimation()
@@ -777,13 +801,13 @@ private struct MiniGameSlotView: View {
                 }
                 Image(systemName: slot.kind.icon)
                     .font(.system(size: 26, weight: .medium))
-                    .foregroundStyle(.white.opacity(0.95))
+                    .foregroundStyle(Color.dynamicBlack.opacity(0.95))
                     .frame(height: 30)
             }
             
             Text(slot.kind.title)
                 .font(.system(.subheadline, design: .rounded).weight(.semibold))
-                .foregroundStyle(.white.opacity(0.9))
+                .foregroundStyle(Color.dynamicBlack.opacity(0.9))
                 .lineLimit(1)
                 .minimumScaleFactor(0.6)
                 .multilineTextAlignment(.center)
@@ -792,7 +816,7 @@ private struct MiniGameSlotView: View {
                 let secs = max(0, Int(slot.expiresAt.timeIntervalSince(timeline.date).rounded()))
                 Text("refresh in \(secs)s")
                     .font(.system(.caption2, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.55))
+                    .foregroundStyle(Color.dynamicBlack.opacity(0.55))
             }
         }
         .padding(.horizontal ,4)
@@ -831,36 +855,35 @@ private struct MiniGameSheet: View {
                 .accessibilityLabel(Text("Close"))
                 .accessibilityAddTraits(.isButton)
             
-            HStack(spacing: 4) {
-                Text("Time left:")
-                    .font(.system(.headline, design: .rounded).weight(.semibold))
-                    .foregroundStyle(.white)
+            HStack {
                 let timeLeft = slot.secondsLeft
-                Text("\(timeLeft)s")
-                    .font(.system(.headline, design: .rounded).weight(.semibold))
-                    .foregroundStyle(timeLeft <= 5 ? .red : .white)
+                Text("Time left: \(timeLeft)s")
+                    .font(.caption2.monospacedDigit())
+                    .foregroundStyle(Color.dynamicWhite)
+                    .padding(8)
+                    .background(Capsule().fill(Color.dynamicBlack.opacity(0.82)))
                 Spacer()
             }
             .padding(.horizontal)
-            .padding(.bottom, 8)
+            .padding(.bottom, 4)
             
             // Header
             HStack {
                 Label(slot.kind.title, systemImage: slot.kind.icon)
                     .labelStyle(.titleAndIcon)
                     .font(.system(.headline, design: .rounded).weight(.semibold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Color.dynamicBlack)
                 Spacer()
                 if slot.containsLetter {
                     Text("Contains letter")
                         .font(.caption2.weight(.bold))
                         .padding(.horizontal, 8).padding(.vertical, 4)
                         .background(Capsule().fill(PremiumPalette.accent.opacity(0.22)))
-                        .foregroundStyle(.white.opacity(0.9))
+                        .foregroundStyle(Color.dynamicBlack.opacity(0.9))
                 } else {
                     Text("May be empty")
                         .font(.caption2)
-                        .foregroundStyle(.white.opacity(0.6))
+                        .foregroundStyle(Color.dynamicBlack.opacity(0.6))
                 }
             }
             .padding(.horizontal)
@@ -872,7 +895,7 @@ private struct MiniGameSheet: View {
             Spacer()
         }
         .background(
-            LinearGradient(colors: [Color.black.opacity(0.88), Color.black.opacity(0.94)],
+            LinearGradient(colors: [Color.dynamicWhite.opacity(0.88), Color.dynamicWhite.opacity(0.94)],
                            startPoint: .top, endPoint: .bottom)
             .ignoresSafeArea()
         )
@@ -906,6 +929,33 @@ private struct MiniGameSheet: View {
         guard !closed else { return }
         closed = true
         onDone(result)
+    }
+}
+
+struct PremiumBackground: View {
+    @Environment(\.colorScheme) private var scheme
+    
+    var body: some View {
+        if scheme == .light {
+            LinearGradient(
+                colors: [
+                    Color(hue: 0.64, saturation: 0.00, brightness: 1.00),
+                    Color(hue: 0.64, saturation: 0.05, brightness: 0.99)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
+        } else {
+            LinearGradient(
+                colors: [
+                    Color.black, Color(hue: 0.64, saturation: 0.25, brightness: 0.18)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
+        }
     }
 }
 
@@ -958,7 +1008,7 @@ struct MainRoundTimerView: View {
             
             ZStack(alignment: .leading) {
                 // background rail
-                Capsule().fill(Color.white.opacity(0.15))
+                Capsule().fill(Color.dynamicWhite.opacity(0.15))
                 
                 // filled bar
                 Capsule()
@@ -974,7 +1024,7 @@ struct MainRoundTimerView: View {
                 
                 // reset flash (stays inside the filled width)
                 Capsule()
-                    .stroke(Color.white.opacity(flashOpacity), lineWidth: 3)
+                    .stroke(Color.dynamicBlack.opacity(flashOpacity), lineWidth: 3)
                     .frame(width: w)
                     .blendMode(.plusLighter)
                 
@@ -1004,11 +1054,11 @@ struct MainRoundTimerView: View {
             HStack(spacing: 6) {
                 Text("\(secondsLeft)s")
                     .font(.caption2.monospacedDigit())
-                    .foregroundStyle(isCritical ? .white : .white.opacity(0.9))
+                    .foregroundStyle(isCritical ? Color.dynamicBlack : Color.dynamicBlack.opacity(0.9))
                     .scaleEffect(isFinal && !reduceMotion && pulse ? 1.06 : 1.0)
                 Text("round")
                     .font(.caption2)
-                    .foregroundStyle(.white.opacity(0.5))
+                    .foregroundStyle(Color.dynamicBlack.opacity(0.5))
             }
                 .padding(.horizontal, 6),
             alignment: .trailing
@@ -1069,18 +1119,17 @@ private struct HubTutorialOverlay: View {
     var dismiss: () -> Void
     var body: some View {
         ZStack {
-            Color.black.opacity(0.7).ignoresSafeArea()
+            Color.dynamicWhite.opacity(0.7).ignoresSafeArea()
             VStack(spacing: 16) {
                 Text("How the Hub Works")
                     .font(.title3.weight(.bold))
-                    .foregroundStyle(.white)
                 VStack(alignment: .leading, spacing: 8) {
                     Label("Tap a tile to play a mini-game and collect letters.", systemImage: "square.grid.3x3")
                     Label("The center button starts the main game once you have the letters.", systemImage: "circle.grid.2x1.fill")
                     Label("Timer at the top: swipe it to reset the round.", systemImage: "timer")
                     Label("Tap the badge to view the leaderboard.", systemImage: "list.number")
                 }
-                .foregroundStyle(.white.opacity(0.9))
+                .foregroundStyle(Color.dynamicBlack.opacity(0.9))
                 .labelStyle(.titleAndIcon)
                 Button("Got it") { dismiss() }
                     .buttonStyle(.borderedProminent)
@@ -1103,7 +1152,7 @@ private struct DiscoveredBeltView: View {
                     VStack {
                         Text("No letters yet")
                             .font(.system(.callout, design: .rounded).weight(.bold))
-                            .foregroundStyle(.white.opacity(0.6))
+                            .foregroundStyle(Color.dynamicBlack.opacity(0.6))
                             .shadow(radius: 3, y: 2)
                         Spacer()
                     }
@@ -1112,11 +1161,13 @@ private struct DiscoveredBeltView: View {
                     ForEach(letters, id: \.self) { ch in
                         Text(String(ch))
                             .font(.system(.callout, design: .rounded).weight(.bold))
-                            .foregroundStyle(.black)
+                            .foregroundStyle(Color.dynamicBlack)
                             .frame(width: 30, height: 30)
                             .background(Circle().fill(PremiumPalette.accent))
-                            .overlay(Circle().stroke(.white.opacity(0.4), lineWidth: 1))
-                            .shadow(radius: 3, y: 2)
+                            .overlay(
+                                Circle().stroke(.white.opacity(0.4), lineWidth: 1)
+                                    .shadow(radius: 3, y: 2)
+                            )
                     }
                 }
             }
@@ -1167,7 +1218,7 @@ private struct RippleRing: View {
     @Binding var fire: Bool
     var body: some View {
         Circle()
-            .strokeBorder(Color.white.opacity(0.65), lineWidth: 2)
+            .strokeBorder(Color.dynamicBlack.opacity(0.65), lineWidth: 2)
             .scaleEffect(fire ? 1.45 : 0.9)
             .opacity(fire ? 0.0 : 0.8)
             .animation(.easeOut(duration: 0.06), value: fire)

@@ -18,9 +18,9 @@ final class PremiumHubGameVM: WordViewModel {
     }
     
     @discardableResult
-    func score(email: String) async -> Bool {
+    func score(uniqe: String) async -> Bool {
         let value: EmptyModel? = await network.send(route: .premiumScore,
-                                                    parameters: ["email": email])
+                                                    parameters: ["uniqe": uniqe])
         return value != nil
     }
 }
@@ -83,7 +83,7 @@ struct PremiumHubGameView<VM: PremiumHubGameVM>: View {
     @State private var loseResetFlag = true
     
     private var endBannerUp: Bool { showWinBanner || showLoseBanner }
-    private var email: String? { loginHandeler.model?.email }
+    private var uniqe: String? { loginHandeler.model?.uniqe }
     private var isHE: Bool { local.locale.identifier.lowercased().hasPrefix("he") }
     private var scriptAlphabet: [Character] { isHE ? Alpha.heOrder : Alpha.enOrder }
     private var scriptSet: Set<Character> { isHE ? Alpha.heSet : Alpha.enSet }
@@ -221,7 +221,6 @@ struct PremiumHubGameView<VM: PremiumHubGameVM>: View {
             BackButton(title: "Close" ,
                        icon: "xmark",
                        action: { forceEnd(reset: false, withHistory: true) })
-            .environment(\.colorScheme, .dark)
             .padding(.trailing, 11)
             
             SolvedCounterPill(count: wins, rank: rank, onTap: {})
@@ -233,10 +232,12 @@ struct PremiumHubGameView<VM: PremiumHubGameVM>: View {
     }
     
     @ViewBuilder private func gameBottom() -> some View {
-        AppTitle(size: 50)
-            .padding(.top, UIDevice.isPad ? 144 : 104)
-            .padding(.bottom, UIDevice.isPad ? 210 : 170)
-            .shadow(radius: 4)
+        ZStack {
+            AsIfKeyboardHeightView(adjustBy: 40)
+            AppTitle(size: 50)
+                .shadow(color: .black.opacity(0.12), radius: 4, x: 4, y: 4)
+                .shadow(color: .white.opacity(0.12), radius: 4, x: -4 ,y: -4)
+        }
     }
     
     @ViewBuilder private func timerView() -> some View {
@@ -283,7 +284,7 @@ struct PremiumHubGameView<VM: PremiumHubGameVM>: View {
     }
     
     @ViewBuilder private func background() -> some View {
-        GameViewBackground()
+        PremiumBackground()
             .ignoresSafeArea()
     }
     
@@ -318,7 +319,7 @@ struct PremiumHubGameView<VM: PremiumHubGameVM>: View {
             
             if correct {
                 wins += 1
-                if let email { Task.detached(priority: .high, operation: { await vm.score(email: email) }) }
+                if let uniqe { Task.detached(priority: .high, operation: { await vm.score(uniqe: uniqe) }) }
                 Task { @MainActor in
                     try? await Task.sleep(nanoseconds: 1_000_000_000)
                     guard isVisible else { return }
@@ -737,9 +738,8 @@ struct CircularRevealGate<Content: View>: View {
             let h = geo.size.height
             let diag = sqrt(w*w + h*h)
             
-            LinearGradient(colors: [Color.black, Color(hue: 0.64, saturation: 0.25, brightness: 0.18)],
-                           startPoint: .topLeading, endPoint: .bottomTrailing)
-            .ignoresSafeArea()
+            PremiumBackground()
+                .ignoresSafeArea()
             
             content
                 .mask(

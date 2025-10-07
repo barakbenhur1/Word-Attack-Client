@@ -14,16 +14,16 @@ struct PremiumScoreProvider {
         network = Network(root: .score)
     }
     
-    func getPremium(email: String) async -> PremiumScoreData? {
+    func getPremium(uniqe: String) async -> PremiumScoreData? {
         let value: PremiumScoreData? = await network.send(route: .getPremiumScore,
-                                                          parameters: ["email": email])
+                                                          parameters: ["uniqe": uniqe])
         return value
     }
     
     
-    func getAllPremium(email: String) async -> [PremiumScoreData]? {
+    func getAllPremium(uniqe: String) async -> [PremiumScoreData]? {
         let value: [PremiumScoreData]? = await network.send(route: .getAllPremiumScores,
-                                                          parameters: ["email": email])
+                                                          parameters: ["uniqe": uniqe])
         return value
     }
 }

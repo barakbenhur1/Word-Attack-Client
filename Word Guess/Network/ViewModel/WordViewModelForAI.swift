@@ -44,8 +44,8 @@ class AIWordViewModel: WordViewModel {
         }
     }
     
-    func word(email: String, newWord: Bool = true) async {
-        let value: SimpleWord? = await provider.word(email: email)
+    func word(uniqe: String, newWord: Bool = true) async {
+        let value: SimpleWord? = await provider.word(uniqe: uniqe)
         guard let value else { await handleError(); return }
         await MainActor.run { [weak self] in
             guard let self else { return }

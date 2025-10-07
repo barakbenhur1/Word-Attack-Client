@@ -50,7 +50,7 @@ struct SettingsView: View {
         switch item.type {
         case .language: showLanguage()
         case .sound:    audio.isOn.toggle()
-        case .ai:       showResetAI = difficulty != nil
+        case .ai:       showResetAI = difficulty != nil && difficulty != AIDifficulty.easy.name
         case .premium:  handlePremium()
         case .update:   handleUpdate()
         case .share:    break
@@ -107,8 +107,8 @@ struct SettingsView: View {
             items = [
                 .init(type: .premium),
                 .init(type: .sound),
-                .init(type: .ai),
-                .init(type: .language)
+                .init(type: .language),
+                .init(type: .ai)
             ]
             
             if checker.needUpdate != nil {
@@ -159,6 +159,7 @@ struct SettingsView: View {
                 .padding(.vertical, 10)
         }
         .padding(.horizontal, 10)
+        .padding(.top, fromSideMenu ? 50 : 0)
     }
     
     @ViewBuilder private func label(item: SettingsOptionButton) -> some View {
@@ -168,7 +169,6 @@ struct SettingsView: View {
                 HStack {
                     Text(item.type.stringValue.localized)
                         .font(.headline.bold().italic())
-                        .foregroundStyle(.black)
                     
                     Spacer()
                     
@@ -181,38 +181,35 @@ struct SettingsView: View {
                 HStack {
                     Text(item.type.stringValue.localized)
                         .font(.headline)
-                        .foregroundStyle(.black)
                     
                     Spacer()
                     
                     Text(language == "he" ? "Hebrew" : "English")
                         .font(.headline)
-                        .foregroundStyle(Color.darkTurquoise)
+                        .foregroundStyle(Color.activeSettingColor)
                 }
                 
             case .sound:
                 Toggle(item.type.stringValue.localized, isOn: $audio.isOn)
                     .font(.headline)
-                    .foregroundStyle(.black)
-                    .tint(.darkTurquoise)
+                    .tint(.activeSettingColor)
                     .toggleStyle(.switch)
                 
             case .ai:
                 HStack {
                     Text(item.type.stringValue.localized)
                         .font(.headline)
-                        .foregroundStyle(.black)
                     
                     Text(difficulty?.localized ?? (ModelStorage.localHasUsableModels() ? "Not Discoverd".localized : "Not downloaded yet".localized))
                         .font(.subheadline)
-                        .foregroundStyle(.black)
+                        .foregroundStyle(.secondary)
                         .animation(.easeInOut, value: difficulty)
                     
                     Spacer()
                     
                     Text("Reset Difficulty")
                         .font(.headline)
-                        .foregroundStyle(difficulty == nil ? .gray : .darkTurquoise)
+                        .foregroundStyle(difficulty == nil || difficulty == AIDifficulty.easy.name ? Color.disabledSettingColor : Color.activeSettingColor)
                 }
                 
             case .update:
@@ -220,19 +217,18 @@ struct SettingsView: View {
                     HStack {
                         Text(item.type.stringValue.localized)
                             .font(.headline.bold().italic())
-                            .foregroundStyle(.black)
                         
                         Spacer()
                         
                         Text("Update App To Version \(notice.latest)")
                             .font(.caption.bold().italic())
-                            .foregroundStyle(Color.darkTurquoise)
+                            .foregroundStyle(Color.activeSettingColor)
                     }
                 }
                 
             case .share:
-                if let email = loginHandeler.model?.email  {
-                    InviteFriendsButton(refUserID: email) { item in
+                if let uniqe = loginHandeler.model?.uniqe  {
+                    InviteFriendsButton(refUserID: uniqe) { item in
                         itemSource = item
                         showShare = true
                     }
@@ -251,6 +247,10 @@ struct SettingsView: View {
 }
 
 extension Color {
-    static let darkTurquoise = Color(red: 0.0, green: 0.81, blue: 0.82)
-    static let premiumPurple = Color(red: 0.30, green: 0.29, blue: 0.49)
+    static let activeSettingColor = Color(hue: 0.56, saturation: 0.55, brightness: 0.95)
+    static let disabledSettingColor = Color(hue: 0.56, saturation: 0.05, brightness: 0.82)
+    static let premiumPurple = Color(UIColor { trait in
+        if trait.userInterfaceStyle == .dark { return UIColor(hue: 0.675, saturation: 0.26, brightness: 0.94, alpha: 1) }
+        else { return UIColor(red: 0.30, green: 0.29, blue: 0.49, alpha: 1) }
+    })
 }

@@ -14,6 +14,7 @@ import QuartzCore
 typealias HpAnimationParams =  (value: Int, opacity: CGFloat, scale: CGFloat, offset: CGFloat)
 
 struct AIGameView<VM: AIWordViewModel>: View {
+    @Environment(\.colorScheme) private var scheme
     @EnvironmentObject private var coreData: PersistenceController
     @EnvironmentObject private var loginHandeler: LoginHandeler
     @EnvironmentObject private var screenManager: ScreenManager
@@ -27,13 +28,13 @@ struct AIGameView<VM: AIWordViewModel>: View {
     private enum HitTarget { case player, ai }
     private enum GameState { case inProgress, lose, win }
     private struct TurnFX { var show = false; var next: Turn = .player }
-  
+    
     
     private let rows: Int = 5
     private var length: Int { DifficultyType.ai.getLength() }
     
-    private var email: String? { loginHandeler.model?.email }
-   
+    private var uniqe: String? { loginHandeler.model?.uniqe }
+    
     private let fullHP :Int = 100
     private let hitPoints = 10
     private let noGuessHitPoints = 40
@@ -166,7 +167,7 @@ struct AIGameView<VM: AIWordViewModel>: View {
             }
         }
     }
-
+    
     private func handleWordChange() {
         cancelAllTasks()
         ai?.hidePhrase()
@@ -182,9 +183,9 @@ struct AIGameView<VM: AIWordViewModel>: View {
     private func handleError() {
         guard !vm.fatalError else { showError = true; return }
         guard vm.word == .empty && vm.numberOfErrors > 0 else { return }
-        guard let email else { showError = true; return }
+        guard let uniqe else { showError = true; return }
         Task.detached(priority: .high) {
-            await vm.word(email: email, newWord: didStart)
+            await vm.word(uniqe: uniqe, newWord: didStart)
             await MainActor.run {
                 guard !didStart else { return }
                 didStart = vm.word != .empty
@@ -192,7 +193,7 @@ struct AIGameView<VM: AIWordViewModel>: View {
         }
     }
     
-    private func onAppear(email: String) {
+    private func onAppear(uniqe: String) {
         guard !didStart && (interstitialAdManager == nil || !interstitialAdManager!.initialInterstitialAdLoaded) else { return }
         hitTaskPlayer?.cancel()
         hitTaskAI?.cancel()
@@ -205,18 +206,18 @@ struct AIGameView<VM: AIWordViewModel>: View {
             interstitialAdManager.displayInitialInterstitialAd {
                 guard guardVisible() else { return }
                 Task.detached(priority: .userInitiated) {
-                    await handleStartup(email: email)
+                    await handleStartup(uniqe: uniqe)
                 }
             }
         } else {
             Task.detached(priority: .userInitiated) {
-                await handleStartup(email: email)
+                await handleStartup(uniqe: uniqe)
             }
         }
     }
     
-    private func handleStartup(email: String) async {
-        await vm.word(email: email, newWord: false)
+    private func handleStartup(uniqe: String) async {
+        await vm.word(uniqe: uniqe, newWord: false)
         await MainActor.run { didStart = vm.word != .empty }
     }
     
@@ -397,7 +398,6 @@ struct AIGameView<VM: AIWordViewModel>: View {
         self.showMourn = false
         self.showError = false
         self.cleanCells = false
-        self.aiIntroDone = false
         self.showPhrase = false
         self.endFetchAnimation = false
         self.didStart = false
@@ -443,10 +443,10 @@ struct AIGameView<VM: AIWordViewModel>: View {
                 aiHP = fullHP
                 aiIntroDone = true
             }
-            guard let email else { return }
+            guard let uniqe else { return }
             if currentShow != aiDifficulty {
                 try? await Task.sleep(nanoseconds: 1_000_000_000)
-                await vm.word(email: email)
+                await vm.word(uniqe: uniqe)
             }
         }
     }
@@ -578,8 +578,8 @@ struct AIGameView<VM: AIWordViewModel>: View {
                     guard aiDifficultyPanding == aiDifficulty else { return }
                     Task(priority: .userInitiated) {
                         try? await Task.sleep(nanoseconds: 1_000_000_000)
-                        guard let email, guardVisible() else { return }
-                        await vm.word(email: email)
+                        guard let uniqe, guardVisible() else { return }
+                        await vm.word(uniqe: uniqe)
                     }
                 }
             }
@@ -610,8 +610,8 @@ struct AIGameView<VM: AIWordViewModel>: View {
                     Task(priority: .userInitiated) {
                         try? await Task.sleep(nanoseconds: 1_000_000_000)
                         animatedTurnSwitch(to: .player)
-                        guard let email, guardVisible() else { return }
-                        await vm.word(email: email)
+                        guard let uniqe, guardVisible() else { return }
+                        await vm.word(uniqe: uniqe)
                     }
                 }
             }
@@ -628,8 +628,8 @@ struct AIGameView<VM: AIWordViewModel>: View {
                     Task(priority: .userInitiated) {
                         try? await Task.sleep(nanoseconds: 1_000_000_000)
                         animatedTurnSwitch(to: .player)
-                        guard let email, guardVisible() else { return }
-                        await vm.word(email: email)
+                        guard let uniqe, guardVisible() else { return }
+                        await vm.word(uniqe: uniqe)
                     }
                 }
             }
@@ -732,7 +732,7 @@ struct AIGameView<VM: AIWordViewModel>: View {
         let accent = aiDifficulty.color
         ZStack {
             RadialGradient(
-                colors: [Color.black.opacity(0.86), Color.black.opacity(0.95)],
+                colors: [Color.dynamicWhite.opacity(0.86), Color.dynamicWhite.opacity(0.95)],
                 center: .center, startRadius: 24, endRadius: 700
             )
             .overlay(NoiseOverlay(opacity: 0.06))
@@ -755,7 +755,6 @@ struct AIGameView<VM: AIWordViewModel>: View {
                         baseOpacity: 0.9,
                         isActive: showAiIntro
                     )
-                    .foregroundStyle(.white)
                     .opacity(showAiIntro ? 1 : 0)
                     .animation(IntroAnim.title, value: showAiIntro)
                     
@@ -805,7 +804,7 @@ struct AIGameView<VM: AIWordViewModel>: View {
                         Spacer()
                         ZStack(alignment: .center) {
                             EmptyCard(height: 76)
-                                .realisticCell(color: .black.opacity(0.4), cornerRadius: 8)
+                                .realisticCell(color: .dynamicBlack.opacity(0.4), cornerRadius: 8)
                                 .frame(width: 112)
                             VStack(spacing: 4) {
                                 ZStack {
@@ -842,7 +841,7 @@ struct AIGameView<VM: AIWordViewModel>: View {
                         
                         ZStack(alignment: .center) {
                             EmptyCard(height: 76)
-                                .realisticCell(color: .black.opacity(0.4), cornerRadius: 8)
+                                .realisticCell(color: .dynamicBlack.opacity(0.4), cornerRadius: 8)
                                 .opacity(turn == .ai ? 1 : 0.4)
                                 .frame(width: 112)
                             VStack(spacing: 4) {
@@ -895,19 +894,25 @@ struct AIGameView<VM: AIWordViewModel>: View {
     @ViewBuilder
     func EmptyCard(
         height: CGFloat = 120,
-        background: LinearGradient = LinearGradient(
-            colors: [
+        cornerRadius: CGFloat = 8,
+        borderColor: Color = .black.opacity(0.10),
+        borderWidth: CGFloat = 1,
+    ) -> some View {
+        let background: LinearGradient = LinearGradient(
+            colors: scheme == .light
+            ? [
+                Color(red: 0.98, green: 0.99, blue: 1.00),
+                Color(red: 0.96, green: 0.98, blue: 1.00),
+                Color(red: 0.99, green: 0.97, blue: 1.00)
+            ]
+            : [
                 Color(red: 0.05, green: 0.06, blue: 0.09),
                 Color(red: 0.07, green: 0.08, blue: 0.14),
                 Color(red: 0.09, green: 0.08, blue: 0.17)
             ],
             startPoint: .topLeading,
             endPoint: .bottomTrailing
-        ),
-        cornerRadius: CGFloat = 8,
-        borderColor: Color = .black.opacity(0.10),
-        borderWidth: CGFloat = 1,
-    ) -> some View {
+        )
         RoundedRectangle(cornerRadius: cornerRadius)
             .fill(background)
             .overlay(
@@ -995,11 +1000,11 @@ struct AIGameView<VM: AIWordViewModel>: View {
     }
     
     @ViewBuilder private func game() -> some View {
-        if let email {
+        if let uniqe {
             ZStack(alignment: .topLeading) {
                 ZStack(alignment: .topLeading) { gameBody() }
                     .ignoresSafeArea(.keyboard)
-                    .onAppear { onAppear(email: email) }
+                    .onAppear { onAppear(uniqe: uniqe) }
                     .onChange(of: vm.numberOfErrors, handleError)
                     .onChange(of: vm.word, handleWordChange)
                     .disabled(!endFetchAnimation || !didStart || vm.numberOfErrors > 0)

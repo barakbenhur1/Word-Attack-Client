@@ -37,7 +37,7 @@ class DifficultyWordViewModel: WordViewModel {
         }
     }
     
-    func word(diffculty: DifficultyType, email: String) async {
+    func word(diffculty: DifficultyType, uniqe: String) async {
         switch diffculty {
         case .tutorial:
             let local = LanguageSetting()
@@ -47,7 +47,7 @@ class DifficultyWordViewModel: WordViewModel {
                 word = .init(word: .init(value: language == "he" ? "שלום" : "Cool", guesswork: []), number: 0, isTimeAttack: false)
             }
         default:
-            let value  = await wordService.word(diffculty: diffculty, email: email)
+            let value  = await wordService.word(diffculty: diffculty, uniqe: uniqe)
             await MainActor.run { [weak self] in
                 guard let self else { return }
                 guard let value else { isError = true; return }
@@ -57,11 +57,11 @@ class DifficultyWordViewModel: WordViewModel {
         }
     }
     
-    func addGuess(diffculty: DifficultyType, email: String, guess: String) async {
+    func addGuess(diffculty: DifficultyType, uniqe: String, guess: String) async {
         switch diffculty {
         case .tutorial: break
         default:
-            let value: EmptyModel? = await wordService.addGuess(diffculty: diffculty, email: email, guess: guess)
+            let value: EmptyModel? = await wordService.addGuess(diffculty: diffculty, uniqe: uniqe, guess: guess)
             await MainActor.run { [weak self] in
                 guard let self else { return }
                 guard value != nil else { isError = true; return }
@@ -69,16 +69,16 @@ class DifficultyWordViewModel: WordViewModel {
         }
     }
     
-    func score(diffculty: DifficultyType, email: String, isCorrect: Bool) async {
+    func score(diffculty: DifficultyType, uniqe: String, isCorrect: Bool) async {
         guard isCorrect else { return }
-        let value: EmptyModel? = await scoreService.score(diffculty: diffculty, email: email)
+        let value: EmptyModel? = await scoreService.score(diffculty: diffculty, uniqe: uniqe)
         await MainActor.run { [weak self] in
             guard let self else { return }
             guard value != nil else { return isError = true }
         }
     }
     
-    func getScore(diffculty: DifficultyType, email: String) async  {
+    func getScore(diffculty: DifficultyType, uniqe: String) async  {
         switch diffculty {
         case .tutorial:
             await MainActor.run { [weak self] in
@@ -86,7 +86,7 @@ class DifficultyWordViewModel: WordViewModel {
                 score = 0
             }
         default:
-            let value: ScoreData? = await scoreService.getScore(diffculty: diffculty, email: email)
+            let value: ScoreData? = await scoreService.getScore(diffculty: diffculty, uniqe: uniqe)
             await MainActor.run { [weak self] in
                 guard let self else { return }
                 guard let value else { score = 0; return }
@@ -105,23 +105,23 @@ fileprivate class ScoreService: Service {
         network = Network(root: .score)
     }
     
-    func score(diffculty: DifficultyType, email: String) async -> EmptyModel? {
+    func score(diffculty: DifficultyType, uniqe: String) async -> EmptyModel? {
         let value: EmptyModel? = await network.send(route: .score,
                                                     parameters: ["diffculty": diffculty.rawValue.trimmingCharacters(in: .whitespacesAndNewlines),
-                                                                 "email": email])
+                                                                 "uniqe": uniqe])
         return value
     }
     
-    func getScore(diffculty: DifficultyType, email: String) async -> ScoreData? {
+    func getScore(diffculty: DifficultyType, uniqe: String) async -> ScoreData? {
         let value: ScoreData? = await network.send(route: .getScore,
                                                    parameters: ["diffculty": diffculty.rawValue.trimmingCharacters(in: .whitespacesAndNewlines),
-                                                                 "email": email])
+                                                                 "uniqe": uniqe])
         return value
     }
     
-    func getPlaceInLeaderboard(email: String) async -> LeaderboaredPlaceData? {
+    func getPlaceInLeaderboard(uniqe: String) async -> LeaderboaredPlaceData? {
         let value: LeaderboaredPlaceData? = await network.send(route: .place,
-                                                               parameters: ["email": email])
+                                                               parameters: ["uniqe": uniqe])
         return value
     }
 }
@@ -140,17 +140,17 @@ fileprivate class WordService: Service {
         return .init(word: .init(value:  generateWord(for: l, length: diffculty.getLength()), guesswork: []), number: 0, isTimeAttack: false)
     }
     
-    func word(diffculty: DifficultyType, email: String) async -> WordData? {
+    func word(diffculty: DifficultyType, uniqe: String) async -> WordData? {
         let value: WordData? = await network.send(route: .getWord,
                                                   parameters: ["diffculty": diffculty.rawValue.trimmingCharacters(in: .whitespacesAndNewlines),
-                                                               "email": email])
+                                                               "uniqe": uniqe])
         return value
     }
     
-    func addGuess(diffculty: DifficultyType, email: String, guess: String) async -> EmptyModel? {
+    func addGuess(diffculty: DifficultyType, uniqe: String, guess: String) async -> EmptyModel? {
         let value: EmptyModel? = await network.send(route: .addGuess,
                                                     parameters: ["diffculty": diffculty.rawValue.trimmingCharacters(in: .whitespacesAndNewlines),
-                                                                 "email": email,
+                                                                 "uniqe": uniqe,
                                                                  "guess": guess])
         return value
     }

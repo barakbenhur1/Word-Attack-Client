@@ -14,9 +14,9 @@ struct WordProvider {
         network = Network(root: .words)
     }
     
-    func word(email: String) async -> SimpleWord? {
+    func word(uniqe: String) async -> SimpleWord? {
         let value: SimpleWord? = await network.send(route: .word,
-                                                    parameters: ["email": email])
+                                                    parameters: ["uniqe": uniqe])
         return value
     }
 }

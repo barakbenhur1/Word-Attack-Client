@@ -106,8 +106,8 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
             let token = deviceToken.map { String(format: "%02x", $0) }.joined()
             
             Task {
-                guard let email = Auth.auth().currentUser?.email else { return }
-                await Network.DeviceTokenService.register(email: email, token: token, environment: env, userId: Auth.auth().currentUser?.uid)
+                guard let uniqe = Auth.auth().currentUser?.email else { return }
+                await Network.DeviceTokenService.register(uniqe: uniqe, token: token, environment: env, userId: Auth.auth().currentUser?.uid)
             }
         }
     
@@ -186,8 +186,8 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
         let bgID = UIApplication.shared.beginBackgroundTask(withName: "wordzap.graceful")
         Task {
             defer { UIApplication.shared.endBackgroundTask(bgID) }
-            guard let email = Auth.auth().currentUser?.email else { return }
-            await refreshWordZapPlaces(email: email)
+            guard let uniqe = Auth.auth().currentUser?.email else { return }
+            await refreshWordZapPlaces(uniqe: uniqe)
             await MainActor.run { SharedStore.requestWidgetReload() }
         }
     }

@@ -18,6 +18,7 @@ class AdProvider: ObservableObject {
         ZStack(alignment: .center) {
             if withPlaceholder {
                 Rectangle()
+                    .opacity(0.3)
             }
             if !PremiumManager.shared.isPremium {
                 AdView(adUnitID: id)

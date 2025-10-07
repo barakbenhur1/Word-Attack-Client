@@ -19,6 +19,7 @@ import UIKit
 struct LoginAuthModel: Codable, Equatable {
     var givenName: String = ""
     var lastName:  String = ""
+    var uniqe:     String = ""
     var email:     String = ""
     var gender:    String = ""   // Apple does not provide gender
 }
@@ -39,20 +40,22 @@ final class Authentication: NSObject {
     
     // MARK: - GOOGLE
     
-    private func checkStatus(gender: String?) async -> LoginAuthModel? {
+    private func checkStatus(result: (id: String, gender: String?)) async -> LoginAuthModel? {
         guard let user = GIDSignIn.sharedInstance.currentUser else { return nil }
         var google = LoginAuthModel()
+        google.uniqe     = result.id
         google.email     = user.profile?.email ?? ""
         google.givenName = user.profile?.givenName ?? ""
         google.lastName  = user.profile?.familyName ?? ""
-        google.gender    = gender ?? "male"                // default neutral
+        google.gender    = result.gender ?? "male"
         return google
     }
     
     /// Calls People API to read gender; returns nil if not set/visible.
     private func fetchGender(
         accessToken: String,
-        completion: @escaping (Result<String?, Error>) -> Void
+        id: String,
+        completion: @escaping (Result<(id: String, gender: String?), Error>) -> Void
     ) {
         var comps = URLComponents(string: "https://people.googleapis.com/v1/people/me")!
         comps.queryItems = [URLQueryItem(name: "personFields", value: "genders")]
@@ -78,7 +81,7 @@ final class Authentication: NSObject {
             do {
                 let decoded = try JSONDecoder().decode(Response.self, from: data)
                 let g = decoded.genders?.first
-                completion(.success(g?.value)) // String?; nil if not set
+                completion(.success((id, g?.value))) // String?; nil if not set
             } catch {
                 completion(.failure(error))
             }
@@ -104,8 +107,8 @@ final class Authentication: NSObject {
                 guard let self else { return error("failed init class") }
                 switch result {
                 case .failure(let e): error(e.localizedDescription)
-                case .success(let gender):
-                    guard let model = await checkStatus(gender: gender) else { return error("failed to get result") }
+                case .success(let result):
+                    guard let model = await checkStatus(result: result) else { return error("failed to get result") }
                     await MainActor.run { complition(model) }
                 }
             }
@@ -114,7 +117,7 @@ final class Authentication: NSObject {
     
     // MARK: - Sign in + Firebase + Gender (Google)
     
-    func signInAndFetchGender(rootViewController: UIViewController, completion: @escaping (Result<String?, Error>) -> Void) {
+    func signInAndFetchGender(rootViewController: UIViewController, completion: @escaping (Result<(id: String, gender: String?), Error>) -> Void) {
         GIDSignIn.sharedInstance.signIn(
             withPresenting: rootViewController,
             hint: nil,
@@ -131,7 +134,8 @@ final class Authentication: NSObject {
             }
             
             let credential = GoogleAuthProvider.credential(withIDToken: idToken, accessToken: accessTokenStr)
-            Auth.auth().signIn(with: credential) { [weak self] _, firebaseErr in
+            Auth.auth().signIn(with: credential) { [weak self] userResult, firebaseErr in
+                guard let id = userResult?.user.uid else { return }
                 guard let self else { return }
                 if let firebaseErr { return completion(.failure(firebaseErr)) }
                 
@@ -139,7 +143,7 @@ final class Authentication: NSObject {
                     switch result {
                     case .failure(let e): completion(.failure(e))
                     case .success(let freshAccessToken):
-                        self.fetchGender(accessToken: freshAccessToken, completion: completion)
+                        self.fetchGender(accessToken: freshAccessToken,id: id, completion: completion)
                     }
                 }
             }
@@ -275,11 +279,14 @@ extension Authentication: ASAuthorizationControllerDelegate, ASAuthorizationCont
             let resolvedGiven = !given.isEmpty ? given : (parts.first.map(String.init) ?? "")
             let resolvedLast  = !family.isEmpty ? family : (parts.count > 1 ? String(parts[1]) : "")
             
+            guard let user else { return }
             // 6) Build your model
-            var model = LoginAuthModel()
-            let email = credential.email ?? user?.email ?? ""
-            model.email     = email
-            model.givenName = resolvedGiven.isEmpty ? String(email.split(separator: "@").first ?? "\(resolvedGiven)") : resolvedGiven
+            var model      = LoginAuthModel()
+            let uniqe      = user.uid
+            let email      = credential.email ?? user.email ?? ""
+            model.uniqe    = uniqe
+            model.email    = email
+            model.givenName = user.displayName ?? (resolvedGiven.isEmpty ? String(email.split(separator: "@").first ?? "\(resolvedGiven)") : resolvedGiven)
             model.lastName  = resolvedLast
             model.gender    = "male"                                       // Apple doesn't provide gender
             

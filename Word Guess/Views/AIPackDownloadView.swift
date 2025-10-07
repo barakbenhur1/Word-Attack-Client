@@ -18,8 +18,8 @@ private struct CapsuleProgressBar: View {
         GeometryReader { geo in
             let w = max(0, min(1, progress)) * geo.size.width
             ZStack(alignment: .leading) {
-                Capsule().fill(.white.opacity(0.25))
-                Capsule().fill(LinearGradient(colors: [.white.opacity(0.7), Palette.buttonTint.opacity(0.7)],
+                Capsule().fill(Color.dynamicWhite.opacity(0.25))
+                Capsule().fill(LinearGradient(colors: [Color.dynamicWhite.opacity(0.7), Palette.buttonTint.opacity(0.7)],
                                               startPoint: .leading,
                                               endPoint: .trailing))
                 .frame(width: w)
@@ -58,14 +58,14 @@ struct AIPackDownloadView: View {
                 VStack(spacing: 24) {
                     SafeSymbol("icloud.and.arrow.down.fill")
                         .font(.system(size: 56, weight: .semibold))
-                        .foregroundStyle(LinearGradient(colors: [.white.opacity(0.7), Palette.buttonTint.opacity(0.7)], startPoint: .top, endPoint: .bottom))
+                        .foregroundStyle(LinearGradient(colors: [Color.dynamicWhite.opacity(0.7), Palette.buttonTint.opacity(0.7)], startPoint: .top, endPoint: .bottom))
                         .symbolRenderingMode(.multicolor)
                         .shadow(radius: 6, y: 2)
                     
                     Text(isLoadingModel ? "Saving AI Model" : "Downloading AI Pack")
                         .font(.largeTitle.bold())
                         .multilineTextAlignment(.center)
-                        .foregroundStyle(.white.opacity(0.95))
+                        .foregroundStyle(Color.dynamicBlack.opacity(0.95))
                     
                     VStack(alignment: .leading, spacing: 10) {
                         CapsuleProgressBar(progress: progressValue > 0.01 ? progressValue : 0, height: 20)
@@ -73,11 +73,11 @@ struct AIPackDownloadView: View {
                             .padding(.horizontal)
                         HStack {
                             Text(progressLabel).monospacedDigit().font(.headline)
-                                .foregroundStyle(.white.opacity(0.95))
+                                .foregroundStyle(Color.dynamicBlack.opacity(0.95))
                             Spacer()
                             Text(sizeString(done: mgr.completedBytes, total: mgr.totalBytes))
                                 .monospacedDigit().font(.headline)
-                                .foregroundStyle(.white.opacity(0.65))
+                                .foregroundStyle(Color.dynamicBlack.opacity(0.65))
                         }
                         .frame(maxWidth: 520)
                         .padding(.horizontal)
@@ -94,6 +94,7 @@ struct AIPackDownloadView: View {
                     Button { onCancel() }
                     label: {
                         Label("Cancel", systemImage: "xmark.circle.fill")
+                            .foregroundStyle(Color.dynamicBlack)
                             .labelStyle(.titleAndIcon)
                             .font(.system(size: 15, weight: .medium, design: .rounded))
                             .padding(.horizontal, 14)

@@ -177,18 +177,18 @@ public final class MiniGameCatalog {
     public func view(for slot: MiniSlot,
                      hub: PremiumHubModel,
                      onDone: @escaping (MiniResult) -> Void) -> AnyView {
+        let hasLetter = slot.containsLetter || CGFloat.random(in: 0...1) <= CGFloat.random(in: 0...0.7)
         switch slot.kind {
-            // Legacy — use your existing implementations
-        case .sand:         return AnyView(SandDigMini(hasLetter: slot.containsLetter, letter: slot.seededLetter, onDone: onDone))
-        case .wax:          return AnyView(WaxPressMini(hasLetter: slot.containsLetter, letter: slot.seededLetter, onDone: onDone))
-        case .fog:          return AnyView(FogWipeMini(hasLetter: slot.containsLetter, letter: slot.seededLetter, onDone: onDone))
-        case .sonar:        return AnyView(SonarMini(hasLetter: slot.containsLetter, seed: slot.seededLetter, onDone: onDone))
-        case .ripple:       return AnyView(RippleMini(hasLetter: slot.containsLetter, letter: slot.seededLetter, onDone: onDone))
-        case .magnet:       return AnyView(MagnetMini(hasLetter: slot.containsLetter, letter: slot.seededLetter, onDone: onDone))
-        case .frost:        return AnyView(FrostMini(hasLetter: slot.containsLetter, letter: slot.seededLetter, onDone: onDone))
-        case .tag:          return AnyView(PlayTagMini(hasLetter: slot.containsLetter, seed: slot.seededLetter, onDone: onDone))
+        case .sand:         return AnyView(SandDigMini(hasLetter: hasLetter, letter: slot.seededLetter, onDone: onDone))
+        case .wax:          return AnyView(WaxPressMini(hasLetter: hasLetter, letter: slot.seededLetter, onDone: onDone))
+        case .fog:          return AnyView(FogWipeMini(hasLetter: hasLetter, letter: slot.seededLetter, onDone: onDone))
+        case .sonar:        return AnyView(SonarMini(hasLetter: hasLetter, seed: slot.seededLetter, onDone: onDone))
+        case .ripple:       return AnyView(RippleMini(hasLetter: hasLetter, letter: slot.seededLetter, onDone: onDone))
+        case .magnet:       return AnyView(MagnetMini(hasLetter: hasLetter, letter: slot.seededLetter, onDone: onDone))
+        case .frost:        return AnyView(FrostMini(hasLetter: hasLetter, letter: slot.seededLetter, onDone: onDone))
+        case .tag:          return AnyView(PlayTagMini(hasLetter: hasLetter, seed: slot.seededLetter, onDone: onDone))
         case .aiMerchant:   return AnyView(AIMerchantMini(deadline: slot.expiresAt, ai: hub.aiDifficulty, hub: hub, onDone: onDone))
-        case .symbolPick:   return AnyView(SymbolPickMini(deadline: slot.expiresAt, hub: hub, onDone: onDone))
+        case .symbolPick:   return AnyView(SymbolPickMini(deadline: slot.expiresAt, hub: hub, hasLetter: slot.containsLetter, onDone: onDone))
         case .symbolPuzzle: return AnyView(SymbolPuzzleMini(deadline: slot.expiresAt, hub: hub, onDone: onDone))
         case .luckyWait:    return AnyView(LuckyWaitMini(deadline: slot.expiresAt, hub: hub, onDone: onDone))
         case .claw:         return AnyView(ClawMini(deadline: slot.expiresAt, hub: hub, letter: slot.seededLetter, onDone: onDone))
@@ -255,6 +255,9 @@ private struct SandDigMini: View {
     @State private var letterPos: CGPoint = .zero
     @State private var seeded: Character = "A"
     
+    @State private var showingLetter = false
+    @State private var overlayScale: CGFloat = 0.92
+    
     var body: some View {
         GeometryReader { geo in
             ZStack {
@@ -263,7 +266,7 @@ private struct SandDigMini: View {
                 if hasLetter {
                     Text(String(seeded))
                         .font(.system(size: min(geo.size.width, geo.size.height) * 0.42, weight: .heavy, design: .rounded))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(Color.dynamicBlack)
                         .position(letterPos)
                         .mask(RevealMask(points: strokes))
                         .animation(.easeInOut(duration: 0.2), value: strokes.count)
@@ -271,10 +274,18 @@ private struct SandDigMini: View {
                 Canvas { ctx, _ in
                     for p in strokes {
                         let rect = CGRect(x: p.x - 14, y: p.y - 14, width: 28, height: 28)
-                        ctx.fill(Ellipse().path(in: rect), with: .color(.white.opacity(0.08)))
+                        ctx.fill(Ellipse().path(in: rect), with: .color(Color.dynamicWhite.opacity(0.08)))
                     }
                 }
                 .clipShape(RoundedRectangle(cornerRadius: 18))
+                
+                if showingLetter {
+                    Text(String(seeded))
+                        .font(.system(size: 84, weight: .heavy, design: .rounded))
+                        .foregroundStyle(Color.dynamicBlack)
+                        .scaleEffect(overlayScale)
+                        .transition(.scale.combined(with: .opacity))
+                }
             }
             .gesture(DragGesture(minimumDistance: 0)
                 .onChanged { g in
@@ -285,7 +296,19 @@ private struct SandDigMini: View {
                     }
                 }
                 .onEnded { _ in
-                    onDone(hasLetter && hit ? .found(seeded) : .nothing)
+                    let success = hasLetter && hit
+                    if success {
+                        UIImpactFeedbackGenerator(style: .soft).impactOccurred()
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                            showingLetter = true
+                            overlayScale = 1.06
+                        }
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+                            onDone(.found(seeded))
+                        }
+                    } else {
+                        onDone(.nothing)
+                    }
                 })
             .onAppear {
                 seeded = letter ?? PremiumHubModel.randomLetter()
@@ -307,7 +330,7 @@ private struct RevealMask: Shape {
     }
 }
 
-private struct WaxPressMini: View {
+struct WaxPressMini: View {
     let hasLetter: Bool
     let letter: Character?
     let onDone: (MiniResult) -> Void
@@ -317,80 +340,122 @@ private struct WaxPressMini: View {
     @State private var letterPos: CGPoint = .zero
     @State private var seeded: Character = "A"
     
+    @State private var showingLetter = false
+    @State private var overlayScale: CGFloat = 0.92
+    
     // finger feedback
     @State private var ringPulse = false
+    
+    // tuning
+    private let inset: CGFloat = 70          // keep letter comfortably away from edges
+    private let clarityGain: CGFloat = 0.02  // how fast wax clears while pressing
+    
+    private func revealRadius(for clarity: CGFloat) -> CGFloat {
+        40 + 40 * clarity
+    }
+
+    private func clampedPoint(in rect: CGRect, inset: CGFloat) -> (CGPoint) -> CGPoint {
+        { p in
+            CGPoint(
+                x: min(max(p.x, rect.minX + inset), rect.maxX - inset),
+                y: min(max(p.y, rect.minY + inset), rect.maxY - inset)
+            )
+        }
+    }
     
     var body: some View {
         GeometryReader { geo in
             let shape  = RoundedRectangle(cornerRadius: 18, style: .continuous)
             let bounds = CGRect(origin: .zero, size: geo.size)
+            let clamp  = clampedPoint(in: bounds, inset: inset)
             
             ZStack {
-                // base
+                // Base wax
                 shape
                     .fill(PremiumPalette.wax)
                     .overlay(
-                        // wax sheen that clears as you press
-                        LinearGradient(colors: [.white.opacity(0.7), .white.opacity(0.15)],
-                                       startPoint: .topLeading, endPoint: .bottomTrailing)
+                        // sheen that clears as you press
+                        LinearGradient(
+                            colors: [
+                                Color.dynamicWhite.opacity(0.7),
+                                Color.dynamicWhite.opacity(0.15)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
                         .clipShape(shape)
                         .opacity(0.7 - 0.6 * clarity)
                     )
                     .overlay(shape.stroke(PremiumPalette.stroke, lineWidth: 1))
                 
-                // letter (revealed by the press mask)
+                // Letter (revealed by the press mask)
                 if hasLetter {
                     Text(String(seeded))
-                        .font(.system(size: min(geo.size.width, geo.size.height) * 0.42,
-                                      weight: .heavy, design: .rounded))
-                        .foregroundStyle(.black.opacity(0.9))
+                        .font(
+                            .system(
+                                size: min(geo.size.width, geo.size.height) * 0.42,
+                                weight: .heavy,
+                                design: .rounded
+                            )
+                        )
+                        .foregroundStyle(Color.dynamicBlack.opacity(0.9))
                         .position(letterPos)
                         .mask(
                             Group {
                                 if let p = pressPoint {
+                                    // Center the reveal exactly at the finger point
+                                    let r = revealRadius(for: clarity)
                                     Circle()
-                                        .size(CGSize(width: 40 + 40 * clarity, height: 40 + 40 * clarity))
-                                        .offset(x: p.x - (20 + 70 * clarity),
-                                                y: p.y - (20 + 70 * clarity))
+                                        .frame(width: r * 2, height: r * 2)
+                                        .position(p)
                                 }
                             }
                         )
                         .animation(.easeInOut(duration: 0.15), value: clarity)
                 }
                 
-                // ===== Finger-move visual feedback (clipped to shape) =====
+                // Finger-move visual feedback (clipped)
                 if let p = pressPoint {
-                    // soft warm glow
+                    let r = revealRadius(for: clarity)
+                    
+                    // soft glow
                     Circle()
                         .fill(
                             RadialGradient(
                                 gradient: Gradient(colors: [
-                                    .white.opacity(0.28 * (0.4 + clarity * 0.6)),
-                                    .white.opacity(0.02)
+                                    Color.dynamicBlack.opacity(0.28 * (0.4 + clarity * 0.6)),
+                                    Color.dynamicBlack.opacity(0.02)
                                 ]),
                                 center: .center,
                                 startRadius: 0,
-                                endRadius: 40 + 120 * clarity
+                                endRadius: r * 2.5
                             )
                         )
-                        .frame(width: 80 + 220 * clarity, height: 80 + 220 * clarity)
+                        .frame(width: r * 2.5, height: r * 2.5)
                         .position(p)
                         .blendMode(.plusLighter)
                         .allowsHitTesting(false)
                     
-                    // subtle ring pulse
+                    // ring pulse (same center as reveal)
                     Circle()
-                        .stroke(.white.opacity(0.45), lineWidth: 2)
-                        .frame(width: 38 + 100 * clarity, height: 38 + 100 * clarity)
+                        .stroke(Color.dynamicBlack.opacity(0.45), lineWidth: 2)
+                        .frame(width: r * 2, height: r * 2)
                         .position(p)
                         .scaleEffect(ringPulse ? 1.06 : 0.96)
                         .opacity(0.9)
-                        .shadow(color: .white.opacity(0.22), radius: 3, y: 1)
-                        .animation(.easeInOut(duration: 0.28).repeatForever(autoreverses: true),
-                                   value: ringPulse)
+                        .shadow(color: Color.dynamicBlack.opacity(0.22), radius: 3, y: 1)
+                        .animation(.easeInOut(duration: 0.28).repeatForever(autoreverses: true), value: ringPulse)
                         .onAppear { ringPulse = true }
                         .onDisappear { ringPulse = false }
                         .allowsHitTesting(false)
+                }
+                
+                if showingLetter {
+                    Text(String(seeded))
+                        .font(.system(size: 84, weight: .heavy, design: .rounded))
+                        .foregroundStyle(Color.dynamicBlack)
+                        .scaleEffect(overlayScale)
+                        .transition(.scale.combined(with: .opacity))
                 }
             }
             // clip everything to the rounded rect & use it as hit area
@@ -402,20 +467,142 @@ private struct WaxPressMini: View {
                         // only react if finger is inside the shape
                         let inside = shape.path(in: bounds).contains(g.location)
                         if inside {
-                            pressPoint = g.location
-                            clarity = min(1, clarity + 0.02)
+                            // keep press point fully inside the safe area to avoid edge artifacts
+                            pressPoint = clamp(g.location)
+                            clarity = min(1, clarity + clarityGain)
                         } else {
-                            // outside → hide feedback, do not increase clarity
+                            // if outside, hide feedback but keep current clarity (no increase)
                             pressPoint = nil
                         }
                     }
                     .onEnded { _ in
-                        let success = hasLetter &&
-                        overlap(pressPoint ?? .zero, letterPos, clarity: clarity)
-                        onDone(success ? .found(seeded) : .nothing)
+                        let success: Bool
+                        if hasLetter, let p = pressPoint {
+                            let r = revealRadius(for: clarity)
+                            success = hypot(p.x - letterPos.x, p.y - letterPos.y) <= r
+                        } else { success = false }
+                        
+                        if success {
+                            UIImpactFeedbackGenerator(style: .soft).impactOccurred()
+                            withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                                showingLetter = true
+                                overlayScale = 1.06
+                            }
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { onDone(.found(seeded)) }
+                        } else {
+                            onDone(.nothing)
+                        }
+                        
+                        // reset visuals
                         pressPoint = nil
                         clarity = 0
                     }
+            )
+            .onAppear {
+                // seed letter and position
+                seeded = letter ?? PremiumHubModel.randomLetter()
+                letterPos = CGPoint(
+                    x: .random(in: inset...(geo.size.width  - inset)),
+                    y: .random(in: inset...(geo.size.height - inset))
+                )
+            }
+            .onChange(of: geo.size) { _, newSize in
+                // keep letter in-bounds on size changes (rotation, iPad split, etc.)
+                let newBounds = CGRect(origin: .zero, size: newSize)
+                letterPos = clampedPoint(in: newBounds, inset: inset)(letterPos)
+            }
+        }
+        .frame(height: 300)
+    }
+}
+
+private struct FogWipeMini: View {
+    let hasLetter: Bool
+    let letter: Character?
+    let onDone: (MiniResult) -> Void
+
+    @State private var strokes: [CGPoint] = []
+    @State private var letterPos: CGPoint = .zero
+    @State private var seeded: Character = "A"
+    @State private var finished = false
+    
+    @State private var showingLetter = false
+    @State private var overlayScale: CGFloat = 0.92
+
+    var body: some View {
+        GeometryReader { geo in
+            ZStack {
+                // Revealed area = dynamicWhite (white in light mode)
+                RoundedRectangle(cornerRadius: 18)
+                    .fill(Color.dynamicWhite.opacity(0.98))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 18)
+                            .stroke(PremiumPalette.stroke, lineWidth: 1)
+                    )
+
+                if hasLetter {
+                    Text(String(seeded))
+                        .font(.system(
+                            size: min(geo.size.width, geo.size.height) * 0.42,
+                            weight: .heavy,
+                            design: .rounded
+                        ))
+                        .foregroundStyle(Color.dynamicBlack)     // <-- letter is dynamicBlack
+                        .position(letterPos)
+                        .mask(RevealMask(points: strokes))   // only shows where wiped
+                }
+
+                // ---- Gray fog that gets cleared to expose white underneath ----
+                RoundedRectangle(cornerRadius: 18)
+                    .fill(Color.dynamicBlack.opacity(0.18))   // <-- gray fog
+                    .mask(
+                        // Mask shows fog everywhere (white) EXCEPT where strokes are (black)
+                        ZStack {
+                            Rectangle().fill(.white) // fully visible fog
+                            Canvas { ctx, _ in
+                                ctx.addFilter(.alphaThreshold(min: 0.01))
+                                ctx.addFilter(.blur(radius: 6))
+                                for p in strokes {
+                                    let rect = CGRect(x: p.x - 24, y: p.y - 24, width: 48, height: 48)
+                                    // draw BLACK to CUT HOLES from the fog
+                                    ctx.fill(Ellipse().path(in: rect), with: .color(.dynamicWhite))
+                                }
+                            }
+                        }
+                        .compositingGroup()
+                        .luminanceToAlpha()
+                    )
+                
+                if showingLetter {
+                    Text(String(seeded))
+                        .font(.system(size: 84, weight: .heavy, design: .rounded))
+                        .foregroundStyle(Color.dynamicBlack)
+                        .scaleEffect(overlayScale)
+                        .transition(.scale.combined(with: .opacity))
+                }
+            }
+            .gesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { g in
+                        guard !finished else { return }
+                        strokes.append(g.location)
+                    }
+                    .onEnded { _ in
+                        guard !finished else { return }
+                        finished = true
+                        let success = hasLetter && strokes.contains { hypot($0.x - letterPos.x, $0.y - letterPos.y) < 40 }
+                        if success {
+                            UIImpactFeedbackGenerator(style: .soft).impactOccurred()
+                            withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                                showingLetter = true
+                                overlayScale = 1.06
+                            }
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { onDone(.found(seeded)) }
+                        } else {
+                            onDone(.nothing)
+                        }
+                    }
+                
             )
             .onAppear {
                 seeded = letter ?? PremiumHubModel.randomLetter()
@@ -424,67 +611,6 @@ private struct WaxPressMini: View {
                     x: .random(in: inset...(geo.size.width - inset)),
                     y: .random(in: inset...(geo.size.height - inset))
                 )
-            }
-        }
-        .frame(height: 300)
-    }
-    
-    private func overlap(_ a: CGPoint, _ b: CGPoint, clarity: CGFloat) -> Bool {
-        hypot(a.x - b.x, a.y - b.y) < 80 * max(0.4, clarity)
-    }
-}
-
-private struct FogWipeMini: View {
-    let hasLetter: Bool
-    let letter: Character?
-    let onDone: (MiniResult) -> Void
-    @State private var strokes: [CGPoint] = []
-    @State private var letterPos: CGPoint = .zero
-    @State private var seeded: Character = "A"
-    @State private var finished = false
-    var body: some View {
-        GeometryReader { geo in
-            ZStack {
-                RoundedRectangle(cornerRadius: 18).fill(Color.black.opacity(0.9))
-                    .overlay(RoundedRectangle(cornerRadius: 18).stroke(PremiumPalette.stroke, lineWidth: 1))
-                if hasLetter {
-                    Text(String(seeded))
-                        .font(.system(size: min(geo.size.width, geo.size.height) * 0.42, weight: .heavy, design: .rounded))
-                        .foregroundStyle(PremiumPalette.accent)
-                        .position(letterPos)
-                        .mask(RevealMask(points: strokes))
-                }
-                RoundedRectangle(cornerRadius: 18)
-                    .fill(PremiumPalette.frost)
-                    .mask(
-                        Rectangle().compositingGroup()
-                            .luminanceToAlpha()
-                            .overlay(
-                                Canvas { ctx, _ in
-                                    ctx.addFilter(.alphaThreshold(min: 0.01))
-                                    ctx.addFilter(.blur(radius: 6))
-                                    for p in strokes {
-                                        let rect = CGRect(x: p.x - 24, y: p.y - 24, width: 48, height: 48)
-                                        ctx.fill(Ellipse().path(in: rect), with: .color(.black))
-                                    }
-                                }
-                            )
-                    )
-            }
-            .gesture(
-                DragGesture(minimumDistance: 0)
-                    .onChanged { g in guard !finished else { return }; strokes.append(g.location) }
-                    .onEnded { _ in
-                        guard !finished else { return }; finished = true
-                        let success = hasLetter && strokes.contains { hypot($0.x - letterPos.x, $0.y - letterPos.y) < 40 }
-                        onDone(success ? .found(seeded) : .nothing)
-                    }
-            )
-            .onAppear {
-                seeded = letter ?? PremiumHubModel.randomLetter()
-                let inset: CGFloat = 70
-                letterPos = CGPoint(x: .random(in: inset...(geo.size.width - inset)),
-                                    y: .random(in: inset...(geo.size.height - inset)))
             }
         }
         .frame(height: 260)
@@ -500,17 +626,23 @@ private struct SonarMini: View {
     @State private var pings: [Ping] = []
     @State private var solved = false
     @State private var letterToShow: Character? = nil   // ← frozen once
+    
+    // success animation state
+    @State private var letterScale: CGFloat = 1.0
+    @State private var successAt: Date? = nil
+    
     struct Ping: Identifiable { let id = UUID(); let center: CGPoint; let date: Date; let strength: Double }
     
     var body: some View {
         GeometryReader { geo in
             ZStack {
-                RoundedRectangle(cornerRadius: 18).fill(Color.black.opacity(0.75))
+                RoundedRectangle(cornerRadius: 18).fill(Color.dynamicWhite.opacity(0.75))
                     .overlay(RoundedRectangle(cornerRadius: 18).stroke(PremiumPalette.stroke, lineWidth: 1))
                 
-                GridPattern().stroke(Color.white.opacity(0.15), lineWidth: 1)
+                GridPattern().stroke(Color.dynamicBlack.opacity(0.15), lineWidth: 1)
                     .clipShape(RoundedRectangle(cornerRadius: 18))
                 
+                // sonar pings
                 TimelineView(.animation) { timeline in
                     Canvas { ctx, _ in
                         for ping in pings {
@@ -524,27 +656,63 @@ private struct SonarMini: View {
                     }
                 }
                 
+                // letter (only after success), animated in-place
                 if solved, let ch = letterToShow {
                     Text(String(ch))
-                        .font(.system(size: min(geo.size.width, geo.size.height) * 0.40, weight: .heavy, design: .rounded))
-                        .foregroundStyle(.white)
+                        .font(.system(size: min(geo.size.width, geo.size.height) * 0.40,
+                                      weight: .heavy, design: .rounded))
+                        .foregroundStyle(Color.dynamicBlack)
                         .position(target)
+                        .scaleEffect(letterScale)
+                        .shadow(color: Color.dynamicBlack.opacity(0.6), radius: 6, y: 2)
                         .transition(.scale.combined(with: .opacity))
+                }
+                
+                // success ripples centered on the target
+                if let t0 = successAt {
+                    TimelineView(.animation) { tl in
+                        Canvas { ctx, _ in
+                            let dt = tl.date.timeIntervalSince(t0)
+                            guard dt <= 0.6 else { return }
+                            for i in 0..<3 {
+                                let t = dt - Double(i) * 0.06
+                                guard t >= 0 else { continue }
+                                let p = t / 0.6
+                                let r = CGFloat(12 + p * 130)
+                                let a = 1.0 - p
+                                let rect = CGRect(x: target.x - r, y: target.y - r, width: r*2, height: r*2)
+                                ctx.stroke(Circle().path(in: rect),
+                                           with: .color(Color.dynamicBlack.opacity(0.35 * a)),
+                                           lineWidth: 2)
+                            }
+                        }
+                    }
                 }
             }
             .contentShape(RoundedRectangle(cornerRadius: 18))
-            .gesture(DragGesture(minimumDistance: 0).onEnded { g in
-                let p = g.location
-                let d = max(1, hypot(p.x - target.x, p.y - target.y))
-                let norm = max(0, 1 - Double(min(d, 220) / 220))
-                pings.append(Ping(center: p, date: Date(), strength: norm))
-                if d < 36 {
-                    withAnimation(.spring(response: 0.5, dampingFraction: 0.75)) { solved = true }
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.55) {
-                        if let ch = letterToShow { onDone(.found(ch)) } else { onDone(.nothing) }
+            .gesture(
+                DragGesture(minimumDistance: 0).onEnded { g in
+                    let p = g.location
+                    let d = max(1, hypot(p.x - target.x, p.y - target.y))
+                    let norm = max(0, 1 - Double(min(d, 220) / 220))
+                    pings.append(Ping(center: p, date: Date(), strength: norm))
+                    
+                    if d < 36 {
+                        // success → animate letter at target (bounce + ripples), then close
+                        UIImpactFeedbackGenerator(style: .soft).impactOccurred()
+                        letterScale = 0.98
+                        withAnimation(.spring(response: 0.50, dampingFraction: 0.75)) { solved = true }
+                        successAt = Date()
+                        withAnimation(.spring(response: 0.30, dampingFraction: 0.75)) { letterScale = 1.12 }
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) {
+                            withAnimation(.spring(response: 0.30, dampingFraction: 0.85)) { letterScale = 1.00 }
+                        }
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.60) {
+                            if let ch = letterToShow { onDone(.found(ch)) } else { onDone(.nothing) }
+                        }
                     }
                 }
-            })
+            )
             .onAppear {
                 letterToShow = hasLetter ? seed : nil  // freeze once
                 let inset: CGFloat = 70
@@ -575,23 +743,38 @@ private struct RippleMini: View {
     let hasLetter: Bool
     let letter: Character?
     let onDone: (MiniResult) -> Void
+
     struct Ring: Identifiable { let id = UUID(); let center: CGPoint; let start: Date }
+
     @State private var rings: [Ring] = []
     @State private var target: CGPoint = .zero
     @State private var seeded: Character = "A"
     @State private var solved = false
     @State private var frameTimer = Timer.publish(every: 1/60, on: .main, in: .common).autoconnect()
+
+    // success animation (letter)
+    @State private var letterScale: CGFloat = 1.0
+    @State private var successAt: Date? = nil
+
     var body: some View {
         GeometryReader { geo in
             ZStack {
-                RoundedRectangle(cornerRadius: 18).fill(Color.black.opacity(0.85))
+                RoundedRectangle(cornerRadius: 18).fill(Color.dynamicWhite.opacity(0.85))
                     .overlay(RoundedRectangle(cornerRadius: 18).stroke(PremiumPalette.stroke, lineWidth: 1))
+
+                // Letter appears only when solved, and animates in place
                 if solved, hasLetter {
                     Text(String(seeded))
-                        .font(.system(size: min(geo.size.width, geo.size.height) * 0.40, weight: .heavy, design: .rounded))
-                        .foregroundStyle(.white)
+                        .font(.system(size: min(geo.size.width, geo.size.height) * 0.40,
+                                      weight: .heavy, design: .rounded))
+                        .foregroundStyle(Color.dynamicBlack)
                         .position(target)
+                        .scaleEffect(letterScale)
+                        .shadow(color: Color.dynamicBlack.opacity(0.6), radius: 6, y: 2)
+                        .transition(.scale.combined(with: .opacity))
                 }
+
+                // Continuous user-generated ripples
                 TimelineView(.animation) { tl in
                     Canvas { ctx, _ in
                         for ring in rings {
@@ -599,21 +782,57 @@ private struct RippleMini: View {
                             let r = CGFloat(10 + t * 150)
                             let alpha = max(0, 1.0 - t / 1.4)
                             let rect = CGRect(x: ring.center.x - r/2, y: ring.center.y - r/2, width: r, height: r)
-                            ctx.stroke(Circle().path(in: rect), with: .color(.white.opacity(alpha)), lineWidth: 2)
+                            ctx.stroke(Circle().path(in: rect), with: .color(.teal.opacity(alpha)), lineWidth: 2)
+                        }
+                    }
+                }
+
+                // Success burst ripples centered on the target
+                if let t0 = successAt {
+                    TimelineView(.animation) { tl in
+                        Canvas { ctx, _ in
+                            let dt = tl.date.timeIntervalSince(t0)
+                            guard dt <= 0.6 else { return }
+                            for i in 0..<3 {
+                                let t = dt - Double(i) * 0.06
+                                guard t >= 0 else { continue }
+                                let p = t / 0.6
+                                let r = CGFloat(12 + p * 130)
+                                let a = 1.0 - p
+                                let rect = CGRect(x: target.x - r, y: target.y - r, width: r*2, height: r*2)
+                                ctx.stroke(Circle().path(in: rect),
+                                           with: .color(Color.dynamicBlack.opacity(0.35 * a)),
+                                           lineWidth: 2)
+                            }
                         }
                     }
                 }
             }
             .contentShape(RoundedRectangle(cornerRadius: 18))
-            .onTapGesture { p in rings.append(Ring(center: p, start: Date())) }
+            .onTapGesture { p in
+                rings.append(Ring(center: p, start: Date()))
+            }
             .onReceive(frameTimer) { now in
+                // clean old rings
                 rings.removeAll { now.timeIntervalSince($0.start) > 1.6 }
+
                 guard hasLetter, !solved else { return }
+
+                // detect a ring passing over the target
                 for ring in rings {
                     let t = now.timeIntervalSince(ring.start)
                     let r = CGFloat(10 + t * 150)
                     if abs(r - hypot(ring.center.x - target.x, ring.center.y - target.y)) < 14 {
+                        // success → animate letter in place
+                        UIImpactFeedbackGenerator(style: .soft).impactOccurred()
                         solved = true
+                        successAt = now
+                        letterScale = 0.98
+                        withAnimation(.spring(response: 0.30, dampingFraction: 0.75)) { letterScale = 1.12 }
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) {
+                            withAnimation(.spring(response: 0.30, dampingFraction: 0.85)) { letterScale = 1.00 }
+                        }
+                        // close after brief feedback
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { onDone(.found(seeded)) }
                         break
                     }
@@ -657,7 +876,7 @@ private struct MagnetMini: View {
             ZStack {
                 // Background
                 RoundedRectangle(cornerRadius: 18)
-                    .fill(Color.black.opacity(0.85))
+                    .fill(Color.dynamicWhite.opacity(0.85))
                     .overlay(RoundedRectangle(cornerRadius: 18).stroke(PremiumPalette.stroke, lineWidth: 1))
                 
                 // Rails (purely decorative)
@@ -671,17 +890,19 @@ private struct MagnetMini: View {
                         path.addRoundedRect(in: CGRect(x: x, y: y, width: w, height: h),
                                             cornerSize: CGSize(width: 7, height: 7))
                     }
-                    ctx.stroke(path, with: .color(.white.opacity(0.08)), lineWidth: 5)
+                    ctx.stroke(path, with: .color(Color.dynamicBlack.opacity(0.08)), lineWidth: 5)
                 }
                 
-                // Letter (faint → bright when discovered)
+                // Letter (faint → bright when discovered), animates in place
                 if hasLetter {
                     Text(String(seeded))
                         .font(.system(size: min(bounds.width, bounds.height) * 0.42,
                                       weight: .heavy, design: .rounded))
-                        .foregroundStyle(.white.opacity(letterOpacity))
+                        .foregroundStyle(Color.dynamicBlack.opacity(letterOpacity))
                         .scaleEffect(letterScale)
                         .position(letterPos)
+                        .shadow(color: Color.dynamicBlack.opacity(discovered ? 0.6 : 0.0),
+                                radius: discovered ? 6 : 0, y: discovered ? 2 : 0)
                         .animation(.spring(response: 0.35, dampingFraction: 0.8), value: letterScale)
                         .animation(.easeInOut(duration: 0.18), value: letterOpacity)
                 }
@@ -690,7 +911,7 @@ private struct MagnetMini: View {
                 Canvas { ctx, _ in
                     for f in filings {
                         let rect = CGRect(x: f.p.x - 2, y: f.p.y - 2, width: 4, height: 4)
-                        ctx.fill(Ellipse().path(in: rect), with: .color(.white.opacity(0.8)))
+                        ctx.fill(Ellipse().path(in: rect), with: .color(Color.dynamicBlack.opacity(0.8)))
                     }
                 }
                 
@@ -708,7 +929,7 @@ private struct MagnetMini: View {
                             else { onDone(.nothing) }
                         })
                 
-                // Ripple burst when revealed
+                // Ripple burst when revealed (centered on the letter)
                 TimelineView(.animation) { tl in
                     if let start = captureAt {
                         let dt = tl.date.timeIntervalSince(start)
@@ -722,7 +943,7 @@ private struct MagnetMini: View {
                                 let a = 1.0 - p
                                 let rect = CGRect(x: c.x - r, y: c.y - r, width: r*2, height: r*2)
                                 ctx.stroke(Circle().path(in: rect),
-                                           with: .color(.white.opacity(0.35 * a)),
+                                           with: .color(Color.dynamicBlack.opacity(0.35 * a)),
                                            lineWidth: 2)
                             }
                         }
@@ -775,7 +996,7 @@ private struct MagnetMini: View {
         discovered = true
         captureAt = Date()
         
-        // pop + brighten letter
+        // pop + brighten letter (in place)
         UIImpactFeedbackGenerator(style: .soft).impactOccurred()
         withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
             letterScale = 1.10
@@ -788,7 +1009,7 @@ private struct MagnetMini: View {
             }
         }
         // close after users see it
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.65) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.60) {
             onDone(.found(seeded))
         }
     }
@@ -816,7 +1037,7 @@ private struct FrostMini: View {
             ZStack {
                 // background + stroke
                 shape
-                    .fill(Color.black.opacity(0.88))
+                    .fill(Color.dynamicWhite.opacity(0.88))
                     .overlay(shape.stroke(PremiumPalette.stroke, lineWidth: 1))
                 
                 // letter reveal
@@ -824,7 +1045,7 @@ private struct FrostMini: View {
                     Text(String(seeded))
                         .font(.system(size: min(geo.size.width, geo.size.height) * 0.42,
                                       weight: .heavy, design: .rounded))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(Color.dynamicBlack)
                         .position(letterPos)
                         .mask(HeatMask(points: heatPoints))
                 }
@@ -840,8 +1061,8 @@ private struct FrostMini: View {
                         .fill(
                             RadialGradient(
                                 gradient: Gradient(colors: [
-                                    .white.opacity(0.28 * (0.4 + heatLevel * 0.6)),
-                                    .white.opacity(0.02)
+                                    Color.dynamicBlack.opacity(0.28 * (0.4 + heatLevel * 0.6)),
+                                    Color.dynamicBlack.opacity(0.02)
                                 ]),
                                 center: .center,
                                 startRadius: 0,
@@ -855,7 +1076,7 @@ private struct FrostMini: View {
                     
                     // breathing ring
                     Circle()
-                        .stroke(.white.opacity(0.45), lineWidth: 2)
+                        .stroke(Color.dynamicWhite.opacity(0.45), lineWidth: 2)
                         .frame(width: 38 + 40 * heatLevel, height: 38 + 40 * heatLevel)
                         .position(p)
                         .scaleEffect(ringPulse ? 1.06 : 0.96)
@@ -905,7 +1126,6 @@ private struct FrostMini: View {
     }
 }
 
-
 private struct HeatMask: Shape {
     let points: [CGPoint]
     func path(in rect: CGRect) -> Path {
@@ -923,7 +1143,7 @@ private struct FrostOverlay: View {
                 let x = CGFloat.random(in: 0...size.width)
                 let y = CGFloat.random(in: 0...size.height)
                 ctx.fill(Ellipse().path(in: CGRect(x: x, y: y, width: r, height: r)),
-                         with: .color(.white.opacity(0.6)))
+                         with: .color(Color.dynamicBlack.opacity(0.6)))
             }
         }.blur(radius: 1.2)
     }
@@ -983,14 +1203,14 @@ private struct PlayTagMini: View {
         GeometryReader { geo in
             ZStack {
                 RoundedRectangle(cornerRadius: 18)
-                    .fill(Color.black.opacity(0.88))
+                    .fill(Color.dynamicWhite.opacity(0.88))
                     .overlay(RoundedRectangle(cornerRadius: 18).stroke(PremiumPalette.stroke, lineWidth: 1))
                 
                 // Letter (script-aware). Hidden until seeded → avoids “A” flash.
                 if !letterText.isEmpty {
                     Text(letterText)
                         .font(letterFont)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(Color.dynamicBlack)
                         .frame(width: 56, height: 56)
                         .background(Circle().fill(PremiumPalette.accent.opacity(0.25)))
                         .scaleEffect(letterScale)
@@ -998,14 +1218,14 @@ private struct PlayTagMini: View {
                         .position(target)
                         .accessibilityLabel(Text(letterText))
                 } else {
-                    Circle().fill(.white.opacity(0.20))
+                    Circle().fill(Color.dynamicBlack.opacity(0.20))
                         .frame(width: 12, height: 12)
                         .position(target)
                 }
                 
                 // Player ball — drag must START on the ball (contentShape: Circle)
                 Circle()
-                    .fill(.white)
+                    .fill(Color.dynamicBlack)
                     .frame(width: 22, height: 22)
                     .shadow(radius: 2, y: 1)
                     .scaleEffect(ballScale)
@@ -1038,7 +1258,7 @@ private struct PlayTagMini: View {
                             }
                     )
                 
-                RoundedRectangle(cornerRadius: 18).stroke(.white.opacity(0.1), lineWidth: 8)
+                RoundedRectangle(cornerRadius: 18).stroke(Color.dynamicBlack.opacity(0.1), lineWidth: 8)
                 
                 // capture ripple
                 TimelineView(.animation) { tl in
@@ -1056,7 +1276,7 @@ private struct PlayTagMini: View {
                                 let a = 1.0 - p
                                 let rect = CGRect(x: c.x - r, y: c.y - r, width: r*2, height: r*2)
                                 ctx.stroke(Circle().path(in: rect),
-                                           with: .color(.white.opacity(0.35 * a)),
+                                           with: .color(Color.dynamicBlack.opacity(0.35 * a)),
                                            lineWidth: 2)
                             }
                         }
@@ -1296,7 +1516,7 @@ private struct PlayTagMini: View {
                 }
             }
             
-            let resolveDelay = reduceMotion ? 0.35 : 0.65
+            let resolveDelay = reduceMotion ? 0.35 : 0.6
             DispatchQueue.main.asyncAfter(deadline: .now() + resolveDelay) {
                 let ch = letterText.isEmpty ? PremiumHubModel.randomLetter() : Character(letterText)
                 onDone(.found(ch))
@@ -1325,16 +1545,16 @@ private struct AIMerchantMini: View {
                         .scaledToFit()
                         .font(.system(size: 22, weight: .bold))
                         .frame(width: 40, height: 40)
-                        .background(Circle().fill(.white.opacity(0.12)))
-                        .overlay(Circle().stroke(.white.opacity(0.6), lineWidth: 1))
-                        .foregroundColor(.white)
+                        .background(Circle().fill(Color.dynamicBlack.opacity(0.12)))
+                        .overlay(Circle().stroke(Color.dynamicBlack.opacity(0.6), lineWidth: 1))
+                        .foregroundColor(Color.dynamicBlack)
                     VStack(alignment: .leading, spacing: 2) {
                         Text(ai.name).font(.subheadline.weight(.semibold))
-                        Text("take this").font(.caption).foregroundStyle(.white.opacity(0.7))
+                        Text("take this").font(.caption).foregroundStyle(Color.dynamicBlack.opacity(0.7))
                     }
                 } else { Text("Unavailable").font(.subheadline) }
                 Spacer()
-                CountdownPill(deadline: deadline)
+//                // CountdownPill(deadline: deadline)
             }
             .padding(.bottom, 6)
             
@@ -1359,10 +1579,10 @@ private struct ThickGlassCell: View {
     var body: some View {
         ZStack {
             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(Color.white.opacity(0.04))
+                .fill(Color.dynamicBlack.opacity(0.04))
             Text(String(character))
                 .font(.system(size: 28, weight: .bold, design: .rounded))
-                .foregroundStyle(.white)
+                .foregroundStyle(Color.dynamicBlack)
                 .scaleEffect(1.06)
                 .opacity(0.85)
                 .blur(radius: 1.2)
@@ -1370,7 +1590,7 @@ private struct ThickGlassCell: View {
                 .fill(.thickMaterial)
                 .overlay(
                     LinearGradient(
-                        colors: [.white.opacity(0.45), .white.opacity(0.10), .clear],
+                        colors: [Color.dynamicBlack.opacity(0.45), Color.dynamicBlack.opacity(0.10), .clear],
                         startPoint: .topLeading, endPoint: .bottomTrailing
                     )
                     .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
@@ -1378,7 +1598,7 @@ private struct ThickGlassCell: View {
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .stroke(.white.opacity(0.16), lineWidth: 1)
+                        .stroke(Color.dynamicBlack.opacity(0.16), lineWidth: 1)
                 )
                 .overlay(GlassSpeckle().opacity(0.05)
                     .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous)))
@@ -1398,7 +1618,7 @@ fileprivate struct GlassSpeckle: View {
                 let y = CGFloat.random(in: 0...size.height)
                 ctx.fill(
                     Ellipse().path(in: CGRect(x: x, y: y, width: r, height: r)),
-                    with: .color(.white.opacity(0.8))
+                    with: .color(Color.dynamicBlack.opacity(0.8))
                 )
             }
         }
@@ -1420,10 +1640,10 @@ fileprivate struct WrapLetters: View {
                 Button { tap(ch) } label: {
                     Text(String(ch))
                         .font(.system(.title2, design: .rounded).weight(.heavy))
-                        .foregroundStyle(.black)
+                        .foregroundStyle(Color.dynamicBlack)
                         .frame(width: 46, height: 46)
                         .background(Circle().fill(PremiumPalette.accent))
-                        .overlay(Circle().stroke(.white.opacity(0.5), lineWidth: 1))
+                        .overlay(Circle().stroke(Color.dynamicBlack.opacity(0.5), lineWidth: 1))
                         .opacity(picked.contains(ch) ? 0.25 : 1)
                         .scaleEffect(picked.contains(ch) ? 0.82 : 1)
                         .animation(.spring(response: 0.35, dampingFraction: 0.8),
@@ -1436,11 +1656,11 @@ fileprivate struct WrapLetters: View {
     }
 }
 
-// MARK: - NEW: Symbol Pick (blurred grid) – uses hub for letter supply
-
+// MARK: - Symbol Pick (blurred grid) — respects `hasLetter`
 private struct SymbolPickMini: View {
     let deadline: Date
     let hub: PremiumHubModel
+    let hasLetter: Bool                    // ← NEW
     var onDone: (MiniResult) -> Void
     
     @State private var grid: [(Character, Bool)] = []   // (char, isLetter)
@@ -1448,74 +1668,107 @@ private struct SymbolPickMini: View {
     @State private var tried: Set<Int> = []             // wrong picks
     @State private var fired: Set<Int> = []             // pressed this finger already
     @State private var revealed: Set<Int> = []          // for pop/reveal
-    @State private var successIndex: Int? = nil
+    @State private var successIndex: Int? = nil         // winning cell index
+    
+    // success animation state (cell-local visuals are keyed by successIndex)
+    @State private var winPulse = false
+    @State private var successAt: Date? = nil
     
     private let animDuration: Double = 0.30
     
     var body: some View {
         VStack(spacing: 10) {
             HStack {
-                Text("Tap a letter").font(.subheadline.weight(.semibold))
+                Text(hasLetter ? "Tap a letter" : "Tap tiles") // ← no false promise
+                    .font(.subheadline.weight(.semibold))
                 Spacer()
                 HStack(spacing: 8) {
-                    // ••• + x/3
                     HStack(spacing: 4) {
                         ForEach(0..<3, id: \.self) { i in
                             Circle()
-                                .fill(i < attemptsLeft ? .white.opacity(0.9) : .white.opacity(0.25))
+                                .fill(i < attemptsLeft ? Color.dynamicBlack.opacity(0.9)
+                                                       : Color.dynamicBlack.opacity(0.25))
                                 .frame(width: 6, height: 6)
                         }
                     }
                     Text("\(attemptsLeft)/3")
                         .font(.caption2.monospacedDigit())
-                        .foregroundStyle(.white.opacity(0.8))
+                        .foregroundStyle(Color.dynamicBlack.opacity(0.8))
                         .padding(.vertical, 3).padding(.horizontal, 6)
-                        .background(Capsule().fill(.white.opacity(0.12)))
-                    CountdownPill(deadline: deadline)
+                        .background(Capsule().fill(Color.dynamicBlack.opacity(0.12)))
                 }
             }
             
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 4), spacing: 8) {
                 ForEach(0..<grid.count, id: \.self) { i in
-                    let (ch, isL) = grid[i]
-                    let isWrong = tried.contains(i)
-                    let isRevealed = revealed.contains(i)
-                    let isWin = (successIndex == i)
+                    let (ch, isL)   = grid[i]
+                    let isWrong     = tried.contains(i)
+                    let isRevealed  = revealed.contains(i)
+                    let isWin       = (successIndex == i)
                     
                     ZStack {
                         // base glass tile
                         ThickGlassCell(character: ch)
                             .opacity(isWrong ? 0.95 : 1.0)
+                            .overlay(
+                                Group {
+                                    if isWin {
+                                        RoundedRectangle(cornerRadius: 12)
+                                            .stroke(Color.dynamicBlack, lineWidth: 3)
+                                            .shadow(color: Color.dynamicBlack.opacity(0.6), radius: 6, y: 2)
+                                            .transition(.scale.combined(with: .opacity))
+                                    }
+                                }
+                            )
                         
-                        // REVEAL glyph ABOVE the glass when revealed (and not wrong)
+                        // reveal glyph when turned
                         if isRevealed && !isWrong {
                             Text(String(ch))
                                 .font(.system(.title, design: .rounded).weight(.heavy))
-                                .foregroundStyle(.white)
-                                .shadow(radius: 3, y: 1)
+                                .foregroundStyle(Color.dynamicBlack)
+                                .scaleEffect(isWin ? (winPulse ? 1.18 : 1.08) : 1.02)
+                                .shadow(color: Color.dynamicBlack.opacity(isWin ? 0.6 : 0.3),
+                                        radius: isWin ? 6 : 3, y: isWin ? 2 : 1)
                                 .transition(.scale.combined(with: .opacity))
-                                .scaleEffect(isWin ? 1.08 : 1.02)
                                 .animation(.spring(response: 0.35, dampingFraction: 0.85), value: isRevealed)
+                                .animation(.spring(response: 0.30, dampingFraction: 0.75), value: winPulse)
                         }
                         
                         // wrong mark
                         if isWrong {
                             Image(systemName: "slash.circle")
                                 .font(.system(size: 40, weight: .semibold))
-                                .foregroundStyle(.white.opacity(0.85))
+                                .foregroundStyle(Color.dynamicBlack.opacity(0.85))
                                 .transition(.opacity)
                         }
                         
-                        if isWin {
-                            RoundedRectangle(cornerRadius: 12).stroke(.white, lineWidth: 3)
-                                .shadow(radius: 6)
-                                .transition(.scale.combined(with: .opacity))
+                        // success ripples centered on the cell
+                        if isWin, let t0 = successAt {
+                            TimelineView(.animation) { tl in
+                                Canvas { ctx, size in
+                                    let dt = tl.date.timeIntervalSince(t0)
+                                    guard dt <= 0.6 else { return }
+                                    let center = CGPoint(x: size.width/2, y: size.height/2)
+                                    for i in 0..<3 {
+                                        let t = dt - Double(i) * 0.06
+                                        guard t >= 0 else { continue }
+                                        let p = t / 0.6
+                                        let r = CGFloat(10 + p * 120)
+                                        let a = 1.0 - p
+                                        let rect = CGRect(x: center.x - r, y: center.y - r, width: r*2, height: r*2)
+                                        ctx.stroke(Circle().path(in: rect),
+                                                   with: .color(Color.dynamicBlack.opacity(0.35 * a)),
+                                                   lineWidth: 2)
+                                    }
+                                }
+                            }
+                            .transition(.opacity)
                         }
                     }
-                    .scaleEffect(isRevealed ? 1.05 : 1.0)
+                    .scaleEffect(isWin ? (winPulse ? 1.10 : 1.06) : (isRevealed ? 1.05 : 1.0))
                     .animation(.spring(response: 0.35, dampingFraction: 0.85), value: isRevealed)
+                    .animation(.spring(response: 0.30, dampingFraction: 0.75), value: winPulse)
                     .contentShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                    // commit on touch-down; can’t cancel by dragging out
                     .highPriorityGesture(
                         DragGesture(minimumDistance: 0)
                             .onChanged { _ in
@@ -1533,13 +1786,21 @@ private struct SymbolPickMini: View {
         }
         .onAppear {
             fired.removeAll()
-            var items: [(Character, Bool)] = (0..<16).map { _ in
-                Bool.random()
-                ? (hub.pickLetterForOffer(), true)
-                : (PremiumHubModel.randomNonLetter(), false)
-            }
-            if !items.contains(where: { $0.1 }) {
-                items[Int.random(in: 0..<items.count)] = (hub.pickLetterForOffer(), true)
+            var items: [(Character, Bool)] = []
+            if hasLetter {
+                // mix of letters + decoys, ensure at least one letter
+                items = (0..<16).map { _ in
+                    Bool.random()
+                    ? (hub.pickLetterForOffer(), true)
+                    : (PremiumHubModel.randomNonLetter(), false)
+                }
+                if !items.contains(where: { $0.1 }) {
+                    let idx = Int.random(in: 0..<16)
+                    items[idx] = (hub.pickLetterForOffer(), true)
+                }
+            } else {
+                // decoys only — guarantees no letter present
+                items = (0..<16).map { _ in (PremiumHubModel.randomNonLetter(), false) }
             }
             grid = items.shuffled()
         }
@@ -1552,20 +1813,22 @@ private struct SymbolPickMini: View {
         }
         attemptsLeft -= 1
         
-        if isLetter {
-            withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
-                successIndex = i
+        // success only if the board is supposed to have a letter AND this cell is a letter
+        if hasLetter && isLetter {
+            UIImpactFeedbackGenerator(style: .soft).impactOccurred()
+            successIndex = i
+            successAt = Date()
+            winPulse = true
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) {
+                withAnimation(.spring(response: 0.30, dampingFraction: 0.8)) { winPulse = false }
             }
-            // close AFTER the reveal plays
-            Task {
-                try? await Task.sleep(nanoseconds: UInt64(animDuration * 2_000_000_000))
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.60) {
                 onDone(.found(ch))
             }
         } else {
             tried.insert(i)
             if attemptsLeft == 0 {
-                Task {
-                    try? await Task.sleep(nanoseconds: UInt64(animDuration * 1_000_000_000))
+                DispatchQueue.main.asyncAfter(deadline: .now() + animDuration) {
                     onDone(.nothing)
                 }
             }
@@ -1574,55 +1837,111 @@ private struct SymbolPickMini: View {
 }
 
 // MARK: - NEW: Symbol Puzzle (rotate & decide) – uses hub for letter
-
 private struct SymbolPuzzleMini: View {
     let deadline: Date
     let hub: PremiumHubModel
     var onDone: (MiniResult) -> Void
-    
+
     @State private var symbol: Character = "?"
     @State private var isLetter = false
     @State private var angle: Double = [0, 90, 180, 270].randomElement()!
-    
+
+    // success feedback on the letter (no fullscreen overlay)
+    @State private var solved = false
+    @State private var pulse = false
+    @State private var successAt: Date? = nil
+
     var body: some View {
         VStack(spacing: 14) {
             HStack {
                 Text("Is this a letter?").font(.subheadline.weight(.semibold))
                 Spacer()
-                CountdownPill(deadline: deadline)
+                // CountdownPill(deadline: deadline)
             }
+
             ZStack {
-                RoundedRectangle(cornerRadius: 16).fill(.white.opacity(0.06))
-                    .overlay(RoundedRectangle(cornerRadius: 16).stroke(.white.opacity(0.12)))
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(Color.dynamicBlack.opacity(0.06))
+                    .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.dynamicBlack.opacity(0.12)))
+
+                // Letter in the puzzle
                 Text(String(symbol))
                     .font(.system(size: 120, weight: .heavy, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Color.dynamicBlack)
                     .rotationEffect(.degrees(angle))
+                    .scaleEffect(pulse ? 1.12 : 1.0) // quick bounce
+                    .shadow(color: Color.dynamicBlack.opacity(solved ? 0.6 : 0), radius: solved ? 6 : 0, y: solved ? 2 : 0)
                     .animation(.spring(response: 0.35, dampingFraction: 0.8), value: angle)
+                    .animation(.spring(response: 0.28, dampingFraction: 0.7), value: pulse)
                     .padding(10)
+
+                // subtle success ring ripples, centered on the letter
+                if let t0 = successAt {
+                    TimelineView(.animation) { tl in
+                        Canvas { ctx, size in
+                            let dt = tl.date.timeIntervalSince(t0)
+                            // 0.6s lifetime
+                            guard dt <= 0.6 else { return }
+                            let center = CGPoint(x: size.width/2, y: size.height/2)
+                            for i in 0..<3 {
+                                let t = dt - Double(i) * 0.06
+                                guard t >= 0 else { continue }
+                                let p = t / 0.6
+                                let r = CGFloat(12 + p * 120)
+                                let a = 1.0 - p
+                                let rect = CGRect(x: center.x - r, y: center.y - r, width: r*2, height: r*2)
+                                ctx.stroke(Circle().path(in: rect),
+                                           with: .color(Color.dynamicBlack.opacity(0.35 * a)),
+                                           lineWidth: 2)
+                            }
+                        }
+                    }
+                }
             }
             .frame(height: 200)
+
             HStack(spacing: 12) {
                 Button { angle -= 90 } label: {
                     Label("Rotate", systemImage: "rotate.left")
                 }
                 .buttonStyle(.borderedProminent)
-                
+
                 Button { angle += 90 } label: {
                     Label("Rotate", systemImage: "rotate.right")
                 }
                 .buttonStyle(.bordered)
+
                 Spacer()
+
+                // YES → success only if it's a letter and currently upright
                 Button {
-                    let upright = Int(((angle.truncatingRemainder(dividingBy: 360)) + 360).truncatingRemainder(dividingBy: 360))
-                    if isLetter && upright % 360 == 0 {
-                        onDone(.found(symbol))
+                    let upright = Int(((angle.truncatingRemainder(dividingBy: 360)) + 360)
+                                        .truncatingRemainder(dividingBy: 360))
+                    let symmetrical = symbol.lowercased() == "o" || symbol.lowercased() == "x" || symbol.lowercased() == "z"
+                    let success = isLetter && (upright % 360 == 0 || (symmetrical && (upright % 180 == 0)))
+                    if success {
+                        UIImpactFeedbackGenerator(style: .soft).impactOccurred()
+                        // snap to perfect upright (in case of -0/+360 drift), bounce, and show ripples
+                        let snapTo: Double = (upright % 360 == 0) ? 0 : 180
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) { angle = snapTo }
+                        pulse = true
+                        successAt = Date()
+                        solved = true
+                        // release pulse back to 1.0 shortly
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) {
+                            withAnimation(.spring(response: 0.28, dampingFraction: 0.8)) { pulse = false }
+                        }
+                        // close after brief feedback
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+                            onDone(.found(symbol))
+                        }
                     } else {
                         onDone(.nothing)
                     }
                 } label: { Text("Yes").bold() }
-                    .buttonStyle(.borderedProminent)
-                
+                .buttonStyle(.borderedProminent)
+
+                // NO → always nothing, no reveal animation
                 Button { onDone(.nothing) } label: { Text("No") }
                     .buttonStyle(.bordered)
             }
@@ -1656,26 +1975,26 @@ private struct LuckyWaitMini: View {
             HStack {
                 Text("Wait 5 seconds…").font(.subheadline.weight(.semibold))
                 Spacer()
-                CountdownPill(deadline: deadline)
+                // CountdownPill(deadline: deadline)
             }
             ZStack {
-                RoundedRectangle(cornerRadius: 18).fill(.white.opacity(0.06))
-                    .overlay(RoundedRectangle(cornerRadius: 18).stroke(.white.opacity(0.1)))
+                RoundedRectangle(cornerRadius: 18).fill(Color.dynamicBlack.opacity(0.06))
+                    .overlay(RoundedRectangle(cornerRadius: 18).stroke(Color.dynamicBlack.opacity(0.1)))
                     .frame(height: 140)
                 if let ch = showLetter {
                     Text(String(ch))
                         .font(.system(size: 72, weight: .heavy, design: .rounded))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(Color.dynamicBlack)
                         .transition(.scale.combined(with: .opacity))
                 } else if showNo {
                     Text("Letter not found")
                         .font(.headline)
-                        .foregroundStyle(.white.opacity(0.8))
+                        .foregroundStyle(Color.dynamicBlack.opacity(0.8))
                         .transition(.opacity)
                 } else {
                     ProgressView()
                         .progressViewStyle(.circular)
-                        .tint(.white)
+                        .tint(Color.dynamicBlack)
                 }
             }
         }
@@ -1689,7 +2008,7 @@ private struct LuckyWaitMini: View {
                     withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
                         showLetter = ch
                     }
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
                         onDone(.found(ch))
                     }
                 } else {
@@ -1729,22 +2048,22 @@ struct ClawMini: View {
     var body: some View {
         VStack(spacing: 10) {
             HStack {
-                Text("Tries: \(triesLeft)/3").font(.caption).foregroundStyle(.white.opacity(0.75))
+                Text("Tries: \(triesLeft)/3").font(.caption).foregroundStyle(Color.dynamicBlack.opacity(0.75))
                 Spacer()
-                CountdownPill(deadline: deadline)
+                // CountdownPill(deadline: deadline)
             }
             
             ZStack(alignment: .top) {
-                RoundedRectangle(cornerRadius: 18).fill(Color.black.opacity(0.88))
-                
+                RoundedRectangle(cornerRadius: 18).fill(Color.dynamicWhite.opacity(0.88))
+                    .overlay(RoundedRectangle(cornerRadius: 18).stroke(Color.dynamicWhite.opacity(0.12)))
                 // rail
-                Rectangle().fill(.white.opacity(0.12))
+                Rectangle().fill(Color.dynamicBlack.opacity(0.34))
                     .frame(height: 4).offset(y: 8)
                 
                 // claw
                 Image(systemName: "chevron.compact.down")
                     .font(.system(size: 36, weight: .semibold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Color.dynamicBlack)
                     .offset(x: (clawX - 0.5) * 260,
                             y: 18 + dropY * 150)
                     .animation(.linear(duration: 0.001), value: clawX)
@@ -1753,14 +2072,14 @@ struct ClawMini: View {
                 // prize (shows where the letter is)
                 Text(String(seed))
                     .font(.system(size: 56, weight: .heavy, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.75))
+                    .foregroundStyle(Color.dynamicBlack.opacity(0.75))
                     .offset(x: (targetX - 0.5) * 260, y: 160)
                 
                 // success overlay (big letter)
                 if showLetterOverlay {
                     Text(String(seed))
                         .font(.system(size: 84, weight: .heavy, design: .rounded))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(Color.dynamicBlack)
                         .scaleEffect(overlayScale)
                         .transition(.scale.combined(with: .opacity))
                 }
@@ -1806,7 +2125,7 @@ struct ClawMini: View {
             showLetterOverlay = true
             overlayScale = 1.05
         }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.55) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
             onDone(.found(seed))
         }
     }
@@ -1836,17 +2155,18 @@ struct MemoryMini: View {
                 HStack {
                     Text(previewing ? "Memorize…" : "Find the pair").font(.caption)
                     Spacer()
-                    CountdownPill(deadline: deadline)
+                    // CountdownPill(deadline: deadline)
                 }
                 LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 4), spacing: 8) {
                     ForEach(cards.indices, id: \.self) { i in
                         let c = cards[i]
                         ZStack {
-                            RoundedRectangle(cornerRadius: 12).fill(.white.opacity(c.isFaceUp || c.isMatched ? 0.12 : 0.06))
-                            RoundedRectangle(cornerRadius: 12).stroke(.white.opacity(0.15))
+                            RoundedRectangle(cornerRadius: 12).fill(Color.dynamicBlack.opacity(c.isFaceUp || c.isMatched ? 0.12 : 0.06))
+                            RoundedRectangle(cornerRadius: 12).stroke(Color.dynamicBlack.opacity(0.15))
                             if c.isFaceUp || c.isMatched {
                                 Text(c.content)
                                     .font(.system(size: 24, weight: .bold, design: .rounded))
+                                    .foregroundStyle(Color.dynamicBlack)
                             }
                         }
                         .frame(height: 56)
@@ -1857,13 +2177,13 @@ struct MemoryMini: View {
                 }
                 
                 Text("Strikes: \(strikes)/3")
-                    .font(.caption).foregroundStyle(.white.opacity(0.7))
+                    .font(.caption).foregroundStyle(Color.dynamicBlack.opacity(0.7))
             }
             
             if showingLetter {
                 Text(String(seed))
                     .font(.system(size: 84, weight: .heavy, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Color.dynamicBlack)
                     .scaleEffect(overlayScale)
                     .transition(.scale.combined(with: .opacity))
             }
@@ -1917,7 +2237,7 @@ struct MemoryMini: View {
             showingLetter = true
             overlayScale = 1.05
         }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.55) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
             onDone(.found(seed))
         }
     }
@@ -2120,12 +2440,12 @@ private struct SingleCardView: View {
     var body: some View {
         ZStack {
             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(.white.opacity(0.08))
+                .fill(Color.dynamicBlack.opacity(0.08))
             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .stroke(.white.opacity(0.15))
+                .stroke(Color.dynamicBlack.opacity(0.15))
             Text(face)
                 .font(.system(size: 28, weight: .heavy, design: .rounded))
-                .foregroundStyle(.white)
+                .foregroundStyle(Color.dynamicBlack)
                 .scaleEffect(highlighted ? 1.06 : 1.0)
                 .shadow(color: .black.opacity(0.35), radius: highlighted ? 6 : 0, y: highlighted ? 2 : 0)
                 .animation(.spring(response: 0.35, dampingFraction: 0.85), value: highlighted)
@@ -2166,23 +2486,23 @@ struct PopBalloonMini: View {
             HStack {
                 Text("Tries: \(triesLeft)/3")
                     .font(.caption)
-                    .foregroundStyle(.white.opacity(0.75))
+                    .foregroundStyle(Color.dynamicBlack.opacity(0.75))
                 Spacer()
-                CountdownPill(deadline: deadline)
+                // CountdownPill(deadline: deadline)
             }
             
             GeometryReader { geo in
                 ZStack {
                     RoundedRectangle(cornerRadius: 18)
-                        .fill(Color.black.opacity(0.86))
-                        .overlay(RoundedRectangle(cornerRadius: 18).stroke(.white.opacity(0.12)))
+                        .fill(.gray.opacity(0.46))
+                        .overlay(RoundedRectangle(cornerRadius: 18).stroke(.gray.opacity(0.22)))
                     
                     // ===== symbols layer (BEHIND balloons) =====
                     ForEach(balloons) { b in
                         // sized to stay fully under the balloon so nothing peeks out
                         Text(String(b.glyph))
                             .font(.system(size: b.radius * 1.1, weight: .heavy, design: .rounded))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(Color.dynamicBlack)
                             .opacity(0.95)
                             .position(b.center)
                             .allowsHitTesting(false)
@@ -2211,12 +2531,12 @@ struct PopBalloonMini: View {
                     if showLetterOverlay {
                         Text(String(seed))
                             .font(.system(size: 72, weight: .heavy, design: .rounded))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(Color.dynamicBlack)
                             .transition(.scale.combined(with: .opacity))
                     } else if showNoLetterOverlay {
                         Text("Letter not found")
                             .font(.headline.weight(.semibold))
-                            .foregroundStyle(.white.opacity(0.9))
+                            .foregroundStyle(Color.dynamicBlack.opacity(0.9))
                             .transition(.opacity)
                     }
                 }
@@ -2244,7 +2564,7 @@ struct PopBalloonMini: View {
             withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
                 showLetterOverlay = true
             }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
                 onDone(.found(seed))
             }
         } else {
@@ -2333,7 +2653,7 @@ private struct BalloonView: View {
                 .fill(
                     RadialGradient(
                         colors: [
-                            .white.opacity(0.85),
+                            Color.dynamicWhite.opacity(0.85),
                             color.opacity(0.95),
                             color.opacity(0.7)
                         ],
@@ -2344,7 +2664,7 @@ private struct BalloonView: View {
                 )
             // subtle specular highlight
             Circle()
-                .stroke(.white.opacity(0.35), lineWidth: 1)
+                .stroke(Color.dynamicWhite.opacity(0.35), lineWidth: 1)
                 .blur(radius: 0.6)
                 .padding(1)
         }
@@ -2419,7 +2739,7 @@ struct SliderAlignMini: View {
                     Text("Raise the line to catch the orb")
                         .font(.subheadline.weight(.semibold))
                     Spacer()
-                    CountdownPill(deadline: deadline)
+                    // CountdownPill(deadline: deadline)
                 }
                 
                 // PLAYFIELD
@@ -2428,8 +2748,8 @@ struct SliderAlignMini: View {
                     ZStack {
                         // Background
                         RoundedRectangle(cornerRadius: 14, style: .continuous)
-                            .fill(Color.white.opacity(0.06))
-                            .overlay(RoundedRectangle(cornerRadius: 14).stroke(.white.opacity(0.10), lineWidth: 1))
+                            .fill(Color.dynamicBlack.opacity(0.06))
+                            .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.dynamicBlack.opacity(0.10), lineWidth: 1))
                         
                         // Compute tip position (lineX scans horizontally; slider sets height)
                         let usableH = max(0, size.height - topPad - bottomPad - tipR)
@@ -2440,19 +2760,19 @@ struct SliderAlignMini: View {
                             p.move(to: CGPoint(x: lineX, y: size.height - bottomPad))
                             p.addLine(to: CGPoint(x: lineX, y: tipY))
                         }
-                        .stroke(.white.opacity(0.9), lineWidth: lineW)
+                        .stroke(Color.dynamicBlack.opacity(0.9), lineWidth: lineW)
                         
                         // Green tip
                         Circle()
                             .fill(Color.green)
-                            .overlay(Circle().stroke(.white.opacity(0.85), lineWidth: 1))
+                            .overlay(Circle().stroke(Color.dynamicBlack.opacity(0.85), lineWidth: 1))
                             .frame(width: tipR * 2, height: tipR * 2)
                             .position(x: lineX, y: tipY)
                         
                         // Orb
                         Circle()
                             .fill(Color.yellow)
-                            .overlay(Circle().stroke(.white.opacity(0.8), lineWidth: 1))
+                            .overlay(Circle().stroke(Color.dynamicBlack.opacity(0.8), lineWidth: 1))
                             .frame(width: dotR * 2, height: dotR * 2)
                             .position(dot)
                             .shadow(color: .black.opacity(0.25), radius: 4, y: 2)
@@ -2489,7 +2809,7 @@ struct SliderAlignMini: View {
             if showingLetter {
                 Text(String(seed))
                     .font(.system(size: 84, weight: .heavy, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Color.dynamicBlack)
                     .scaleEffect(overlayScale)
                     .transition(.scale.combined(with: .opacity))
             }
@@ -2646,7 +2966,7 @@ struct SliderAlignMini: View {
             showingLetter = true
             overlayScale = 1.06
         }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.60) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
             onDone(.found(seed))
         }
     }
@@ -2710,7 +3030,7 @@ struct LongPressMini: View {
                     withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
                         showLetterOverlay = true
                     }
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
                         onDone(.found(seed))
                     }
                 } else {
@@ -2726,13 +3046,13 @@ struct LongPressMini: View {
         ZStack {
             // Base ring
             Circle()
-                .stroke(.white.opacity(0.20), lineWidth: 10)
+                .stroke(Color.dynamicBlack.opacity(0.20), lineWidth: 10)
                 .frame(width: 120, height: 120)
             
             // Progress ring – driven by `progress` (0→1). No reverse on success because we never set it back.
             Circle()
                 .trim(from: 0, to: progress)
-                .stroke(.white, style: StrokeStyle(lineWidth: 10, lineCap: .round))
+                .stroke(Color.dynamicBlack, style: StrokeStyle(lineWidth: 10, lineCap: .round))
                 .rotationEffect(.degrees(-90))
                 .frame(width: 120, height: 120)
             
@@ -2746,12 +3066,12 @@ struct LongPressMini: View {
             if showLetterOverlay {
                 Text(String(seed))
                     .font(.system(size: 72, weight: .heavy, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Color.dynamicBlack)
                     .transition(.scale.combined(with: .opacity))
             } else if showNoLetterOverlay {
                 Text("Letter not found")
                     .font(.headline.weight(.semibold))
-                    .foregroundStyle(.white.opacity(0.95))
+                    .foregroundStyle(Color.dynamicBlack.opacity(0.95))
                     .transition(.opacity)
             }
         }
@@ -2794,25 +3114,25 @@ struct ShakeRevealMini: View {
             HStack {
                 Text("Shake your device").font(.subheadline.weight(.semibold))
                 Spacer()
-                CountdownPill(deadline: deadline)
+                // CountdownPill(deadline: deadline)
             }
             ZStack {
                 RoundedRectangle(cornerRadius: 16)
-                    .fill(.white.opacity(0.06))
-                    .overlay(RoundedRectangle(cornerRadius: 16).stroke(.white.opacity(0.12)))
+                    .fill(Color.dynamicBlack.opacity(0.06))
+                    .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.dynamicBlack.opacity(0.12)))
                     .frame(height: 140)
                 
                 if showingLetter {
                     Text(String(seed))
                         .font(.system(size: 72, weight: .heavy, design: .rounded))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(Color.dynamicBlack)
                         .scaleEffect(letterScale)
                         .transition(.scale.combined(with: .opacity))
                 } else {
                     // neutral, non-letter prompt (Letter not found before success)
                     Image(systemName: "iphone.gen3.radiowaves.left.and.right")
                         .font(.system(size: 44, weight: .regular))
-                        .foregroundStyle(.white.opacity(0.85))
+                        .foregroundStyle(Color.dynamicBlack.opacity(0.85))
                         .accessibilityLabel("Shake to reveal")
                 }
             }
@@ -2925,9 +3245,9 @@ struct TapTargetMini: View {
             HStack {
                 Text("Taps: \(hits)/\(hitsNeeded)")
                     .font(.caption)
-                    .foregroundStyle(.white.opacity(0.75))
+                    .foregroundStyle(Color.dynamicBlack.opacity(0.75))
                 Spacer()
-                CountdownPill(deadline: deadline)
+                // CountdownPill(deadline: deadline)
             }
             
             GeometryReader { geo in
@@ -2936,8 +3256,8 @@ struct TapTargetMini: View {
                     PopGestureDisabler().frame(width: 0, height: 0).hidden()
                     
                     RoundedRectangle(cornerRadius: 16)
-                        .fill(.white.opacity(0.06))
-                        .overlay(RoundedRectangle(cornerRadius: 16).stroke(.white.opacity(0.12)))
+                        .fill(Color.dynamicBlack.opacity(0.06))
+                        .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.dynamicBlack.opacity(0.12)))
                     
                     // animated ripple indication
                     TimelineView(.animation) { tl in
@@ -2951,7 +3271,7 @@ struct TapTargetMini: View {
                                 let a = Double(1 - prog)
                                 let rect = CGRect(x: p.center.x - r, y: p.center.y - r, width: r*2, height: r*2)
                                 ctx.stroke(Circle().path(in: rect),
-                                           with: .color(.white.opacity(0.35 * a)),
+                                           with: .color(Color.dynamicBlack.opacity(0.35 * a)),
                                            lineWidth: 2)
                             }
                         }
@@ -2959,11 +3279,11 @@ struct TapTargetMini: View {
                     
                     if visible && !finished {
                         Circle()
-                            .fill(tapFlash ? PremiumPalette.accent : .white)
+                            .fill(tapFlash ? PremiumPalette.accent : Color.dynamicBlack)
                             .frame(width: radius * 2, height: radius * 2)
                             .position(pos)
                             .scaleEffect(tapFlash ? 1.25 : 1.0)
-                            .shadow(color: .white.opacity(tapFlash ? 0.6 : 0), radius: 6, y: 2)
+                            .shadow(color: Color.dynamicBlack.opacity(tapFlash ? 0.6 : 0), radius: 6, y: 2)
                             .animation(.easeOut(duration: 0.18), value: tapFlash)
                             .transition(.scale.combined(with: .opacity))
                             .contentShape(Circle())
@@ -2976,7 +3296,7 @@ struct TapTargetMini: View {
                     if finished {
                         Text(String(seeded))
                             .font(.system(size: 64, weight: .heavy, design: .rounded))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(Color.dynamicBlack)
                             .transition(.scale.combined(with: .opacity))
                     }
                 }
@@ -3087,19 +3407,5 @@ struct TapTargetMini: View {
             }
         } while (last.map { hypot(p.x - $0.x, p.y - $0.y) < minDelta } ?? false) && tries < 12
         return p
-    }
-}
-
-
-struct CountdownPill: View {
-    let deadline: Date
-    @State private var now = Date()
-    var body: some View {
-        let s = max(0, Int(deadline.timeIntervalSince(now).rounded()))
-        Text("\(s)s")
-            .font(.caption2.monospacedDigit())
-            .padding(.horizontal, 10).padding(.vertical, 4)
-            .background(Capsule().fill(.white.opacity(0.12)))
-            .onReceive(Timer.publish(every: 0.5, on: .main, in: .common).autoconnect()) { d in now = d }
     }
 }

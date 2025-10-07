@@ -86,6 +86,7 @@ public struct AIPackLoadingView: View {
                             Task { await MainActor.run { onCancel() } }
                         } label: {
                             Label("Cancel".localized, systemImage: "xmark.circle.fill")
+                                .foregroundStyle(Color.dynamicBlack)
                                 .labelStyle(.titleAndIcon)
                                 .font(.system(size: 15, weight: .medium, design: .rounded))
                                 .padding(.horizontal, 14)
@@ -249,14 +250,14 @@ fileprivate struct WarmupOrb: View {
             ZStack {
                 Circle()
                     .fill(
-                        RadialGradient(colors: [Color.white.opacity(0.98), Color.white.opacity(0.86)],
+                        RadialGradient(colors: [Color.dynamicWhite.opacity(0.98), Color.dynamicBlack.opacity(0.86)],
                                        center: .center, startRadius: 2, endRadius: size * 0.62)
                     )
                     .frame(width: size, height: size)
                     .shadow(color: (scheme == .dark ? Color.white.opacity(0.35) : Color.black.opacity(0.06)),
                             radius: scheme == .dark ? 20 : 10)
                     .overlay(
-                        Circle().strokeBorder(Color.white.opacity(scheme == .dark ? 0.22 : 0.35), lineWidth: 1)
+                        Circle().strokeBorder(Color.dynamicWhite.opacity(scheme == .dark ? 0.22 : 0.35), lineWidth: 1)
                     )
                 
                 Circle()
@@ -340,10 +341,10 @@ enum Palette {
     }
     
     static func titleFill(_ scheme: ColorScheme) -> Color {
-        scheme == .dark ? Color.white.opacity(0.95) : Color.white.opacity(0.95)
+        scheme == .dark ? Color.white.opacity(0.95) : Color.black.opacity(0.95)
     }
     static func subtitleFill(_ scheme: ColorScheme) -> Color {
-        scheme == .dark ? Color.white.opacity(0.80) : Color.white.opacity(0.80)
+        scheme == .dark ? Color.white.opacity(0.80) : Color.black.opacity(0.80)
     }
     
     static var buttonTint: Color { Color(hue: 0.56, saturation: 0.55, brightness: 0.95) }
@@ -368,9 +369,9 @@ enum Palette {
             endRadius: 60
         )
     }
-    static var orbCoreGlow: Color { Color.white.opacity(0.55) }
+    static var orbCoreGlow: Color { Color.dynamicWhite.opacity(0.55) }
     static var orbInnerHalo: LinearGradient {
-        LinearGradient(colors: [Color.white.opacity(0.45), Color.white.opacity(0.10)],
+        LinearGradient(colors: [Color.dynamicWhite.opacity(0.45), Color.dynamicBlack.opacity(0.10)],
                        startPoint: .top, endPoint: .bottom)
     }
     static var orbArcGradient: AngularGradient {
@@ -422,19 +423,5 @@ public extension View {
         .animation(.spring(response: 0.34, dampingFraction: 0.9), value: isPresented)
         .allowsHitTesting(true)
     }
-}
-
-#Preview {
-    ZStack {
-        LinearGradient(colors: [
-            Color.black,
-            Color(hue: 0.65, saturation: 0.26, brightness: 0.20)
-        ], startPoint: .topLeading, endPoint: .bottomTrailing)
-        .ignoresSafeArea()
-        
-        AIPackLoadingView(showsCancel: true, onCancel: {})
-            .padding()
-    }
-    .preferredColorScheme(.dark)
 }
 

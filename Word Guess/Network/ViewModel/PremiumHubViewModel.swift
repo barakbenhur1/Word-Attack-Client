@@ -34,8 +34,8 @@ class PremiumHubViewModel: WordViewModel {
         }
     }
     
-    func word(email: String) async {
-        let value: SimpleWord? = await wordProvider.word(email: email)
+    func word(uniqe: String) async {
+        let value: SimpleWord? = await wordProvider.word(uniqe: uniqe)
         
         guard let value else { isError = true; return }
         await MainActor.run { [weak self] in
@@ -45,8 +45,8 @@ class PremiumHubViewModel: WordViewModel {
         }
     }
     
-    func getScore(email: String) async -> PremiumScoreData? {
-        let score = await scoreProvider.getPremium(email: email)
+    func getScore(uniqe: String) async -> PremiumScoreData? {
+        let score = await scoreProvider.getPremium(uniqe: uniqe)
         return score
     }
 }

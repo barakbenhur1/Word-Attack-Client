@@ -87,9 +87,8 @@ struct DifficultyView: View {
     
     var body: some View {
         GeometryReader { _ in
-            BackgroundDecor().ignoresSafeArea()
-            
             ZStack {
+                BackgroundDecor().ignoresSafeArea()
                 contant()
                     .onDisappear { onDisappear() }
                     .onAppear { onAppear() }
@@ -97,17 +96,16 @@ struct DifficultyView: View {
                     .fullScreenCover(isPresented: $showPaywall) {
                         SubscriptionPaywallView(isPresented: $showPaywall)
                     }
-                
-                SideMenu(isOpen: $isMenuOpen,
-                         content: { SettingsView(fromSideMenu: true) })
-                .id(menuManager.id)
-                .environmentObject(menuManager)
             }
+            SideMenu(isOpen: $isMenuOpen,
+                     content: { SettingsView(fromSideMenu: true) })
+            .id(menuManager.id)
+            .ignoresSafeArea()
+            .environmentObject(menuManager)
         }
     }
     
     // MARK: - Content
-    
     @ViewBuilder private func contant() -> some View {
         ZStack(alignment: .top) {
             VStack {
@@ -119,14 +117,14 @@ struct DifficultyView: View {
         }
         .safeAreaInset(edge: .top) {
             AdProvider.adView(id: "TopBanner", withPlaceholder: true)
-                .frame(minHeight: 50, maxHeight: 50)
+                .frame(minHeight: 40, maxHeight: 50)
                 .background(.ultraThinMaterial)
                 .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                 .padding(.horizontal, 12)
         }
         .safeAreaInset(edge: .bottom) {
             AdProvider.adView(id: "BottomBanner", withPlaceholder: true)
-                .frame(minHeight: 50, maxHeight: 50)
+                .frame(minHeight: 40, maxHeight: 50)
                 .background(.ultraThinMaterial)
                 .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                 .padding(.horizontal, 12)
@@ -141,7 +139,6 @@ struct DifficultyView: View {
                 action: {
                     Task.detached {
                         await MainActor.run {
-//                            menuManager.refresh()
                             withAnimation(.spring(response: 0.35, dampingFraction: 0.9)) { isMenuOpen = true }
                         }
                     }
@@ -162,7 +159,7 @@ struct DifficultyView: View {
                     .grayscale(premium.isPremium ? 0 : 1)
                     .font(.system(size: 28, weight: .semibold)),
                 action: {
-                    if premium.isPremium { router.navigateToSync(.premium(email: loginHandeler.model?.email)) }
+                    if premium.isPremium { router.navigateToSync(.premium(uniqe: loginHandeler.model?.uniqe)) }
                     else { showPaywall = true }
                 },
                 isLocked: !premium.isPremium // <-- locked style but still tappable
@@ -206,7 +203,7 @@ struct DifficultyView: View {
         VStack(spacing: 2) {
             Text("DIFFICULTY")
                 .font(.system(.title, design: .rounded).weight(.black))
-                .foregroundStyle(.primary)
+                .foregroundStyle(Color.dynamicBlack)
                 .shadow(color: .black.opacity(0.12), radius: 6, y: 2)
             
             Text("Pick a challenge to begin")
@@ -270,13 +267,13 @@ private struct PremiumBadge: View {
 }
 
 // MARK: - Background (subtle motion)
-
 private struct BackgroundDecor: View {
+    @Environment(\.colorScheme) private var scheme
     @State private var t: CGFloat = 0
     
     private let seam: Double = 0.012
     
-    private var conicStops: [Gradient.Stop] {
+    private var conicStopsDark: [Gradient.Stop] {
         [
             .init(color: .purple.opacity(0.20), location: 0.00),
             .init(color: .purple.opacity(0.20), location: seam),        // guard band start
@@ -288,62 +285,101 @@ private struct BackgroundDecor: View {
         ]
     }
     
+    private var conicStopsLight: [Gradient.Stop] {
+        [
+            .init(color: .purple.opacity(0.12), location: 0.00),
+            .init(color: .purple.opacity(0.12), location: seam),
+            .init(color: .cyan.opacity(0.09),   location: 0.25),
+            .init(color: .pink.opacity(0.10),   location: 0.50),
+            .init(color: .mint.opacity(0.09),   location: 0.75),
+            .init(color: .purple.opacity(0.12), location: 1.0 - seam),
+            .init(color: .purple.opacity(0.12), location: 1.00)
+        ]
+    }
+    
     var body: some View {
         ZStack {
+            // Base gradient (adaptive)
             LinearGradient(
-                colors: [Color(hex: 0x10131B), Color(hex: 0x151A26)],
+                colors: baseGradient,
                 startPoint: .topLeading, endPoint: .bottomTrailing
             )
             .overlay(
                 AngularGradient(
-                    gradient: Gradient(stops: conicStops),
+                    gradient: Gradient(stops: scheme == .dark ? conicStopsDark : conicStopsLight),
                     center: .center,
-                    // your motion + seam offset
                     angle: .degrees(Double(t) * 360
                                     + 0.7
                                     + sin(Double(t) * .pi * 2 * 0.25) * 0.8)
                 )
-                // your breathing + blur safety
-                    .scaleEffect(1.08 + CGFloat(sin(Double(t) * .pi * 2 * 0.14)) * 0.006)
-                    .compositingGroup()
-                    .blur(radius: 24, opaque: true)
-                    .blendMode(.screen)
-                // ↓ keep colors but reduce how much they brighten the base
-                    .opacity(0.30) // 0.25–0.35 is a good range
-                // ↓ concentrate the glow near the center so edges stay dark
-                    .mask(
-                        RadialGradient(
-                            colors: [
-                                .white.opacity(1.0),
-                                .white.opacity(0.0)
-                            ],
-                            center: .center,
-                            startRadius: 0,
-                            endRadius: 1050   // tweak 800–1100 to taste
-                        )
+                // breathing + blur
+                .scaleEffect(1.08 + CGFloat(sin(Double(t) * .pi * 2 * 0.14)) * 0.006)
+                .compositingGroup()
+                .blur(radius: scheme == .dark ? 24 : 28, opaque: true)
+                // blend softer in light mode to avoid washing out
+                .blendMode(scheme == .dark ? .screen : .plusLighter)
+                // reduce lift in light mode
+                .opacity(scheme == .dark ? 0.30 : 0.20)
+                // keep energy near center
+                .mask(
+                    RadialGradient(
+                        colors: [.white.opacity(1.0), .white.opacity(0.0)],
+                        center: .center,
+                        startRadius: 0,
+                        endRadius: scheme == .dark ? 1050 : 1150
                     )
-                    .mask(
-                        LinearGradient(
-                            stops: [
-                                .init(color: .white,               location: 0.00),
-                                .init(color: .white,               location: 0.82),
-                                .init(color: .white.opacity(0.75), location: 0.92),
-                                .init(color: .clear,               location: 1.00)
-                            ],
-                            startPoint: .leading, endPoint: .trailing
-                        )
+                )
+                .mask(
+                    LinearGradient(
+                        stops: [
+                            .init(color: .white,               location: 0.00),
+                            .init(color: .white,               location: 0.82),
+                            .init(color: .white.opacity(0.75), location: 0.92),
+                            .init(color: .clear,               location: 1.00)
+                        ],
+                        startPoint: .leading, endPoint: .trailing
                     )
-                    .animation(.linear(duration: 22).repeatForever(autoreverses: false), value: t)
+                )
+                .animation(.linear(duration: 22).repeatForever(autoreverses: false), value: t)
             )
             .onAppear { t = 1 }
             
-            RadialGradient(colors: [.clear, .black.opacity(0.30)],
-                           center: .center, startRadius: 0, endRadius: 1200)
+            // Vignette (lighter in light mode, multiply so whites stay crisp)
+            Group {
+                if scheme == .dark {
+                    RadialGradient(
+                        colors: [.clear, .black.opacity(0.30)],
+                        center: .center, startRadius: 0, endRadius: 1200
+                    )
+                } else {
+                    RadialGradient(
+                        colors: [.clear, .black.opacity(0.08)],
+                        center: .center, startRadius: 0, endRadius: 1200
+                    )
+                    .blendMode(.multiply)
+                }
+            }
             .allowsHitTesting(false)
         }
+        .animation(.easeInOut(duration: 0.25), value: scheme) // smooth Light/Dark switch
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
+    
+    // MARK: - Palettes
+    private var baseGradient: [Color] {
+        if scheme == .dark {
+            // your original dark base
+            [Color(hex: 0x10131B), Color(hex: 0x151A26)]
+        } else {
+            // airy neutrals with a cool hint
+            [
+                Color(red: 0.97, green: 0.98, blue: 1.00),
+                Color(red: 0.95, green: 0.98, blue: 1.00)
+            ]
+        }
+    }
 }
+
 
 // MARK: - Glass container
 
@@ -393,20 +429,20 @@ private struct TopTileButton<Icon: View>: View {
                         .fill(.ultraThinMaterial)
                         .overlay(
                             RoundedRectangle(cornerRadius: corner, style: .continuous)
-                                .stroke(.white.opacity(0.22), lineWidth: 0.8)
+                                .stroke(.black.opacity(0.22), lineWidth: 0.8)
                         )
                         .shadow(color: .black.opacity(0.12), radius: 8, y: 4)
                     
                     icon
-                        .foregroundStyle(.white.opacity(0.92))
+                        .foregroundStyle(.primary.opacity(0.92))
                         .frame(width: tileSize - 24, height: tileSize - 24)
                 }
                 .frame(width: tileSize, height: tileSize)
                 
                 Text(title.localized)
                     .font(.footnote.weight(.semibold))
-                    .foregroundStyle(isLocked ? .white.opacity(0.55) : .white)
-                    .shadow(color: .black.opacity(0.55), radius: 2, y: 1)
+                    .foregroundStyle(.primary.opacity(isLocked ? 0.55 : 1))
+                    .shadow(color: .primary.opacity(0.55), radius: 2, y: 1)
                     .lineLimit(1)
                     .minimumScaleFactor(0.75)
             }

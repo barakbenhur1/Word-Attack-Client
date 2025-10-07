@@ -126,14 +126,14 @@ func handleProcessing(task: BGProcessingTask) async {
 @discardableResult
 func performWordZapRefresh(deeper: Bool) async -> Bool {
     // If user not logged-in, still rotate tooltip and refresh widgets
-    guard let email = Auth.auth().currentUser?.email else {
+    guard let uniqe = Auth.auth().currentUser?.email else {
         await rotateTooltipLocally()
         await reloadWidgets()
         return false
     }
     
     // 1) Update places (easy/medium/hard)
-    await refreshWordZapPlaces(email: email)
+    await refreshWordZapPlaces(uniqe: uniqe)
     
     // 2) Optional: heavier work when the system granted processing time
     if deeper {
@@ -148,9 +148,9 @@ func performWordZapRefresh(deeper: Bool) async -> Bool {
     return true
 }
 
-func refreshWordZapPlaces(email: String) async {
+func refreshWordZapPlaces(uniqe: String) async {
     let provider = ScoreProvider()
-    if let places = await provider.getPlaceInLeaderboard(email: email) {
+    if let places = await provider.getPlaceInLeaderboard(uniqe: uniqe) {
         await SharedStore.writePlacesDataAsync(places)
     }
 }

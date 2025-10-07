@@ -17,9 +17,9 @@ class PremiumScoreboardViewModel: ObservableObject {
         service = .init()
     }
     
-    func items(email: String) async {
-        guard !email.isEmpty else { return }
-        let value = await service.getAllPremium(email: email)
+    func items(uniqe: String) async {
+        guard !uniqe.isEmpty else { return }
+        let value = await service.getAllPremium(uniqe: uniqe)
         guard let value else { return }
         data = value
     }
