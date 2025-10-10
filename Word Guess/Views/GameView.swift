@@ -44,6 +44,7 @@ struct GameView<VM: DifficultyWordViewModel>: View {
     private var length: Int { return diffculty.getLength() }
     private var uniqe: String? { return loginHandeler.model?.uniqe }
     
+    private let keyboardHeightStore: KeyboardHeightStore
     
     private typealias ScoreAnimationParams = (value: Int, opticity: CGFloat, scale: CGFloat, offset: CGFloat)
 
@@ -183,6 +184,7 @@ struct GameView<VM: DifficultyWordViewModel>: View {
                                                            count: diffculty.getLength()),
                                     count: rows)
         
+        self.keyboardHeightStore = .init()
         self.didStart = false
         self.timeAttackAnimation = false
         self.timeAttackAnimationDone = true
@@ -258,13 +260,13 @@ struct GameView<VM: DifficultyWordViewModel>: View {
             let attr: AttributedString = {
                 if current < 3 || current == .max {
                     var a = AttributedString("Guess The 4 Letters Word".localized)
-                    a.foregroundColor = .white.opacity(0.85)
+                    a.foregroundColor = Color.dynamicBlack.opacity(0.85)
                     return a
                 } else {
                     let theWord = vm.wordValue
                     var a = AttributedString("\("the word is".localized) \"\(theWord)\" \("try it, or not ;)".localized)")
                     let range = a.range(of: theWord)!
-                    a.foregroundColor = .white.opacity(0.8)
+                    a.foregroundColor = Color.dynamicBlack.opacity(0.8)
                     a[range].foregroundColor = .orange
                     return a
                 }
@@ -282,7 +284,6 @@ struct GameView<VM: DifficultyWordViewModel>: View {
             ZStack {
                 let gainFocus = Binding(get: { current == i && endFetchAnimation && timeAttackAnimationDone },
                                         set: { _ in })
-                
                 WordView(cleanCells: $cleanCells,
                          current: $current,
                          length: length,
@@ -298,13 +299,17 @@ struct GameView<VM: DifficultyWordViewModel>: View {
                 if vm.word.isTimeAttack && timeAttackAnimationDone && current == i {
                     let start = Date()
                     let end = start.addingTimeInterval(diffculty == .easy ? 20 : 15)
-                    ProgressBarView(length: length,
-                                    value: 0,
-                                    total: end.timeIntervalSinceNow - start.timeIntervalSinceNow,
-                                    done: { nextLine(i: i) })
+                    ProgressBarView(
+                        length: length,
+                        value: 0,
+                        total: end.timeIntervalSinceNow - start.timeIntervalSinceNow,
+                        done: { nextLine(i: i) }
+                    )
                     .opacity(0.2)
                 }
             }
+            .opacity(diffculty == .tutorial && keyboardHeightStore.height == 0 ? 0 : 1)
+            .animation(.easeIn(duration: 0.01), value: keyboardHeightStore.height)
         }
     }
     
@@ -406,17 +411,11 @@ struct GameView<VM: DifficultyWordViewModel>: View {
     }
     
     @ViewBuilder private func gameBottom() -> some View {
-        if endFetchAnimation {
+        ZStack {
+            KeyboardHeightView()
             AppTitle(size: 50)
-                .padding(.top, UIDevice.isPad ? 130 : 90)
-                .padding(.bottom, UIDevice.isPad ? 190 : 140)
-                .shadow(radius: 4)
-        } else {
-            ZStack{}
-                .frame(height: UIDevice.isPad ? 81 : 81)
-                .padding(.top, UIDevice.isPad ? 130 : 90)
-                .padding(.bottom, UIDevice.isPad ? 190 : 140)
-                .shadow(radius: 4)
+                .shadow(color: .black.opacity(0.12), radius: 4, x: 4, y: 4)
+                .shadow(color: .white.opacity(0.12), radius: 4, x: -4 ,y: -4)
         }
     }
     

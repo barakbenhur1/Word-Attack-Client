@@ -57,16 +57,19 @@ public struct PremiumHubView: View {
     private var uniqe: String? { loginHandeler.model?.uniqe }
     
     @StateObject private var hub: PremiumHubModel
-    @State private var engine: CHHapticEngine? = try? CHHapticEngine()
+    @State private var engine: CHHapticEngine?
+    
+    @State private var isOpen: Bool
+    @State private var text: String
     
     @State private var presentedSlot: MiniSlot?
     @State private var activeSlot: MiniSlot?
-    @State private var didResolveSheet = false
+    @State private var didResolveSheet: Bool
     
-    @State private var showError: Bool = false
+    @State private var showError: Bool
     
     // Tutorial
-    @State private var showTutorial = false
+    @State private var showTutorial: Bool
     
     private func handleError() {
         guard hub.vm.isError else { return }
@@ -75,223 +78,257 @@ public struct PremiumHubView: View {
     
     private func closeView() {
         PremiumCoplitionHandler.shared.onForceEndPremium = { _, _ in }
-        hub.stop()
-        hub.resume()
-        router.navigateBack()
+        text = ""
+        withAnimation(.interpolatingSpring(duration: 1.2)) {
+            isOpen = false
+        }
+        Task {
+            try? await Task.sleep(nanoseconds: 1_500_000_000)
+            await MainActor.run {
+                hub.stop()
+                router.navigateBack()
+            }
+        }
     }
     
     public init(uniqe: String?) {
+        isOpen = false
+        text = "Premium Hub  💎"
+        didResolveSheet = false
+        showError = false
+        showTutorial = false
+        engine = try? CHHapticEngine()
         _hub = StateObject(wrappedValue: PremiumHubModel(uniqe: uniqe))
     }
     
     public var body: some View {
-        ZStack {
-           PremiumBackground()
-            
-            VStack {
-                HStack(spacing: 12) {
-                    BackPill { closeView() }
-                        .padding(.trailing, 20)
-                    SolvedCounterPill(
-                        count: hub.solvedWords,
-                        rank: hub.rank,
-                        onTap: {
-                            hub.stop()
-                            router.navigateTo(.premiumScore)
-                        }
-                    )
-                    timerView(secondsLeft: hub.mainSecondsLeft,
-                              timer: timerBridge,
-                              skipProgressAnimation: hub.isSkipProgressAnimation)
-                    .padding(.trailing, 10)
-                    .gesture(
-                        DragGesture(minimumDistance: 20, coordinateSpace: .local)
-                            .onEnded { g in
-                                if abs(g.translation.width) > 60 {
-                                    hub.resetAll()     // Timer animates its own reset; no layout changes
-                                }
+        SlidingDoorOpen(isOpen: $isOpen, text: text, duration: 1.2) {
+            ZStack {
+                PremiumBackground()
+                VStack {
+                    HStack(spacing: 12) {
+                        BackPill { closeView() }
+                            .padding(.trailing, 20)
+                        SolvedCounterPill(
+                            count: hub.solvedWords,
+                            rank: hub.rank,
+                            onTap: {
+                                hub.pause()
+                                router.navigateTo(.premiumScore)
                             }
-                    )
-                }
-                .padding(.top, 4)
-                
-                ScrollView(.vertical, showsIndicators: false) {
-                    VStack(alignment: .leading, spacing: 18) {
-                        Text("Discover letters in tactile mini-games. Use them to solve the word.")
-                            .font(.system(.title3, design: .rounded))
-                            .foregroundStyle(Color.dynamicBlack.opacity(0.7))
-                            .padding(.top, 8)
-                            .padding(.horizontal, 8)
-                        
-                        Grid3x3(hub: hub, presentedSlot: $presentedSlot, engine: engine)
-                        
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text("Available letters")
-                                .font(.footnote.weight(.semibold))
-                                .foregroundStyle(Color.dynamicBlack.opacity(0.7))
-                            DiscoveredBeltView(letters: Array(hub.discoveredLetters).sorted())
-                        }
-                        .padding(.horizontal, 8)
-                        .padding(.top, 4)
-                        
-                        if !UIDevice.isPad {
-                            Button { lightTap(engine) } label: {
-                                HStack {
-                                    Text("Find letters in mini-games")
-                                    Spacer()
-                                    Image(systemName: language == "he" ? "arrow.left" : "arrow.right")
-                                }
-                                .font(.system(.headline, design: .rounded))
-                                .foregroundStyle(Color.dynamicBlack)
-                                .padding(.horizontal, 16)
-                                .frame(height: 56)
-                                .background(LinearGradient(
-                                    colors: scheme == .light
-                                    ? [
-                                        Color.white,
-                                        Color(hue: 0.66, saturation: 0.06, brightness: 0.99)
-                                    ]
-                                    : [
-                                        Color.black,
-                                        Color(hue: 0.64, saturation: 0.25, brightness: 0.18)
-                                    ],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing),
-                                            in: RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                )
-                                .overlay(RoundedRectangle(cornerRadius: 18).stroke(Color.dynamicBlack.opacity(0.08)))
-                            }
-                        }
-                    }
-                    .padding(.horizontal, 12)
-                    .padding(.bottom, 28)
-                }
-                
-                if UIDevice.isPad {
-                    Button { lightTap(engine) } label: {
-                        HStack {
-                            Text("Find letters in mini-games")
-                            Spacer()
-                            Image(systemName: language == "he" ? "arrow.left" : "arrow.right")
-                        }
-                        .font(.system(.headline, design: .rounded))
-                        .foregroundStyle(Color.dynamicBlack)
-                        .padding(.horizontal, 16)
-                        .frame(height: 56)
-                        .background(LinearGradient(
-                            colors: scheme == .light
-                            ? [
-                                Color.white,
-                                Color(hue: 0.66, saturation: 0.06, brightness: 0.99)
-                            ]
-                            : [
-                                Color.black,
-                                Color(hue: 0.64, saturation: 0.25, brightness: 0.18)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing),
-                                    in: RoundedRectangle(cornerRadius: 18, style: .continuous)
                         )
-                        .overlay(RoundedRectangle(cornerRadius: 18).stroke(Color.dynamicBlack.opacity(0.08)))
+                        timerView(secondsLeft: hub.mainSecondsLeft,
+                                  timer: timerBridge,
+                                  skipProgressAnimation: hub.isSkipProgressAnimation)
+                        .padding(.trailing, 10)
+                        .gesture(
+                            DragGesture(minimumDistance: 20, coordinateSpace: .local)
+                                .onEnded { g in
+                                    if abs(g.translation.width) > 60 {
+                                        hub.resetAll()     // Timer animates its own reset; no layout changes
+                                    }
+                                }
+                        )
                     }
-                    .padding(.bottom, 80)
+                    .padding(.top, 4)
+                    
+                    ScrollView(.vertical, showsIndicators: false) {
+                        VStack(alignment: .leading, spacing: 18) {
+                            Text("Discover letters in tactile mini-games. Use them to solve the word.")
+                                .font(.system(.title3, design: .rounded))
+                                .foregroundStyle(Color.dynamicBlack.opacity(0.7))
+                                .padding(.top, 8)
+                                .padding(.horizontal, 8)
+                            
+                            Grid3x3(hub: hub, presentedSlot: $presentedSlot, engine: engine)
+                            
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text("Available letters")
+                                    .font(.footnote.weight(.semibold))
+                                    .foregroundStyle(Color.dynamicBlack.opacity(0.7))
+                                DiscoveredBeltView(letters: Array(hub.discoveredLetters).sorted())
+                            }
+                            .padding(.horizontal, 8)
+                            .padding(.top, 4)
+                            
+                            if !UIDevice.isPad {
+                                Button { lightTap(engine) } label: {
+                                    HStack {
+                                        Text("Find letters in mini-games")
+                                        Spacer()
+                                        Image(systemName: language == "he" ? "arrow.left" : "arrow.right")
+                                    }
+                                    .font(.system(.headline, design: .rounded))
+                                    .foregroundStyle(Color.dynamicBlack)
+                                    .padding(.horizontal, 16)
+                                    .frame(height: 56)
+                                    .background(LinearGradient(
+                                        colors: scheme == .light
+                                        ? [
+                                            Color.white,
+                                            Color(hue: 0.66, saturation: 0.06, brightness: 0.99)
+                                        ]
+                                        : [
+                                            Color.black,
+                                            Color(hue: 0.64, saturation: 0.25, brightness: 0.18)
+                                        ],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing),
+                                                in: RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                    )
+                                    .overlay(RoundedRectangle(cornerRadius: 18).stroke(Color.dynamicBlack.opacity(0.08)))
+                                }
+                            }
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 28)
+                    }
+                    
+                    if UIDevice.isPad {
+                        Button { lightTap(engine) } label: {
+                            HStack {
+                                Text("Find letters in mini-games")
+                                Spacer()
+                                Image(systemName: language == "he" ? "arrow.left" : "arrow.right")
+                            }
+                            .font(.system(.headline, design: .rounded))
+                            .foregroundStyle(Color.dynamicBlack)
+                            .padding(.horizontal, 16)
+                            .frame(height: 56)
+                            .background(LinearGradient(
+                                colors: scheme == .light
+                                ? [
+                                    Color.white,
+                                    Color(hue: 0.66, saturation: 0.06, brightness: 0.99)
+                                ]
+                                : [
+                                    Color.black,
+                                    Color(hue: 0.64, saturation: 0.25, brightness: 0.18)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing),
+                                        in: RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            )
+                            .overlay(RoundedRectangle(cornerRadius: 18).stroke(Color.dynamicBlack.opacity(0.08)))
+                        }
+                        .padding(.bottom, 80)
+                    }
                 }
             }
-        }
-        .environmentObject(hub.vm)
-        .onChange(of: presentedSlot) { _, newValue in
-            if let s = newValue { activeSlot = s; didResolveSheet = false }
-        }
-        .sheet(item: $presentedSlot, onDismiss: {
-            if let s = activeSlot, !didResolveSheet { hub.replaceSlot(s) }
-            activeSlot = nil
-        }) { slot in
-            MiniGameSheet(slot: slot, hub: hub) { result in
-                func close() {
-                    didResolveSheet = true
-                    hub.replaceSlot(slot)
-                    presentedSlot = nil
-                }
-                switch result {
-                case .found(let ch):
-                    hub.discoveredLetters.insert(ch)
-                    hub.recordFoundLetter(ch)
-                    success(engine)
-                    if slot.kind != .aiMerchant { close() }
-                case .foundMany(let chars):
-                    for ch in chars {
+            .environmentObject(hub.vm)
+            .onChange(of: presentedSlot) { _, newValue in
+                if let s = newValue { activeSlot = s; didResolveSheet = false }
+            }
+            .sheet(item: $presentedSlot, onDismiss: {
+                if let s = activeSlot, !didResolveSheet { hub.replaceSlot(s) }
+                activeSlot = nil
+            }) { slot in
+                MiniGameSheet(slot: slot, hub: hub) { result in
+                    func close() {
+                        didResolveSheet = true
+                        hub.replaceSlot(slot)
+                        presentedSlot = nil
+                    }
+                    switch result {
+                    case .found(let ch):
                         hub.discoveredLetters.insert(ch)
                         hub.recordFoundLetter(ch)
-                    }
-                    success(engine); close()
-                case .nothing:
-                    warn(engine); close()
-                case .close:
-                    close()
-                }
-            }
-            // === SHEET BEHAVIOR FIX ===
-            .presentationDetents([.medium])          // single detent → no resizing/peeking
-            .presentationDragIndicator(.hidden)      // hide system grabber (we use our own)
-            .interactiveDismissDisabled(true)        // stop pull-to-dismiss & finger-follow
-            .ifAvailable_iOS17 {                     // iOS 17+: prevent background pans from jiggling the sheet
-                $0.presentationBackgroundInteraction(.disabled)
-            }
-        }
-        .onChange(of: hub.vm.isError, handleError)
-        .onChange(of: hub.mainSecondsLeft) { old, new in
-            // Only bump identity on a RESET (seconds increasing). Prevents bump every second.
-            let isReset = new > old
-            timerBridge.set(new, total: hub.mainRoundLength, bumpID: isReset)
-            if isReset {
-                presentedSlot = nil
-            }
-        }
-        .onAppear {
-            hub.show()
-            
-            guard hub.vm.word == .empty else { hub.start(); return }
-            
-            PremiumHubModel.configureFor(language: language)
-            timerBridge.set(hub.mainSecondsLeft, total: hub.mainRoundLength)
-            
-            if !UserDefaults.standard.bool(forKey: "hasSeenHubTutorial_v1") {
-                Task {
-                    try? await Task.sleep(nanoseconds: 300_000_000)
-                    showTutorial = true
-                }
-            } else { hub.initLoop() }
-        }
-        .onDisappear {
-            hub.hide()
-        }
-        .onChange(of: local.locale) {
-            PremiumHubModel.configureFor(language: language)
-            hub.resetAll()
-            timerBridge.set(hub.mainSecondsLeft, total: hub.mainRoundLength)
-        }
-        .overlay {
-            if showTutorial {
-                HubTutorialOverlay {
-                    UserDefaults.standard.set(true, forKey: "hasSeenHubTutorial_v1")
-                    hub.initLoop()
-                    withAnimation(.easeOut(duration: 0.25)) {
-                        showTutorial = false
+                        success(engine)
+                        if slot.kind != .aiMerchant { close() }
+                    case .foundMany(let chars):
+                        for ch in chars {
+                            hub.discoveredLetters.insert(ch)
+                            hub.recordFoundLetter(ch)
+                        }
+                        success(engine); close()
+                    case .nothing:
+                        warn(engine); close()
+                    case .close:
+                        close()
                     }
                 }
-                .transition(.opacity)
-            } else if hub.showNewWordToast {
-                NewWordToast(offsetY: -60)
-                    .transition(.scale(scale: 0.7).combined(with: .opacity))
-                    .zIndex(2)
+                // === SHEET BEHAVIOR FIX ===
+                .presentationDetents([.medium])          // single detent → no resizing/peeking
+                .presentationDragIndicator(.hidden)      // hide system grabber (we use our own)
+                .interactiveDismissDisabled(true)        // stop pull-to-dismiss & finger-follow
+                .ifAvailable_iOS17 {                     // iOS 17+: prevent background pans from jiggling the sheet
+                    $0.presentationBackgroundInteraction(.disabled)
+                }
+            }
+            .onChange(of: hub.vm.isError, handleError)
+            .onChange(of: hub.mainSecondsLeft) { old, new in
+                // Only bump identity on a RESET (seconds increasing). Prevents bump every second.
+                let isReset = new > old
+                timerBridge.set(new, total: hub.mainRoundLength, bumpID: isReset)
+                if isReset { presentedSlot = nil }
+            }
+            .onAppear {
+                hub.resume()
+                hub.show()
+                
+                guard hub.vm.word == .empty else { return }
+                
+                text = "Premium Hub  💎"
+                withAnimation(.interpolatingSpring(duration: 1.2)) {
+                    isOpen = true
+                }
+                
+                PremiumHubModel.configureFor(language: language)
+                timerBridge.set(hub.mainSecondsLeft, total: hub.mainRoundLength)
+                
+                if !UserDefaults.standard.bool(forKey: "hasSeenHubTutorial_v1") {
+                    Task {
+                        try? await Task.sleep(nanoseconds: 300_000_000)
+                        await MainActor.run {
+                            showTutorial = true
+                        }
+                    }
+                } else {
+                    Task {
+                        try? await Task.sleep(nanoseconds: 1_500_000_000)
+                        await MainActor.run {
+                            hub.initLoop()
+                        }
+                    }
+                }
+            }
+            .onDisappear {
+                hub.hide()
+            }
+            .onChange(of: local.locale) {
+                PremiumHubModel.configureFor(language: language)
+                hub.resetAll()
+                timerBridge.set(hub.mainSecondsLeft, total: hub.mainRoundLength)
+            }
+            .customAlert("Network error",
+                         type: .fail,
+                         isPresented: $showError,
+                         actionText: "OK",
+                         action: closeView,
+                         message: { Text("something went wrong") })
+            .overlay {
+                if showTutorial {
+                    HubTutorialOverlay {
+                        UserDefaults.standard.set(true, forKey: "hasSeenHubTutorial_v1")
+                        withAnimation(.easeOut(duration: 0.25)) {
+                            showTutorial = false
+                        }
+                        
+                        Task {
+                            try? await Task.sleep(nanoseconds: 250_000_000)
+                            await MainActor.run {
+                                hub.initLoop()
+                            }
+                        }
+                    }
+                    .transition(.opacity)
+                } else if hub.showNewWordToast {
+                    NewWordToast(offsetY: -60)
+                        .transition(.scale(scale: 0.7).combined(with: .opacity))
+                        .zIndex(2)
+                }
             }
         }
-        .customAlert("Network error",
-                     type: .fail,
-                     isPresented: $showError,
-                     actionText: "OK",
-                     action: closeView,
-                     message: { Text("something went wrong") })
     }
     
     @ViewBuilder private func timerView(secondsLeft: Int, timer: HubTimerBridge, skipProgressAnimation: Bool) -> some View {
@@ -477,7 +514,7 @@ final public class PremiumHubModel: ObservableObject {
     func hide() {
         isShown = false
     }
-
+    
     func setGameHistoryForRound(history: [[String]]) {
         gameHistory = history
     }

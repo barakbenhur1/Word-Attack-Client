@@ -27,24 +27,24 @@ private enum LBLayout {
         
         if isPadLike {
             // Percentages of `available`
-            let placeP:  CGFloat = 0.10
-            let scoreP:  CGFloat = 0.15
-            let guessP:  CGFloat = 0.15
-            let totalP:  CGFloat = 0.15
-            let nameP:   CGFloat = 1.0 - (placeP + scoreP + guessP + totalP) // = 0.45
+            let placeP: CGFloat = 0.10
+            let scoreP: CGFloat = 0.15
+            let guessP: CGFloat = 0.15
+            let totalP: CGFloat = 0.15
+            let nameP: CGFloat = 1.0 - (placeP + scoreP + guessP + totalP)  // = 0.45
             
-            var place  = available * placeP
-            var score  = available * scoreP
-            var guess  = available * guessP
-            var total  = available * totalP
-            var name   = available * nameP
+            var place = available * placeP
+            var score = available * scoreP
+            var guess = available * guessP
+            var total = available * totalP
+            var name = available * nameP
             
             // Minimums / maximums
             place = max(place, 60)
             score = max(score, 90)
             guess = max(guess, 90)
             total = max(total, 90)
-            name  = max(min(name, 420), 260) // cap name (<=420) and keep readable (>=260)
+            name = max(min(name, 420), 260)  // cap name (<=420) and keep readable (>=260)
             
             // If rounding/clamping pushed us over, nudge name down
             let sum = place + score + guess + total + name
@@ -52,10 +52,22 @@ private enum LBLayout {
                 name -= (sum - available)
             }
             
-            return .init(place: place, name: name, score: score, guessed: guess, total: total)
+            return .init(
+                place: place,
+                name: name,
+                score: score,
+                guessed: guess,
+                total: total
+            )
         } else {
             // Phone – keep compact widths; name flexes
-            return .init(place: 44, name: .zero, score: 66, guessed: 62, total: 66)
+            return .init(
+                place: 44,
+                name: .zero,
+                score: 66,
+                guessed: 62,
+                total: 66
+            )
         }
     }
 }
@@ -63,14 +75,21 @@ private enum LBLayout {
 // MARK: - Width measurement (replaces GeometryReader inside ScrollView)
 private struct WidthKey: PreferenceKey {
     static var defaultValue: CGFloat = 0
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
+    }
 }
 private struct WidthReporter: ViewModifier {
     func body(content: Content) -> some View {
         content
-            .background(GeometryReader { g in
-                Color.clear.preference(key: WidthKey.self, value: g.size.width)
-            })
+            .background(
+                GeometryReader { g in
+                    Color.clear.preference(
+                        key: WidthKey.self,
+                        value: g.size.width
+                    )
+                }
+            )
     }
 }
 
@@ -89,13 +108,18 @@ struct LeaderboardView<VM: ScoreboardViewModel>: View {
     
     @State private var cardWidth: CGFloat = 0
     
-    private var language: String? { local.locale.identifier.components(separatedBy: "_").first }
+    private var language: String? {
+        local.locale.identifier.components(separatedBy: "_").first
+    }
     private var uniqe: String? { loginHandeler.model?.uniqe }
     private var isRTL: Bool { language == "he" }
-    private var myuniqeLower: String { (loginHandeler.model?.uniqe ?? "").lowercased() }
+    private var myuniqeLower: String {
+        (loginHandeler.model?.uniqe ?? "").lowercased()
+    }
     
     var body: some View {
-        let isPadLike = (hSize == .regular) || UIDevice.current.userInterfaceIdiom == .pad
+        let isPadLike =
+        (hSize == .regular) || UIDevice.current.userInterfaceIdiom == .pad
         
         ZStack {
             GameViewBackground()
@@ -108,138 +132,235 @@ struct LeaderboardView<VM: ScoreboardViewModel>: View {
                     HStack {
                         Spacer()
                         Text("SCOREBOARD")
-                            .font(.system(size: isPadLike ? 31 : 26, weight: .bold, design: .rounded))
+                            .font(
+                                .system(
+                                    size: isPadLike ? 31 : 26,
+                                    weight: .bold,
+                                    design: .rounded
+                                )
+                            )
                             .minimumScaleFactor(0.8)
                             .multilineTextAlignment(.center)
                         Spacer()
                     }
                 }
-                .padding(.horizontal, isPadLike ? 18 : 10)
+                .padding(.horizontal, isPadLike ? 10 : 2)
                 .padding(.top, isPadLike ? 8 : 4)
+                .padding(.bottom, 10)
                 
-                // Build once so both fixed controls and table can use them
-                if current < vm.data.count, vm.data.indices.contains(current) {
-                    let day = vm.data[current]
-                    let sortedDiffs = day.difficulties.sorted {
-                        DifficultyType(stripedRawValue: $0.value)!.getLength()
-                        < DifficultyType(stripedRawValue: $1.value)!.getLength()
-                    }
-                    let diffTitles = sortedDiffs.map { $0.value }
-                    let rowsPerDifficulty: [[LeaderboardRowModel]] = sortedDiffs.map { diff in
-                        let totalWords = diff.words.count
-                        let members = diff.members.sorted { $0.totalScore > $1.totalScore }
-                        return members.enumerated().map { idx, m in
-                            LeaderboardRowModel(
-                                rank: idx + 1,
-                                name: m.name,
-                                uniqe: m.uniqe,
-                                score: m.totalScore,
-                                guessed: max(m.words.count - 1, 0),
-                                total: max(totalWords - 2, 0),
-                                isMe: m.uniqe.lowercased() == myuniqeLower
-                            )
-                        }
-                    }
-                    
-                    // One reader for BOTH controls and table so the button can use `proxy`
-                    ScrollViewReader { proxy in
-                        // ---- Fixed controls (NOT scrollable) ----
-                        VStack(spacing: isPadLike ? 20 : 16) {
-                            DatePager(
-                                title: day.value,
-                                isRTL: isRTL,
-                                canGoPrevious: isRTL ? (current < vm.data.count - 1) : (current > 0),
-                                canGoNext:     isRTL ? (current > 0)                 : (current < vm.data.count - 1),
-                                onPrevious: {
-                                    if isRTL { if current < vm.data.count - 1 { current += 1 } }
-                                    else if current > 0 { current -= 1 }
-                                    selectedDifficultyIndex = 0
-                                },
-                                onNext: {
-                                    if isRTL { if current > 0 { current -= 1 } }
-                                    else if current < vm.data.count - 1 { current += 1 }
-                                    selectedDifficultyIndex = 0
-                                }
-                            )
-                            .environment(\.layoutDirection, isRTL ? .rightToLeft : .leftToRight)
-                            .padding(.horizontal, isPadLike ? 4 : 0)
-                            
-                            if !myuniqeLower.isEmpty {
-                                Button {
-                                    scrollToMe(proxy: proxy, rowsPerDifficulty: rowsPerDifficulty)
-                                } label: {
-                                    Label("Jump to my rank", systemImage: "person.crop.circle.badge.checkmark")
-                                        .font(.footnote.weight(.semibold))
-                                }
-                                .buttonStyle(.bordered)
-                                .tint(.accentColor)
-                            }
-                            
-                            if !diffTitles.isEmpty {
-                                DifficultyPicker(
-                                    titles: diffTitles.map { prettyDifficulty($0) },
-                                    selectedIndex: $selectedDifficultyIndex
+                Group {
+                    if let items = vm.data {
+                        if items.isEmpty {
+                            EmptyStateCard()
+                                .padding(.horizontal, isPadLike ? 16 : 14)
+                                .frame(maxWidth: 900)
+                                .frame(
+                                    maxWidth: .infinity,
+                                    maxHeight: .infinity,
+                                    alignment: .top
                                 )
-                                .frame(maxWidth: isPadLike ? 520 : .infinity)
-                                .padding(.horizontal, 8)
-                                .transition(.opacity)
+                        } else if current < items.count, items.indices.contains(current) {
+                            // Build once so both fixed controls and table can use them
+                            let day = items[current]
+                            let sortedDiffs = day.difficulties.sorted {
+                                DifficultyType(stripedRawValue: $0.value)!
+                                    .getLength()
+                                < DifficultyType(stripedRawValue: $1.value)!
+                                    .getLength()
                             }
-                        }
-                        
-                        VStack(spacing: 0) {
-                            // Header row
-                            let cols = LBLayout.columns(for: cardWidth, isPadLike: isPadLike)
-                            HStack(spacing: LBLayout.hSpacing) {
-                                header("Place", isPadLike: isPadLike).frame(width: cols.place)
-                                if isPadLike { header("Name", isPadLike: isPadLike).frame(width: cols.name, alignment: .leading) }
-                                else { header("Name", isPadLike: isPadLike).frame(maxWidth: .infinity, alignment: .leading) }
-                                header("Score", isPadLike: isPadLike).frame(width: cols.score)
-                                header("Guessed", isPadLike: isPadLike).frame(width: cols.guessed)
-                                header("Total", isPadLike: isPadLike).frame(width: cols.total)
+                            let diffTitles = sortedDiffs.map { $0.value }
+                            let rowsPerDifficulty: [[LeaderboardRowModel]] =
+                            sortedDiffs.map { diff in
+                                let totalWords = diff.words.count
+                                let members = diff.members.sorted {
+                                    $0.totalScore > $1.totalScore
+                                }
+                                return members.enumerated().map { idx, m in
+                                    LeaderboardRowModel(
+                                        rank: idx + 1,
+                                        name: m.name,
+                                        uniqe: m.uniqe,
+                                        score: m.totalScore,
+                                        guessed: max(m.words.count - 1, 0),
+                                        total: max(totalWords - 2, 0),
+                                        isMe: m.uniqe.lowercased()
+                                        == myuniqeLower
+                                    )
+                                }
                             }
-                            .padding(.horizontal, isPadLike ? 14 : 12)
-                            .padding(.vertical, isPadLike ? 11 : 9)
-                            .background(Color.primary.opacity(0.06))
-                            .cornerRadius(16)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                    .strokeBorder(Color.primary.opacity(0.08), lineWidth: 1)
-                            )
                             
-                            // ---- TABLE AREA — the ONLY scrollable region ----
-                            ScrollView(.vertical) {
-                                LeaderboardCard(
-                                    rows: rowsPerDifficulty[safe: selectedDifficultyIndex] ?? [],
-                                    isRTL: isRTL,
-                                    cols: cols,
-                                    isPadLike: isPadLike
+                            // One reader for BOTH controls and table so the button can use `proxy`
+                            ScrollViewReader { proxy in
+                                // ---- Fixed controls (NOT scrollable) ----
+                                VStack(spacing: isPadLike ? 20 : 16) {
+                                    DatePager(
+                                        title: day.value,
+                                        isRTL: isRTL,
+                                        canGoPrevious: isRTL
+                                        ? (current < items.count - 1)
+                                        : (current > 0),
+                                        canGoNext: isRTL
+                                        ? (current > 0)
+                                        : (current < items.count - 1),
+                                        onPrevious: {
+                                            if isRTL {
+                                                if current < items.count - 1 {
+                                                    current += 1
+                                                }
+                                            } else if current > 0 {
+                                                current -= 1
+                                            }
+                                            selectedDifficultyIndex = 0
+                                        },
+                                        onNext: {
+                                            if isRTL {
+                                                if current > 0 { current -= 1 }
+                                            } else if current < items.count - 1 {
+                                                current += 1
+                                            }
+                                            selectedDifficultyIndex = 0
+                                        }
+                                    )
+                                    .environment(
+                                        \.layoutDirection,
+                                         isRTL ? .rightToLeft : .leftToRight
+                                    )
+                                    .padding(.horizontal, isPadLike ? 4 : 0)
+                                    
+                                    if !myuniqeLower.isEmpty {
+                                        Button {
+                                            scrollToMe(
+                                                proxy: proxy,
+                                                rowsPerDifficulty: rowsPerDifficulty
+                                            )
+                                        } label: {
+                                            Label(
+                                                "Jump to my rank",
+                                                systemImage:
+                                                    "person.crop.circle.badge.checkmark"
+                                            )
+                                            .font(.footnote.weight(.semibold))
+                                        }
+                                        .buttonStyle(.bordered)
+                                        .tint(.accentColor)
+                                    }
+                                    
+                                    if !diffTitles.isEmpty {
+                                        DifficultyPicker(
+                                            titles: diffTitles.map {
+                                                prettyDifficulty($0)
+                                            },
+                                            selectedIndex: $selectedDifficultyIndex
+                                        )
+                                        .frame(
+                                            maxWidth: isPadLike ? 520 : .infinity
+                                        )
+                                        .padding(.horizontal, 8)
+                                        .transition(.opacity)
+                                    }
+                                }
+                                
+                                VStack(spacing: 0) {
+                                    // Header row
+                                    let cols = LBLayout.columns(
+                                        for: cardWidth,
+                                        isPadLike: isPadLike
+                                    )
+                                    HStack(spacing: LBLayout.hSpacing) {
+                                        header("Place", isPadLike: isPadLike).frame(
+                                            width: cols.place
+                                        )
+                                        if isPadLike {
+                                            header("Name", isPadLike: isPadLike)
+                                                .frame(
+                                                    width: cols.name,
+                                                    alignment: .leading
+                                                )
+                                        } else {
+                                            header("Name", isPadLike: isPadLike)
+                                                .frame(
+                                                    maxWidth: .infinity,
+                                                    alignment: .leading
+                                                )
+                                        }
+                                        header("Score", isPadLike: isPadLike).frame(
+                                            width: cols.score
+                                        )
+                                        header("Guessed", isPadLike: isPadLike)
+                                            .frame(width: cols.guessed)
+                                        header("Total", isPadLike: isPadLike).frame(
+                                            width: cols.total
+                                        )
+                                    }
+                                    .padding(.horizontal, isPadLike ? 10 : 10)
+                                    .padding(.vertical, isPadLike ? 11 : 9)
+                                    .background(Color.primary.opacity(0.06))
+                                    .cornerRadius(8)
+                                    .overlay(
+                                        RoundedRectangle(
+                                            cornerRadius: 8,
+                                            style: .continuous
+                                        )
+                                        .strokeBorder(
+                                            Color.primary.opacity(0.08),
+                                            lineWidth: 1
+                                        )
+                                    )
+                                    
+                                    // ---- TABLE AREA — the ONLY scrollable region ----
+                                    ScrollView(.vertical) {
+                                        LeaderboardCard(
+                                            rows: rowsPerDifficulty[
+                                                safe: selectedDifficultyIndex
+                                            ] ?? [],
+                                            isRTL: isRTL,
+                                            cols: cols,
+                                            isPadLike: isPadLike
+                                        )
+                                        .frame(
+                                            maxWidth: .infinity,
+                                            alignment: .center
+                                        )
+                                        .padding(.top, 6)
+                                        .padding(.horizontal, 1)
+                                        .modifier(WidthReporter())
+                                        .onPreferenceChange(WidthKey.self) {
+                                            cardWidth = $0
+                                        }
+                                        .padding(.bottom, 8)
+                                    }
+                                    .scrollIndicators(.visible)
+                                    .contentMargins(.bottom, 50)
+                                    .onAppear {
+                                        scrollToMe(
+                                            proxy: proxy,
+                                            rowsPerDifficulty: rowsPerDifficulty
+                                        )
+                                    }
+                                    .onChange(of: selectedDifficultyIndex) {
+                                        scrollToMe(
+                                            proxy: proxy,
+                                            rowsPerDifficulty: rowsPerDifficulty
+                                        )
+                                    }
+                                }
+                                .frame(maxWidth: .infinity, maxHeight: .infinity)  // take leftover height so inner scroll works
+                                .padding(.horizontal, isPadLike ? 10 : 10)
+                                .frame(maxWidth: 900)
+                                .frame(
+                                    maxWidth: .infinity,
+                                    maxHeight: .infinity,
+                                    alignment: .top
                                 )
-                                .frame(maxWidth: .infinity, alignment: .center)
-                                .padding(.top, 4)
-                                .padding(.horizontal, 1)
-                                .modifier(WidthReporter())
-                                .onPreferenceChange(WidthKey.self) { cardWidth = $0 }
-                                .padding(.bottom, 8)
-                            }
-                            .scrollIndicators(.visible)
-                            .contentMargins(.bottom, 50)
-                            .onAppear { scrollToMe(proxy: proxy, rowsPerDifficulty: rowsPerDifficulty) }
-                            .onChange(of: selectedDifficultyIndex) {
-                                scrollToMe(proxy: proxy, rowsPerDifficulty: rowsPerDifficulty)
                             }
                         }
-                        .frame(maxWidth: .infinity, maxHeight: .infinity) // take leftover height so inner scroll works
-                        .padding(.horizontal, isPadLike ? 16 : 14)
-                        .frame(maxWidth: 900)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                    } else {
+                        skeletonList
+                            .padding(.horizontal, 10)
                     }
-                    
-                } else {
-                    EmptyStateCard()
-                        .padding(.horizontal, isPadLike ? 16 : 14)
-                        .frame(maxWidth: 900)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                 }
+                .padding(.horizontal, 2)
+                .padding(.top, 4)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         }
@@ -258,17 +379,25 @@ struct LeaderboardView<VM: ScoreboardViewModel>: View {
             await vm.items(uniqe: uniqe)
         }
         .onAppear {
-            guard interstitialAdManager == nil || !interstitialAdManager!.initialInterstitialAdLoaded else { return }
-            interstitialAdManager = AdProvider.interstitialAdsManager(id: "GameInterstitial")
+            guard
+                interstitialAdManager == nil
+                    || !interstitialAdManager!.initialInterstitialAdLoaded
+            else { return }
+            interstitialAdManager = AdProvider.interstitialAdsManager(
+                id: "GameInterstitial"
+            )
             interstitialAdManager?.displayInitialInterstitialAd()
         }
         .onChange(of: vm.data) {
-            current = max(vm.data.count - 1, 0)
+            guard let items = vm.data else { return }
+            current = max(items.count - 1, 0)
             selectedDifficultyIndex = 0
         }
     }
     
-    private func header(_ text: LocalizedStringKey, isPadLike: Bool) -> some View {
+    private func header(_ text: LocalizedStringKey, isPadLike: Bool)
+    -> some View
+    {
         Text(text)
             .font(isPadLike ? .subheadline : .footnote)
             .fontWeight(.semibold)
@@ -277,19 +406,31 @@ struct LeaderboardView<VM: ScoreboardViewModel>: View {
             .foregroundStyle(.secondary)
             .monospacedDigit()
     }
+    
+    private var skeletonList: some View {
+        ScrollView(showsIndicators: false) {
+            VStack(spacing: 10) {
+                ForEach(0..<6, id: \.self) { i in
+                    SkeletonRow(isTop3: i < 3)
+                }
+            }
+            .padding(.bottom, 24)
+        }
+    }
 }
 
 // MARK: - Scroll helpers inside LeaderboardView
-private extension LeaderboardView {
+extension LeaderboardView {
     /// Compute rows for current day & selection and return the target key for the signed-in uniqe.
-    func rowsForCurrentSelection() -> (rows: [LeaderboardRowModel], targetKey: String)? {
-        guard current < vm.data.count, vm.data.indices.contains(current) else { return nil }
-        let day = vm.data[current]
+    fileprivate func rowsForCurrentSelection() -> (rows: [LeaderboardRowModel], targetKey: String)? {
+        guard let items = vm.data, current < items.count, items.indices.contains(current) else { return nil }
+        let day = items[current]
         let sortedDiffs = day.difficulties.sorted {
             DifficultyType(stripedRawValue: $0.value)!.getLength()
             < DifficultyType(stripedRawValue: $1.value)!.getLength()
         }
-        let rowsPerDifficulty: [[LeaderboardRowModel]] = sortedDiffs.map { diff in
+        let rowsPerDifficulty: [[LeaderboardRowModel]] = sortedDiffs.map {
+            diff in
             let totalWords = diff.words.count
             let members = diff.members.sorted { $0.totalScore > $1.totalScore }
             return members.enumerated().map { idx, m in
@@ -300,7 +441,7 @@ private extension LeaderboardView {
                     score: m.totalScore,
                     guessed: max(m.words.count - 1, 0),
                     total: max(totalWords - 2, 0),
-                    isMe: m.uniqe.lowercased() == myuniqeLower // NEW
+                    isMe: m.uniqe.lowercased() == myuniqeLower  // NEW
                 )
             }
         }
@@ -310,7 +451,10 @@ private extension LeaderboardView {
         return (rows, myKey)
     }
     
-    func scrollToMe(proxy: ScrollViewProxy, rowsPerDifficulty: [[LeaderboardRowModel]]) {
+    fileprivate func scrollToMe(
+        proxy: ScrollViewProxy,
+        rowsPerDifficulty: [[LeaderboardRowModel]]
+    ) {
         let myKey = "row-\(myuniqeLower)"
         let rows = rowsPerDifficulty[safe: selectedDifficultyIndex] ?? []
         guard rows.contains(where: { $0.key == myKey }) else { return }
@@ -319,7 +463,7 @@ private extension LeaderboardView {
         }
     }
     
-    func closeView() {
+    fileprivate func closeView() {
         router.navigateBack()
     }
 }
@@ -345,8 +489,14 @@ private struct DatePager: View {
             .disabled(!canGoPrevious)
             
             Text(title)
-                .font(.system(size: UIDevice.current.userInterfaceIdiom == .pad ? 28 : 26,
-                              weight: .bold, design: .rounded))
+                .font(
+                    .system(
+                        size: UIDevice.current.userInterfaceIdiom == .pad
+                        ? 28 : 26,
+                        weight: .bold,
+                        design: .rounded
+                    )
+                )
                 .monospacedDigit()
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
@@ -360,7 +510,10 @@ private struct DatePager: View {
             .disabled(!canGoNext)
         }
         .padding(.horizontal, 14)
-        .padding(.vertical, UIDevice.current.userInterfaceIdiom == .pad ? 12 : 10)
+        .padding(
+            .vertical,
+            UIDevice.current.userInterfaceIdiom == .pad ? 12 : 10
+        )
         .background(.ultraThinMaterial, in: Capsule())
         .shadow(color: Color.black.opacity(0.06), radius: 10, y: 4)
     }
@@ -400,14 +553,22 @@ private struct LeaderboardCard: View {
                 .frame(maxWidth: .infinity)
             } else {
                 ForEach(rows) { row in
-                    LeaderboardRow(row: row, isRTL: isRTL, cols: cols, isPadLike: isPadLike)
+                    LeaderboardRow(
+                        row: row,
+                        isRTL: isRTL,
+                        cols: cols,
+                        isPadLike: isPadLike
+                    )
                     Divider().opacity(0.15)
                 }
             }
         }
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .background(
+            .thinMaterial,
+            in: RoundedRectangle(cornerRadius: 8, style: .continuous)
+        )
         .overlay(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
                 .strokeBorder(Color.primary.opacity(0.08), lineWidth: 1)
         )
         .shadow(color: Color.black.opacity(0.05), radius: 12, y: 6)
@@ -435,30 +596,33 @@ private struct LeaderboardRow: View {
                     .truncationMode(.tail)
                     .minimumScaleFactor(0.85)
                     .allowsTightening(true)
-                
-//                if !row.uniqe.isEmpty {
-//                    Text(row.uniqe)
-//                        .font(isPadLike ? .footnote : .caption2)
-//                        .foregroundStyle(.secondary)
-//                        .lineLimit(2)
-//                        .fixedSize(horizontal: false, vertical: true)
-//                }
+
+                //                if !row.uniqe.isEmpty {
+                //                    Text(row.uniqe)
+                //                        .font(isPadLike ? .footnote : .caption2)
+                //                        .foregroundStyle(.secondary)
+                //                        .lineLimit(2)
+                //                        .fixedSize(horizontal: false, vertical: true)
+                //                }
             }
-            .frame(maxWidth: (isPadLike ? cols.name : .infinity), alignment: isRTL ? .trailing : .leading)
+            .frame(
+                maxWidth: (isPadLike ? cols.name : .infinity),
+                alignment: isRTL ? .trailing : .leading
+            )
             .layoutPriority(2)
-            
+
             Text("\(row.score)")
                 .font(isPadLike ? .title3 : .body)
                 .fontWeight(.medium)
                 .monospacedDigit()
                 .frame(width: cols.score)
-            
+
             Text("\(row.guessed)")
                 .font(isPadLike ? .title3 : .body)
                 .fontWeight(.medium)
                 .monospacedDigit()
                 .frame(width: cols.guessed)
-            
+
             Text("\(row.total)")
                 .font(isPadLike ? .title3 : .body)
                 .fontWeight(.medium)
@@ -468,11 +632,14 @@ private struct LeaderboardRow: View {
         .padding(.horizontal, 12)
         .padding(.vertical, isPadLike ? 14 : 12)
         .contentShape(Rectangle())
-        .id(row.key) // ← make each row scroll-addressable
+        .id(row.key)  // ← make each row scroll-addressable
         // NEW: thin border to signify current user
         .overlay(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .stroke(row.isMe ? Color.accentColor.opacity(0.95) : .clear, lineWidth: 1)
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .stroke(
+                    row.isMe ? Color.accentColor.opacity(0.95) : .clear,
+                    lineWidth: 1
+                )
         )
         .accessibilityHint(row.isMe ? Text("This is you") : Text(""))
     }
@@ -486,14 +653,15 @@ private struct RankBadge: View {
                 .fill(
                     LinearGradient(
                         colors: badgeColors(rank),
-                        startPoint: .top, endPoint: .bottom
+                        startPoint: .top,
+                        endPoint: .bottom
                     )
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 9, style: .continuous)
                         .stroke(Color.primary.opacity(0.08), lineWidth: 1)
                 )
-            
+
             HStack(spacing: 2) {
                 if rank == 1 { Image(systemName: "crown.fill") }
                 Text("\(rank)")
@@ -503,16 +671,16 @@ private struct RankBadge: View {
             }
             .foregroundStyle(foregroundStyle(rank))
         }
-        .frame(height: 28) // smaller badge
+        .frame(height: 28)  // smaller badge
     }
-    
+
     private func foregroundStyle(_ r: Int) -> Color {
         switch r {
         case 1, 2, 3: return .white
         default: return .secondary
         }
     }
-    
+
     private func badgeColors(_ r: Int) -> [Color] {
         switch r {
         case 1: return [Color.yellow.opacity(0.9), Color.orange.opacity(0.9)]
@@ -525,24 +693,31 @@ private struct RankBadge: View {
 
 private struct EmptyStateCard: View {
     var body: some View {
-        VStack(spacing: 12) {
-            Image(systemName: "chart.bar.doc.horizontal")
-                .font(.system(size: 34, weight: .semibold))
-                .foregroundStyle(.secondary)
-            Text("No data yet")
-                .font(.headline)
-            Text("Play a game to see your daily leaderboard.")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+        ScrollViewReader { _ in
+            ScrollView(.vertical) {
+                VStack(spacing: 12) {
+                    Image(systemName: "chart.bar.doc.horizontal")
+                        .font(.system(size: 34, weight: .semibold))
+                        .foregroundStyle(.secondary)
+                    Text("No data yet")
+                        .font(.headline)
+                    Text("Play a game to see your daily leaderboard.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(24)
+                .background(
+                    .thinMaterial,
+                    in: RoundedRectangle(cornerRadius: 16, style: .continuous)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .strokeBorder(Color.primary.opacity(0.08), lineWidth: 1)
+                )
+                .padding(.top, 12)
+            }
         }
-        .frame(maxWidth: .infinity)
-        .padding(24)
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .strokeBorder(Color.primary.opacity(0.08), lineWidth: 1)
-        )
-        .padding(.top, 12)
     }
 }
 
@@ -555,14 +730,14 @@ private struct LeaderboardRowModel: Identifiable, Equatable {
     let score: Int
     let guessed: Int
     let total: Int
-    let isMe: Bool // NEW: identify current user row
-    
+    let isMe: Bool  // NEW: identify current user row
+
     // Stable key for ScrollViewReader
     var key: String { "row-\(uniqe.lowercased())" }
 }
 
-private extension Collection {
-    subscript(safe index: Index) -> Element? {
+extension Collection {
+    fileprivate subscript(safe index: Index) -> Element? {
         indices.contains(index) ? self[index] : nil
     }
 }

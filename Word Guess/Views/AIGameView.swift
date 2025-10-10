@@ -973,17 +973,11 @@ struct AIGameView<VM: AIWordViewModel>: View {
     }
     
     @ViewBuilder private func gameBottom() -> some View {
-        if endFetchAnimation {
+        ZStack {
+            KeyboardHeightView(adjustBy: 10)
             AppTitle(size: 50)
-                .padding(.top, UIDevice.isPad ? 130 : 95)
-                .padding(.bottom, UIDevice.isPad ? 190 : 145)
-                .shadow(radius: 4)
-        } else {
-            ZStack{}
-                .frame(height: UIDevice.isPad ? 81 : 86)
-                .padding(.top, UIDevice.isPad ? 130 : 95)
-                .padding(.bottom, UIDevice.isPad ? 190 : 140)
-                .shadow(radius: 4)
+                .shadow(color: .black.opacity(0.12), radius: 4, x: 4, y: 4)
+                .shadow(color: .white.opacity(0.12), radius: 4, x: -4 ,y: -4)
         }
     }
     

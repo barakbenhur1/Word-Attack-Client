@@ -121,9 +121,9 @@ struct WordGuessApp: App {
     }
     
     private func onAppear() {
-        guard let currentUser = Auth.auth().currentUser,
-              let uniqe = currentUser.email else { return }
         guard loginHandeler.model == nil else { return }
+        guard let currentUser = Auth.auth().currentUser else { return }
+        let uniqe = currentUser.uid
         loginHandeler.model = getInfo(for: currentUser)
         Task.detached(priority: .high) {
             guard await login.isLoggedin(uniqe: uniqe) else { await notLoggedin(); return }

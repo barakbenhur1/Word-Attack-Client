@@ -12,23 +12,22 @@ import SwiftUI
 struct SubscriptionPaywallView: View {
     // Control presentation without closures
     @Binding var isPresented: Bool
-    
+
     // Use your manager directly (no closures)
     @EnvironmentObject private var premium: PremiumManager
-    
+    @Environment(\.colorScheme) private var scheme   // <- NEW
+
     // Local UI state
-    @State private var selected: PremiumPlan = .yearly
+    @State private var selected: PremiumPlan?
     @State private var shimmer = false
-    
+
     var body: some View {
         ZStack(alignment: .center) {
-            // Background – match Hub
-            LinearGradient(colors: [Color.black,
-                                    Color(hue: 0.64, saturation: 0.25, brightness: 0.18)],
-                           startPoint: .topLeading, endPoint: .bottomTrailing)
-            .ignoresSafeArea()
-            
-            // Soft neon glow behind the card (no GeometryReader needed)
+            // Background – adapts to light/dark
+            HubPaywallPalette.bgGradient(scheme)
+                .ignoresSafeArea()
+
+            // Soft neon glow behind the card
             RadialGradient(
                 gradient: Gradient(colors: [HubPaywallPalette.accent.opacity(0.22), .clear]),
                 center: .center,
@@ -37,16 +36,20 @@ struct SubscriptionPaywallView: View {
             )
             .blur(radius: 80)
             .allowsHitTesting(false)
-            
+
             // Card
             VStack(spacing: 18) {
                 header
-                
-                FeatureRow(icon: "sparkles",   text: "Exclusive Mini-Games – Access fun and challenging modes only in the Hub.".localized)
-                FeatureRow(icon: "crown.fill", text: "Play unique twists that go beyond regular gameplay.".localized)
-                FeatureRow(icon: "bolt.fill",  text: "Compete with other premium players for top ranks.".localized)
-                FeatureRow(icon: "umbrella",   text: "Ad-Free Play – Smooth, uninterrupted gaming inside the Hub.".localized)
-                
+
+                FeatureRow(icon: "sparkles",
+                           text: "Exclusive Mini-Games – Access fun and challenging modes only in the Hub.".localized)
+                FeatureRow(icon: "square.stack.3d.up.fill",
+                           text: "Play unique twists that go beyond regular gameplay.".localized)
+                FeatureRow(icon: "bolt.fill",
+                           text: "Compete with other premium players for top ranks.".localized)
+                FeatureRow(icon: "umbrella",
+                           text: "Ad-Free Play – Smooth, uninterrupted gaming inside the Hub.".localized)
+
                 PlanPickerHubStyle(
                     selected: $selected,
                     monthlyPrice: premium.monthlyPriceText,
@@ -54,7 +57,7 @@ struct SubscriptionPaywallView: View {
                     yearlyBadgeText: premium.yearlyBadgeText,
                     trialText: premium.trialText
                 )
-                
+
                 ctaButton
                 footerLinks
             }
@@ -62,13 +65,13 @@ struct SubscriptionPaywallView: View {
             .background(
                 // glassy card like hub tiles
                 RoundedRectangle(cornerRadius: 28, style: .continuous)
-                    .fill(HubPaywallPalette.card)
+                    .fill(HubPaywallPalette.card(scheme))           // <- CHANGED
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 28, style: .continuous)
-                    .stroke(HubPaywallPalette.stroke, lineWidth: 1)
+                    .stroke(HubPaywallPalette.stroke(scheme), lineWidth: 1) // <- CHANGED
             )
-            .shadow(color: HubPaywallPalette.glow, radius: 26, y: 14)
+            .shadow(color: HubPaywallPalette.glow(scheme), radius: 26, y: 14) // <- CHANGED
             .overlay(alignment: .topTrailing) { closeButton }
             .overlay(
                 ShimmerSweep(trigger: $shimmer)
@@ -88,33 +91,35 @@ struct SubscriptionPaywallView: View {
             .padding(.vertical, 18)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
         }
-        .tint(.white)
+        .tint(HubPaywallPalette.tint(scheme)) // <- CHANGED
         .disabled(premium.isPurchasing)
     }
-    
+
     // MARK: Sections
-    
+
     private var header: some View {
         VStack(spacing: 10) {
             PremiumCrownHub()
-                .frame(width: 64, height: 64)
+                .frame(width: 72, height: 72)
+                .cornerRadius(36)
                 .shadow(color: HubPaywallPalette.accent.opacity(0.6), radius: 14, y: 8)
-            
+
             Text("Go Premium")
                 .font(.system(.largeTitle, design: .rounded).weight(.bold))
-                .foregroundStyle(.white)
+                .foregroundStyle(HubPaywallPalette.textPrimary(scheme)) // <- CHANGED
                 .accessibilityAddTraits(.isHeader)
-            
+
             Text("Unlock all features, no ads, daily challenges, and more.")
                 .font(.callout)
                 .multilineTextAlignment(.center)
-                .foregroundStyle(.white.opacity(0.7))
+                .foregroundStyle(HubPaywallPalette.textSecondary(scheme)) // <- CHANGED
                 .padding(.horizontal)
         }
     }
-    
+
     private var ctaButton: some View {
         Button {
+            guard let selected else { return }
             guard !premium.isPurchasing else { return }
             UIImpactFeedbackGenerator(style: .medium).impactOccurred()
             Task { @MainActor in
@@ -125,25 +130,28 @@ struct SubscriptionPaywallView: View {
             }
         } label: {
             HStack(spacing: 10) {
-                Image(systemName: "lock.open.fill")
+                Image(systemName: selected != nil ? "lock.open.fill" : "lock.fill")
                 Text(ctaText(for: selected, trialText: premium.trialText).localized)
                     .fontWeight(.semibold)
                     .monospacedDigit()
+                    .multilineTextAlignment(.center)
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 14)
             .contentShape(Rectangle())
         }
-        .buttonStyle(AccentGlassyButtonStyle())
+        .buttonStyle(AccentGlassyButtonStyle()) // text color adapts inside
         .overlay {
             if premium.isPurchasing {
-                ProgressView().progressViewStyle(.circular)
+                ProgressView()
+                    .progressViewStyle(.circular)
+                    .tint(scheme == .dark ? .white : .black)
             }
         }
-        .disabled(premium.isPurchasing)
+        .disabled(selected == nil || premium.isPurchasing)
         .accessibilityLabel("Subscribe \(ctaText(for: selected, trialText: premium.trialText))")
     }
-    
+
     private var footerLinks: some View {
         HStack(spacing: 16) {
             Button("Restore Purchases") {
@@ -151,24 +159,24 @@ struct SubscriptionPaywallView: View {
                 Task { await premium.restore() }
             }
             .font(.footnote)
-            .foregroundStyle(.white.opacity(0.7))
+            .foregroundStyle(HubPaywallPalette.textSecondary(scheme)) // <- CHANGED
             .buttonStyle(.plain)
-            
-            Text("•").foregroundStyle(.white.opacity(0.35))
-            
+
+            Text("•").foregroundStyle(HubPaywallPalette.divider(scheme)) // <- CHANGED
+
             Link("Terms", destination: URL(string: "https://barakbenhur1.github.io/terms.html")!)
                 .font(.footnote)
-                .foregroundStyle(.white.opacity(0.7))
-            
-            Text("•").foregroundStyle(.white.opacity(0.35))
-            
+                .foregroundStyle(HubPaywallPalette.textSecondary(scheme)) // <- CHANGED
+
+            Text("•").foregroundStyle(HubPaywallPalette.divider(scheme)) // <- CHANGED
+
             Link("Privacy", destination: URL(string: "https://barakbenhur1.github.io/privacy.html")!)
                 .font(.footnote)
-                .foregroundStyle(.white.opacity(0.7))
+                .foregroundStyle(HubPaywallPalette.textSecondary(scheme)) // <- CHANGED
         }
         .padding(.top, 2)
     }
-    
+
     private var closeButton: some View {
         Button {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
@@ -177,21 +185,22 @@ struct SubscriptionPaywallView: View {
             Image(systemName: "xmark")
                 .font(.system(size: 14, weight: .bold))
                 .padding(10)
-                .background(HubPaywallPalette.card, in: Circle())
-                .overlay(Circle().stroke(HubPaywallPalette.stroke, lineWidth: 1))
+                .background(HubPaywallPalette.card(scheme), in: Circle())   // <- CHANGED
+                .overlay(Circle().stroke(HubPaywallPalette.stroke(scheme), lineWidth: 1)) // <- CHANGED
         }
         .buttonStyle(.plain)
         .padding(.top, 12)
         .padding(.trailing, 12)
         .accessibilityLabel("Close")
     }
-    
+
     // MARK: Helpers
     
-    private func ctaText(for plan: PremiumPlan, trialText: String?) -> String {
+    private func ctaText(for plan: PremiumPlan?, trialText: String?) -> String {
+        guard let plan else { return "\("Subscribe".localized)\(trialText != nil ? "\n" + trialText! : "")" }
         switch plan {
-        case .monthly: return trialText.map { "Start \($0)" } ?? "Subscribe Monthly".localized
-        case .yearly:  return trialText.map { "Start \($0)" } ?? "Subscribe Yearly".localized
+        case .monthly: return trialText != nil ? "\("Subscribe Monthly Get".localized) \(trialText!)" : "Subscribe Monthly".localized
+        case .yearly:  return trialText != nil ? "\("Subscribe Yearly Get".localized) \(trialText!)" : "Subscribe Yearly".localized
         }
     }
 }
@@ -199,6 +208,7 @@ struct SubscriptionPaywallView: View {
 // MARK: - Pieces (Hub style)
 
 private struct PremiumCrownHub: View {
+    @Environment(\.colorScheme) private var scheme
     @State private var pulse = false
     var body: some View {
         ZStack {
@@ -218,9 +228,19 @@ private struct PremiumCrownHub: View {
                 .onAppear { pulse = true }
             // Chip + crown
             Circle()
-                .fill(LinearGradient(colors: [.white.opacity(0.18), .white.opacity(0.05)],
-                                     startPoint: .topLeading, endPoint: .bottomTrailing))
-                .overlay(Circle().stroke(.white.opacity(0.25), lineWidth: 1))
+                .fill(
+                    scheme == .dark
+                    ? LinearGradient(colors: [.black.opacity(0.18), .black.opacity(0.05)],
+                                     startPoint: .topLeading, endPoint: .bottomTrailing)
+                    : LinearGradient(colors: [Color.white.opacity(0.06), Color.white.opacity(0.02)],
+                                     startPoint: .topLeading, endPoint: .bottomTrailing)
+                )
+                .overlay(
+                    Circle().stroke(
+                        (scheme == .dark ? Color.black : Color.white).opacity(0.25),
+                        lineWidth: 1
+                    )
+                )
             Image(systemName: "crown.fill")
                 .symbolRenderingMode(.hierarchical)
                 .foregroundStyle(LinearGradient(colors: [HubPaywallPalette.accent, HubPaywallPalette.accent2],
@@ -228,17 +248,19 @@ private struct PremiumCrownHub: View {
                 .font(.system(size: 30, weight: .bold))
                 .shadow(color: HubPaywallPalette.accent.opacity(0.6), radius: 8, y: 4)
         }
+        .padding(8)
     }
 }
 
 private struct FeatureRow: View {
+    @Environment(\.colorScheme) private var scheme
     let icon: String
     let text: String
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
             Image(systemName: icon)
                 .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(.white)
+                .foregroundStyle(HubPaywallPalette.icon(scheme)) // <- CHANGED
                 .frame(width: 28, height: 28)
                 .background(
                     LinearGradient(colors: [HubPaywallPalette.accent.opacity(0.35),
@@ -246,10 +268,11 @@ private struct FeatureRow: View {
                                    startPoint: .topLeading, endPoint: .bottomTrailing)
                 )
                 .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                .overlay(RoundedRectangle(cornerRadius: 8).stroke(.white.opacity(0.25), lineWidth: 1))
+                .overlay(RoundedRectangle(cornerRadius: 8).stroke(HubPaywallPalette.overlayStroke(scheme), lineWidth: 1)) // <- CHANGED
             Text(text)
                 .font(.subheadline)
-                .foregroundStyle(.white.opacity(0.92))
+                .foregroundStyle(HubPaywallPalette.textPrimary(scheme)) // <- CHANGED
+                .opacity(0.92)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -257,12 +280,13 @@ private struct FeatureRow: View {
 }
 
 private struct PlanPickerHubStyle: View {
-    @Binding var selected: PremiumPlan
+    @Environment(\.colorScheme) private var scheme
+    @Binding var selected: PremiumPlan?
     var monthlyPrice: String
     var yearlyPrice: String
     var yearlyBadgeText: String?
     var trialText: String?
-    
+
     var body: some View {
         VStack(spacing: 12) {
             planRow(.yearly,
@@ -277,7 +301,7 @@ private struct PlanPickerHubStyle: View {
                     badge: nil)
         }
     }
-    
+
     @ViewBuilder
     private func planRow(_ plan: PremiumPlan,
                          title: String,
@@ -285,7 +309,7 @@ private struct PlanPickerHubStyle: View {
                          price: String,
                          badge: String?) -> some View {
         let isSelected = (selected == plan)
-        
+
         Button {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
             withAnimation(.spring(response: 0.35, dampingFraction: 0.9)) {
@@ -295,7 +319,7 @@ private struct PlanPickerHubStyle: View {
             HStack(spacing: 14) {
                 // Radio
                 ZStack {
-                    Circle().strokeBorder(.white.opacity(0.30), lineWidth: 1)
+                    Circle().strokeBorder(HubPaywallPalette.radioStroke(scheme), lineWidth: 1) // <- CHANGED
                         .frame(width: 22, height: 22)
                     if isSelected {
                         Circle()
@@ -304,10 +328,12 @@ private struct PlanPickerHubStyle: View {
                             .frame(width: 12, height: 12)
                     }
                 }
-                
+
                 VStack(alignment: .leading, spacing: 2) {
                     HStack(spacing: 8) {
-                        Text(title.localized).font(.headline.weight(.semibold)).foregroundStyle(.white)
+                        Text(title.localized)
+                            .font(.headline.weight(.semibold))
+                            .foregroundStyle(HubPaywallPalette.textPrimary(scheme)) // <- CHANGED
                         if let badge {
                             Text(badge)
                                 .font(.caption2.weight(.bold))
@@ -324,19 +350,19 @@ private struct PlanPickerHubStyle: View {
                     if let subtitle {
                         Text(subtitle.localized)
                             .font(.caption)
-                            .foregroundStyle(.white.opacity(0.65))
+                            .foregroundStyle(HubPaywallPalette.textSecondary(scheme)) // <- CHANGED
                     }
                 }
                 Spacer()
                 Text(price.localized)
                     .font(.headline.monospacedDigit())
-                    .foregroundStyle(.white)
+                    .foregroundStyle(HubPaywallPalette.textPrimary(scheme)) // <- CHANGED
             }
             .padding(14)
             .frame(maxWidth: .infinity)
             .background(
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(HubPaywallPalette.card)
+                    .fill(HubPaywallPalette.card(scheme)) // <- CHANGED
                     .overlay(
                         RoundedRectangle(cornerRadius: 16)
                             .stroke(
@@ -347,7 +373,7 @@ private struct PlanPickerHubStyle: View {
                                         startPoint: .topLeading,
                                         endPoint: .bottomTrailing
                                     ))
-                                    : AnyShapeStyle(HubPaywallPalette.stroke)
+                                    : AnyShapeStyle(HubPaywallPalette.stroke(scheme)) // <- CHANGED
                                 ),
                                 lineWidth: isSelected ? 1.6 : 1.0
                             )
@@ -357,27 +383,27 @@ private struct PlanPickerHubStyle: View {
         .buttonStyle(.plain)
         .accessibilityLabel("\(title) plan \(price)")
     }
-    
+
     private func formattedPerMonth(from yearly: String, locale: Locale = .current) -> String {
         // Extract only digits, dots, and commas
         let digits = yearly.replacingOccurrences(of: "[^0-9.,]", with: "", options: .regularExpression)
         // Normalize commas to dots for Double parsing
         let normalized = digits.replacingOccurrences(of: ",", with: ".")
-        
+
         guard let value = Double(normalized) else {
             let nf = NumberFormatter()
             nf.numberStyle = .currency
             nf.locale = locale
             return nf.string(from: 0) ?? nf.currencySymbol + "—"
         }
-        
+
         let perMonth = value / 12.0
         let formatter = NumberFormatter()
         formatter.numberStyle = .currency
         formatter.locale = locale
         formatter.maximumFractionDigits = 2
         formatter.minimumFractionDigits = 0
-        
+
         return formatter.string(from: NSNumber(value: perMonth)) ?? formatter.currencySymbol + "—"
     }
 }
@@ -385,37 +411,113 @@ private struct PlanPickerHubStyle: View {
 // MARK: - Styles / Palette (Hub-like)
 
 private struct AccentGlassyButtonStyle: ButtonStyle {
+    @Environment(\.colorScheme) private var scheme
+
     func makeBody(configuration: Configuration) -> some View {
-        configuration.label
+        let stroke = scheme == .dark ? Color.white.opacity(0.35) : Color.black.opacity(0.15)
+        let glow   = scheme == .dark ? Color.white.opacity(0.22) : Color.black.opacity(0.10)
+
+        return configuration.label
             .font(.headline)
-            .foregroundStyle(.black)
+            .foregroundStyle(Color.dynamicBlack)
             .background(
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
                     .fill(
-                        LinearGradient(colors: [HubPaywallPalette.accent, HubPaywallPalette.accent2],
+                        LinearGradient(colors: [.cyan, .mint],
                                        startPoint: .topLeading, endPoint: .bottomTrailing)
                         .opacity(configuration.isPressed ? 0.95 : 1)
                     )
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .stroke(.white.opacity(0.35), lineWidth: 1)
+                    .stroke(stroke, lineWidth: 1)
             )
             .scaleEffect(configuration.isPressed ? 0.98 : 1.0)
-            .shadow(color: HubPaywallPalette.glow, radius: configuration.isPressed ? 8 : 14, y: 8)
+            .shadow(color: glow, radius: configuration.isPressed ? 8 : 14, y: 8)
             .padding(.horizontal, 2)
             .padding(.vertical, 2)
             .animation(.spring(response: 0.22, dampingFraction: 0.65), value: configuration.isPressed)
     }
 }
 
-// local palette echoing the hub’s look
+// Adaptive palette for light/dark keeping your dark design as-is
 private enum HubPaywallPalette {
-    static let card   = Color.white.opacity(0.06)
-    static let stroke = Color.white.opacity(0.09)
-    static let glow   = Color.white.opacity(0.22)
-    static let accent = Color.cyan
+    // Accents stay the same in both modes
+    static let accent  = Color.cyan
     static let accent2 = Color.mint
+
+    static func bgGradient(_ scheme: ColorScheme) -> LinearGradient {
+        switch scheme {
+        case .dark:
+            return LinearGradient(
+                colors: [Color.black,
+                         Color(hue: 0.64, saturation: 0.25, brightness: 0.18)],
+                startPoint: .topLeading, endPoint: .bottomTrailing
+            )
+        default:
+            return LinearGradient(
+                colors: [Color(UIColor.systemGroupedBackground),
+                         Color(UIColor.secondarySystemGroupedBackground)],
+                startPoint: .topLeading, endPoint: .bottomTrailing
+            )
+        }
+    }
+
+    static func card(_ scheme: ColorScheme) -> Color {
+        scheme == .dark
+        ? Color.white.opacity(0.06)
+        : Color.white.opacity(0.92)
+    }
+
+    static func stroke(_ scheme: ColorScheme) -> Color {
+        scheme == .dark
+        ? Color.white.opacity(0.09)
+        : Color.black.opacity(0.08)
+    }
+
+    static func overlayStroke(_ scheme: ColorScheme) -> Color {
+        scheme == .dark
+        ? Color.white.opacity(0.25)
+        : Color.black.opacity(0.15)
+    }
+
+    static func radioStroke(_ scheme: ColorScheme) -> Color {
+        scheme == .dark
+        ? Color.white.opacity(0.30)
+        : Color.black.opacity(0.25)
+    }
+
+    static func glow(_ scheme: ColorScheme) -> Color {
+        scheme == .dark
+        ? Color.white.opacity(0.22)
+        : Color.black.opacity(0.10)
+    }
+
+    static func textPrimary(_ scheme: ColorScheme) -> Color {
+        scheme == .dark ? .white : .black
+    }
+
+    static func textSecondary(_ scheme: ColorScheme) -> Color {
+        scheme == .dark ? .white.opacity(0.7) : .black.opacity(0.6)
+    }
+
+    static func icon(_ scheme: ColorScheme) -> Color {
+        scheme == .dark ? .white : .black
+    }
+
+    static func divider(_ scheme: ColorScheme) -> Color {
+        scheme == .dark ? .white.opacity(0.35) : .black.opacity(0.35)
+    }
+
+    static func buttonLabel(_ scheme: ColorScheme) -> Color {
+        // Black on cyan/mint reads well in both modes
+        .black
+    }
+
+    static func tint(_ scheme: ColorScheme) -> Color {
+        // Control tint (links, switches, etc.)
+        scheme == .dark ? .white : .black
+    }
 }
 
 // Reuse shimmer sweep from the hub (inline to avoid imports)
@@ -458,15 +560,18 @@ private extension NumberFormatter {
 
 struct SubscriptionPaywallView_Previews: PreviewProvider {
     static var previews: some View {
-        SubscriptionPaywallView(isPresented: .constant(true))
-            .environmentObject(PremiumManager.shared) // preview stub
-            .preferredColorScheme(.dark)
-            .frame(maxHeight: .infinity)
-            .background(
-                LinearGradient(colors: [Color.black,
-                                        Color(hue: 0.64, saturation: 0.25, brightness: 0.18)],
-                               startPoint: .topLeading, endPoint: .bottomTrailing)
-                .ignoresSafeArea()
-            )
+        Group {
+            SubscriptionPaywallView(isPresented: .constant(true))
+                .environmentObject(PremiumManager.shared)
+                .preferredColorScheme(.dark)
+                .frame(maxHeight: .infinity)
+                .background(HubPaywallPalette.bgGradient(.dark).ignoresSafeArea())
+
+            SubscriptionPaywallView(isPresented: .constant(true))
+                .environmentObject(PremiumManager.shared)
+                .preferredColorScheme(.light)
+                .frame(maxHeight: .infinity)
+                .background(HubPaywallPalette.bgGradient(.light).ignoresSafeArea())
+        }
     }
 }

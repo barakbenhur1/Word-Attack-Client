@@ -32,6 +32,7 @@ struct PremiumLeaderboardView<VM: PremiumScoreboardViewModel>: View {
                 Group {
                     if vm.data == nil {
                         skeletonList
+                            .padding(.horizontal, 10)
                     } else if let items = vm.data, items.isEmpty {
                         emptyState
                     } else if let items = vm.data {
@@ -50,7 +51,7 @@ struct PremiumLeaderboardView<VM: PremiumScoreboardViewModel>: View {
                     }
                 }
             }
-            .padding(.horizontal, 12)
+            .padding(.horizontal, 2)
             .padding(.top, 4)
         }
         .task {
@@ -71,6 +72,7 @@ struct PremiumLeaderboardView<VM: PremiumScoreboardViewModel>: View {
             let isPadLike = (hSize == .regular) || UIDevice.current.userInterfaceIdiom == .pad
             
             BackButton(action: router.navigateBack)
+                .padding(.top, -20)
             
             HStack(spacing: 4) {
                 Spacer()
@@ -89,7 +91,6 @@ struct PremiumLeaderboardView<VM: PremiumScoreboardViewModel>: View {
     }
     
     // MARK: Body
-    
     private func listBody(items: [PremiumScoreData], proxy: ScrollViewProxy) -> some View {
         // Only non-negative scores; highest first
         let sorted = items.filter { $0.value >= 0 }.sorted { $0.rank < $1.rank }
@@ -142,16 +143,24 @@ struct PremiumLeaderboardView<VM: PremiumScoreboardViewModel>: View {
     }
     
     private var emptyState: some View {
-        VStack(spacing: 8) {
-            Text("No scores yet")
-                .font(.headline)
-                .foregroundStyle(Color.dynamicWhite)
-            Text("Play premium rounds to climb the board.")
-                .font(.subheadline)
-                .foregroundStyle(Color.dynamicWhite.opacity(0.7))
+        ScrollView(.vertical) {
+            VStack(spacing: 8) {
+                Text("No scores yet")
+                    .font(.headline)
+                    .foregroundStyle(Color.dynamicBlack)
+                Text("Play premium rounds to climb the board.")
+                    .font(.subheadline)
+                    .foregroundStyle(Color.dynamicBlack.opacity(0.7))
+            }
+            .padding(24)
+            .background(.thinMaterial.opacity(0.2), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .strokeBorder(Color.primary.opacity(0.08), lineWidth: 1)
+            )
+            .padding(.vertical, 10)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
         }
-        .frame(maxWidth: .infinity, alignment: .center)
-        .padding(.vertical, 40)
     }
 }
 
@@ -284,7 +293,7 @@ private struct ScorePill: View {
     }
 }
 
-private struct SkeletonRow: View {
+struct SkeletonRow: View {
     let isTop3: Bool
     var body: some View {
         ZStack {

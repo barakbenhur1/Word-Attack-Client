@@ -126,7 +126,7 @@ func handleProcessing(task: BGProcessingTask) async {
 @discardableResult
 func performWordZapRefresh(deeper: Bool) async -> Bool {
     // If user not logged-in, still rotate tooltip and refresh widgets
-    guard let uniqe = Auth.auth().currentUser?.email else {
+    guard let uniqe = Auth.auth().currentUser?.uid else {
         await rotateTooltipLocally()
         await reloadWidgets()
         return false

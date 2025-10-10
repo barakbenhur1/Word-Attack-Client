@@ -61,11 +61,13 @@ class Router: Singleton {
         }
     }
     
-    private func handeleNavigationAnimation(for appRoute: Route) {
-        switch appRoute {
+    private func handeleNavigationAnimation() {
+        switch routeQueue.last {
+        case .premium(_):              navigationAnimation = false
+        case .premiumScore:            navigationAnimation = false
         case .premiumGame(_, _, _, _): navigationAnimation = false
-        case .game(let diffculty):  navigationAnimation = diffculty != .tutorial
-        default:                    navigationAnimation = true
+        case .game(let diffculty):     navigationAnimation = diffculty != .tutorial
+        default:                       navigationAnimation = true
         }
     }
     
@@ -83,8 +85,8 @@ class Router: Singleton {
         guard !lockNavigation else { return }
         guard routeQueue.last != appRoute else { return }
         UIApplication.shared.hideKeyboard()
-        handeleNavigationAnimation(for: appRoute)
         routeQueue.append(appRoute)
+        handeleNavigationAnimation()
         path.append(appRoute)
         lockNavigation = true
         Task.detached(priority: .high) {
@@ -101,13 +103,18 @@ class Router: Singleton {
     func navigateBack() {
         guard !path.isEmpty else { return }
         UIApplication.shared.hideKeyboard()
+        handeleNavigationAnimation()
         routeQueue.removeLast()
         path.removeLast()
     }
     
+    // Used to pop to root view
     func popToRoot() async {
         guard !path.isEmpty else { return }
         await UIApplication.shared.hideKeyboard()
-        await MainActor.run { routeQueue = []; path.removeLast(path.count) }
+        await MainActor.run {
+            handeleNavigationAnimation()
+            routeQueue = []
+            path.removeLast(path.count) }
     }
 }

@@ -106,7 +106,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
             let token = deviceToken.map { String(format: "%02x", $0) }.joined()
             
             Task {
-                guard let uniqe = Auth.auth().currentUser?.email else { return }
+                guard let uniqe = Auth.auth().currentUser?.uid else { return }
                 await Network.DeviceTokenService.register(uniqe: uniqe, token: token, environment: env, userId: Auth.auth().currentUser?.uid)
             }
         }
@@ -145,20 +145,32 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
         }
     
     final class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate {
+        
         func userNotificationCenter(_ center: UNUserNotificationCenter,
                                     willPresent notification: UNNotification,
                                     withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
             
-            let kind = notification.request.content.userInfo["kind"] as? String
+            let req = notification.request
+            let id  = req.identifier
+            let cat = req.content.categoryIdentifier
+            let kind = req.content.userInfo["kind"] as? String
             
-            // Never present DailyInactivity while foreground
-            if kind == "DailyInactivityReminder" {
-                completionHandler([]) // suppress while app is active
+            // Treat any of these as the daily inactivity reminder
+            let isDailyInactivity =
+            id.hasPrefix("com.wordzap.dailyInactivity") ||    // identifier strategy
+            cat == "DailyInactivity" ||                        // category strategy (define one if you like)
+            kind == "DailyInactivityReminder"                  // userInfo strategy (your current method)
+            
+            if isDailyInactivity {
+                // Suppress completely while foreground
+                completionHandler([])        // no banner/sound/badge/list
                 return
             }
             
-            // For other reminders (like resume game), you can still show a banner if you want:
-            completionHandler([/* .banner, .sound */]) // or [] to suppress all in-foreground
+            // For everything else (e.g., resume game), choose what you want in-foreground:
+            // .banner shows a heads-up while foreground; .list adds to Notification Center without a banner.
+            // If you want to suppress everything in-foreground, return [] here too.
+            completionHandler([.banner, .sound])   // or [.list] for quiet delivery, or []
         }
     }
     
@@ -186,7 +198,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
         let bgID = UIApplication.shared.beginBackgroundTask(withName: "wordzap.graceful")
         Task {
             defer { UIApplication.shared.endBackgroundTask(bgID) }
-            guard let uniqe = Auth.auth().currentUser?.email else { return }
+            guard let uniqe = Auth.auth().currentUser?.uid else { return }
             await refreshWordZapPlaces(uniqe: uniqe)
             await MainActor.run { SharedStore.requestWidgetReload() }
         }

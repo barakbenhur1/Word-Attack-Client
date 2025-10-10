@@ -18,8 +18,8 @@ private struct CapsuleProgressBar: View {
         GeometryReader { geo in
             let w = max(0, min(1, progress)) * geo.size.width
             ZStack(alignment: .leading) {
-                Capsule().fill(Color.dynamicWhite.opacity(0.25))
-                Capsule().fill(LinearGradient(colors: [Color.dynamicWhite.opacity(0.7), Palette.buttonTint.opacity(0.7)],
+                Capsule().fill(Color.dynamicBlack.opacity(0.25))
+                Capsule().fill(LinearGradient(colors: [Color.dynamicBlack.opacity(0.7), Palette.buttonTint.opacity(0.7)],
                                               startPoint: .leading,
                                               endPoint: .trailing))
                 .frame(width: w)

@@ -96,7 +96,7 @@
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld שנ׳"
+            "value" : "%lldשנ׳"
           }
         }
       }
@@ -3265,6 +3265,23 @@
         }
       }
     },
+    "Premium Hub  💎" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "PREMIUM HUB ♛"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "היכל פרימיום ♛"
+          }
+        }
+      }
+    },
     "Premium Leaderboard" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -3394,7 +3411,7 @@
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "מתרענן בעוד %llds"
+            "value" : "מתרענן בעוד %lldשנ׳"
           }
         }
       }
@@ -3961,6 +3978,17 @@
         }
       }
     },
+    "Subscribe" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הרשם"
+          }
+        }
+      }
+    },
     "Subscribe %@" : {
       "localizations" : {
         "he" : {
@@ -3982,6 +4010,23 @@
         }
       }
     },
+    "Subscribe Monthly Get" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Subscribe Monthly\nGet"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "תוכנית חודשית\nקבל"
+          }
+        }
+      }
+    },
     "Subscribe Yearly" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -3989,6 +4034,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "תוכנית שנתית"
+          }
+        }
+      }
+    },
+    "Subscribe Yearly Get" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Subscribe Yearly\nGet"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "תוכנית שנתית\nקבל"
           }
         }
       }
@@ -4155,7 +4217,14 @@
       }
     },
     "Tap tiles" : {
-
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "לחץ על התאים"
+          }
+        }
+      }
     },
     "Taps: %lld/%lld" : {
       "localizations" : {
@@ -4188,13 +4257,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "The center button starts the main game and turn gold once you have the letters needed to slove word."
+            "value" : "Tap the center button to start the main game; it turns gold once you have all the letters needed to solve the word"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "הכפתור האמצעי מתחיל את המשחק והופך לזהוב כשיש לך את כל האותיות בכדי לנחש את המילה."
+            "value" : "הכפתור האמצעי מפעיל את המשחק הראשי, והוא הופך לזהוב כשיש לך את כל האותיות הדרושות לפתרון המילה"
           }
         }
       }
@@ -4258,19 +4327,15 @@
         }
       }
     },
-    "Time left:" : {
-      "extractionState" : "stale",
+    "Time left: %llds" : {
       "localizations" : {
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "זמן שנשאר:"
+            "value" : "זמן שנשאר: %lldשנ׳"
           }
         }
       }
-    },
-    "Time left: %llds" : {
-
     },
     "Timer" : {
       "shouldTranslate" : false

@@ -138,6 +138,7 @@ private struct RealStoneModifier: ViewModifier {
     let crackWidth: CGFloat
     let bevel: CGFloat
     let seed: UInt64
+    let left: Bool
     
     @State private var cachedCracks: [Path] = []
     @State private var cachedSize: CGSize = .zero
@@ -171,11 +172,14 @@ private struct RealStoneModifier: ViewModifier {
                 // Cracks (deterministic & cached)
                 ZStack {
                     ForEach(cachedCracks.indices, id: \.self) { i in
-                        cachedCracks[i]
-                            .stroke(Color.black.opacity(0.55), lineWidth: crackWidth)
+                        let crack = left
+                        ? cachedCracks[i]
+                        : cachedCracks[i].mutateForDiffrance(in: CGRect(origin: .zero, size: size))
+                        crack
+                            .stroke(Color.dynamicBlack.opacity(0.95), lineWidth: crackWidth)
                             .blur(radius: 0.2)
-                        cachedCracks[i]
-                            .stroke(Color.white.opacity(0.22), lineWidth: crackWidth * 0.6)
+                        crack
+                            .stroke(Color.dynamicBlack.opacity(0.32), lineWidth: crackWidth * 0.6)
                             .blendMode(.overlay)
                     }
                 }
@@ -190,8 +194,8 @@ private struct RealStoneModifier: ViewModifier {
                             .stroke(
                                 LinearGradient(
                                     colors: [
-                                        Color.white.opacity(0.35),
-                                        Color.black.opacity(0.25)
+                                        Color.gold.opacity(0.35),
+                                        Color.yellow.opacity(0.25)
                                     ],
                                     startPoint: .topLeading,
                                     endPoint: .bottomTrailing
@@ -480,12 +484,12 @@ private struct PremiumAttention: ViewModifier {
     
     func body(content: Content) -> some View {
         ZStack {
+            halo
+                .animation(reduceMotion ? nil : .easeInOut(duration: 0.9), value: t)
+                .animation(reduceMotion ? nil : .spring(response: 0.5, dampingFraction: 0.9), value: isActive)
             content
                 .scaleEffect(isActive ? (reduceMotion ? 1.0 : (baseScale + scaleAmplitude * sin(.pi * Double(t*2)))) : 1.0)
                 .shadow(color: bloomColor.opacity(isActive ? 0.35 : 0), radius: isActive ? 14 : 0, x: 0, y: 3)
-                .overlay(halo)
-                .animation(reduceMotion ? nil : .easeInOut(duration: 0.9), value: t)
-                .animation(reduceMotion ? nil : .spring(response: 0.5, dampingFraction: 0.9), value: isActive)
         }
         .compositingGroup()
         .onChange(of: isActive) { _, newValue in
@@ -502,7 +506,7 @@ private struct PremiumAttention: ViewModifier {
     private var halo: some View {
         GeometryReader { geo in
             let size = min(geo.size.width, geo.size.height)
-            let ringScale = 1.0 + (reduceMotion ? 0.0 : 0.2 * CGFloat(sin(.pi * Double(t*2))))
+            let ringScale = 1 + (reduceMotion ? 0.0 : 0.2 * CGFloat(sin(.pi * Double(t*2))))
             let ringOpacity = 0.25 + 0.35 * Double((sin(.pi * Double(t*2)) + 1) / 2)
             
             Circle()
@@ -515,6 +519,7 @@ private struct PremiumAttention: ViewModifier {
                 .scaleEffect(ringScale)
                 .opacity(isActive ? ringOpacity : 0)
                 .blendMode(.screen)
+                .offset(y: -5)
                 .allowsHitTesting(false)
         }
     }
@@ -549,7 +554,22 @@ extension View {
     func elevated(cornerRadius: CGFloat) -> some View { modifier(ElevatedModifier(cornerRadius: cornerRadius)) }
     func loading(show: Bool) -> some View { modifier(LoadingViewModifier(show: show)) }
     func brickBorder(color: Color = .gray, lineWidth: CGFloat = 6, brickLength: CGFloat = 24, gapLength: CGFloat = 8, cornerRadius: CGFloat = 8) -> some View { modifier(BrickBorderModifier(color: color, lineWidth: lineWidth, brickLength: brickLength, gapLength: gapLength, cornerRadius: cornerRadius)) }
-    func realStone(base: Color = Color(white: 0.78), cornerRadius: CGFloat = 4, crackCount: Int = 3, crackWidth: CGFloat = 1.2, bevel: CGFloat = 8, seed: UInt64 = 1337) -> some View { modifier(RealStoneModifier(base: base, cornerRadius: cornerRadius, crackCount: crackCount, crackWidth: crackWidth, bevel: bevel, seed: seed)) }
+    func realStone(base: Color = .gold, cornerRadius: CGFloat = 4, crackCount: Int = 0, crackWidth: CGFloat = 0.8, bevel: CGFloat = 42, seed: UInt64 = 2392, left: Bool) -> some View { modifier(RealStoneModifier(base: base, cornerRadius: cornerRadius, crackCount: crackCount, crackWidth: crackWidth, bevel: bevel, seed: seed, left: left)) }
     func attentionIfNew(isActive: Binding<Bool>, duration: UInt64 = 8_000_000_000) -> some View { modifier(PremiumAttention(isActive: isActive, duration: duration))
     }
 }
+
+extension Color {
+    static let gold: Color = Color(red: 1.00, green: 0.84, blue: 0.00)
+}
+
+extension Path {
+    /// Mirror horizontally around the vertical center of `rect`
+    func mutateForDiffrance(in rect: CGRect) -> Path {
+        let t = CGAffineTransform(translationX: rect.midX, y: 0)
+            .scaledBy(x: -1, y: 1)
+            .translatedBy(x: -rect.midX, y: Int(rect.midY) % 2 == 0 ? 14 : 20)
+        return applying(t)
+    }
+}
+

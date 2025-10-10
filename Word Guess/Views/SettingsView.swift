@@ -164,85 +164,86 @@ struct SettingsView: View {
     
     @ViewBuilder private func label(item: SettingsOptionButton) -> some View {
         ZStack {
-            switch item.type {
-            case .premium:
-                HStack {
-                    Text(item.type.stringValue.localized)
-                        .font(.headline.bold().italic())
-                    
-                    Spacer()
-                    
-                    Text(premium.isPremium ? "Restore Purchases" : "Purchase")
-                        .font(.headline.bold().italic())
-                        .foregroundStyle(Color.premiumPurple)
-                }
-                
-            case .language:
-                HStack {
-                    Text(item.type.stringValue.localized)
-                        .font(.headline)
-                    
-                    Spacer()
-                    
-                    Text(language == "he" ? "Hebrew" : "English")
-                        .font(.headline)
-                        .foregroundStyle(Color.activeSettingColor)
-                }
-                
-            case .sound:
-                Toggle(item.type.stringValue.localized, isOn: $audio.isOn)
-                    .font(.headline)
-                    .tint(.activeSettingColor)
-                    .toggleStyle(.switch)
-                
-            case .ai:
-                HStack {
-                    Text(item.type.stringValue.localized)
-                        .font(.headline)
-                    
-                    Text(difficulty?.localized ?? (ModelStorage.localHasUsableModels() ? "Not Discoverd".localized : "Not downloaded yet".localized))
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .animation(.easeInOut, value: difficulty)
-                    
-                    Spacer()
-                    
-                    Text("Reset Difficulty")
-                        .font(.headline)
-                        .foregroundStyle(difficulty == nil || difficulty == AIDifficulty.easy.name ? Color.disabledSettingColor : Color.activeSettingColor)
-                }
-                
-            case .update:
-                if let notice = checker.needUpdate {
+            ZStack {
+                switch item.type {
+                case .premium:
                     HStack {
                         Text(item.type.stringValue.localized)
                             .font(.headline.bold().italic())
                         
                         Spacer()
                         
-                        Text("Update App To Version \(notice.latest)")
-                            .font(.caption.bold().italic())
+                        Text(premium.isPremium ? "Restore Purchases" : "Purchase")
+                            .font(.headline.bold().italic())
+                            .foregroundStyle(Color.premiumPurple)
+                    }
+                    
+                case .language:
+                    HStack {
+                        Text(item.type.stringValue.localized)
+                            .font(.headline)
+                        
+                        Spacer()
+                        
+                        Text(language == "he" ? "Hebrew" : "English")
+                            .font(.headline)
                             .foregroundStyle(Color.activeSettingColor)
                     }
-                }
-                
-            case .share:
-                if let uniqe = loginHandeler.model?.uniqe  {
-                    InviteFriendsButton(refUserID: uniqe) { item in
-                        itemSource = item
-                        showShare = true
+                    
+                case .sound:
+                    Toggle(item.type.stringValue.localized, isOn: $audio.isOn)
+                        .font(.headline)
+                        .tint(.activeSettingColor)
+                        .toggleStyle(.switch)
+                    
+                case .ai:
+                    HStack {
+                        Text(item.type.stringValue.localized)
+                            .font(.headline)
+                        
+                        Text(difficulty?.localized ?? (ModelStorage.localHasUsableModels() ? "Not Discoverd".localized : "Not downloaded yet".localized))
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .animation(.easeInOut, value: difficulty)
+                        
+                        Spacer()
+                        
+                        Text("Reset Difficulty")
+                            .font(.headline)
+                            .foregroundStyle(difficulty == nil || difficulty == AIDifficulty.easy.name ? Color.disabledSettingColor : Color.activeSettingColor)
                     }
-                    .frame(maxWidth: .infinity)
+                    
+                case .update:
+                    if let notice = checker.needUpdate {
+                        HStack {
+                            Text(item.type.stringValue.localized)
+                                .font(.headline.bold().italic())
+                            
+                            Spacer()
+                            
+                            Text("Update App To Version \(notice.latest)")
+                                .font(.caption.bold().italic())
+                                .foregroundStyle(Color.activeSettingColor)
+                        }
+                    }
+                    
+                case .share:
+                    if let uniqe = loginHandeler.model?.uniqe  {
+                        InviteFriendsButton(refUserID: uniqe) { item in
+                            itemSource = item
+                            showShare = true
+                        }
+                        .frame(maxWidth: .infinity)
+                    }
                 }
             }
-            
+            .padding()
             if let itemSource, showShare {
                 ShareSheet(isPresented: $showShare,
                            itemSource: itemSource,
                            anchorRectInScreen: .zero)
             }
         }
-        .padding()
     }
 }
 

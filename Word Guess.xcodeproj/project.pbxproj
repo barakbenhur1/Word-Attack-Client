@@ -472,7 +472,7 @@
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
 				CODE_SIGN_ENTITLEMENTS = WordZapWidgetExtensionExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 48;
+				CURRENT_PROJECT_VERSION = 0;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = WordZapWidgetExtension/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = WordZapWidgetExtension;
@@ -483,7 +483,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 1.025;
+				MARKETING_VERSION = 1.027;
 				PRODUCT_BUNDLE_IDENTIFIER = com.barak.wordzap.WordZapWidgetExtension;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -500,7 +500,7 @@
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
 				CODE_SIGN_ENTITLEMENTS = WordZapWidgetExtensionExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 48;
+				CURRENT_PROJECT_VERSION = 0;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = WordZapWidgetExtension/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = WordZapWidgetExtension;
@@ -511,7 +511,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 1.025;
+				MARKETING_VERSION = 1.027;
 				PRODUCT_BUNDLE_IDENTIFIER = com.barak.wordzap.WordZapWidgetExtension;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -660,7 +660,7 @@
 				CODE_SIGN_ENTITLEMENTS = "Word Guess/Word Guess.entitlements";
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 48;
+				CURRENT_PROJECT_VERSION = 0;
 				DEVELOPMENT_ASSET_PATHS = "\"Word Guess/Preview Content\"";
 				DEVELOPMENT_TEAM = D6DN86P8S8;
 				EMBED_ASSET_PACKS_IN_PRODUCT_BUNDLE = YES;
@@ -680,7 +680,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.025;
+				MARKETING_VERSION = 1.027;
 				ON_DEMAND_RESOURCES_INITIAL_INSTALL_TAGS = "";
 				"OTHER_LDFLAGS[arch=*]" = "-ObjC";
 				PRODUCT_BUNDLE_IDENTIFIER = com.barak.wordzap;
@@ -704,7 +704,7 @@
 				CODE_SIGN_ENTITLEMENTS = "Word Guess/Word Guess.entitlements";
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 48;
+				CURRENT_PROJECT_VERSION = 0;
 				DEVELOPMENT_ASSET_PATHS = "\"Word Guess/Preview Content\"";
 				DEVELOPMENT_TEAM = D6DN86P8S8;
 				EMBED_ASSET_PACKS_IN_PRODUCT_BUNDLE = NO;
@@ -724,7 +724,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.025;
+				MARKETING_VERSION = 1.027;
 				ON_DEMAND_RESOURCES_INITIAL_INSTALL_TAGS = "";
 				PRODUCT_BUNDLE_IDENTIFIER = com.barak.wordzap;
 				PRODUCT_NAME = "$(TARGET_NAME)";

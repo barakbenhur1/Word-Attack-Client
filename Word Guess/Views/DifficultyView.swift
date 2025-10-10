@@ -62,12 +62,21 @@ struct DifficultyView: View {
     @EnvironmentObject private var loginHandeler: LoginHandeler
     @EnvironmentObject private var premium: PremiumManager
     
-    @State private var isMenuOpen: Bool = false
-    @State private var showPaywall = false
+    @State private var isMenuOpen: Bool
+    @State private var showPaywall: Bool
+    @State private var isOpen: Bool
+    @State private var text: String
     
     private let menuManager: MenuManager = .init()
     private var tutorialItem: TutorialItem? { tutorialItems.first }
     private let auth = Authentication()
+    
+    init() {
+        isMenuOpen = false
+        showPaywall = false
+        isOpen = true
+        text = ""
+    }
     
     private let buttons: [DifficultyButton] = [
         .init(type: .easy),
@@ -86,23 +95,34 @@ struct DifficultyView: View {
     }
     
     var body: some View {
-        GeometryReader { _ in
+        SlidingDoorOpen(isOpen: $isOpen, text: text, duration: 1.2) {
             ZStack {
-                BackgroundDecor().ignoresSafeArea()
-                contant()
-                    .onDisappear { onDisappear() }
-                    .onAppear { onAppear() }
-                    .ignoresSafeArea(.keyboard)
-                    .fullScreenCover(isPresented: $showPaywall) {
-                        SubscriptionPaywallView(isPresented: $showPaywall)
+                GeometryReader { _ in
+                    BackgroundDecor().ignoresSafeArea()
+                    ZStack {
+                        contant()
+                            .onDisappear { onDisappear() }
+                            .onAppear { onAppear() }
+                            .ignoresSafeArea(.keyboard)
+                            .fullScreenCover(isPresented: $showPaywall) {
+                                SubscriptionPaywallView(isPresented: $showPaywall)
+                            }
                     }
+                    SideMenu(isOpen: $isMenuOpen,
+                             content: { SettingsView(fromSideMenu: true) })
+                    .id(menuManager.id)
+                    .ignoresSafeArea()
+                    .environmentObject(menuManager)
+                }
             }
-            SideMenu(isOpen: $isMenuOpen,
-                     content: { SettingsView(fromSideMenu: true) })
-            .id(menuManager.id)
-            .ignoresSafeArea()
-            .environmentObject(menuManager)
+            .onAppear {
+                text = ""
+                withAnimation(.interpolatingSpring(duration: 1.2)) {
+                    isOpen = true
+                }
+            }
         }
+        .ignoresSafeArea(.keyboard)
     }
     
     // MARK: - Content
@@ -159,14 +179,23 @@ struct DifficultyView: View {
                     .grayscale(premium.isPremium ? 0 : 1)
                     .font(.system(size: 28, weight: .semibold)),
                 action: {
-                    if premium.isPremium { router.navigateToSync(.premium(uniqe: loginHandeler.model?.uniqe)) }
+                    if premium.isPremium {
+                        text = "Premium Hub  💎"
+                        withAnimation(.interpolatingSpring(duration: 1.2)) {
+                            isOpen = false
+                        }
+                        Task {
+                            try? await Task.sleep(nanoseconds: 1_500_000_000)
+                            router.navigateToSync(.premium(uniqe: loginHandeler.model?.uniqe))
+                        }
+                    }
                     else { showPaywall = true }
                 },
                 isLocked: !premium.isPremium // <-- locked style but still tappable
             )
             .tileAvailability(isEnabled: premium.isPremium) // sunken when locked
             .shadow(color: .yellow.opacity(premium.isPremium ? 0.35 : 0.0),
-                    radius: premium.isPremium ? 8 : 0, y: 3)
+                    radius: premium.isPremium ? 4 : 0, y: 3)
             .frame(maxWidth: .infinity)
             .attentionIfNew(isActive: $premium.justDone)
         }
@@ -333,8 +362,8 @@ private struct BackgroundDecor: View {
                     LinearGradient(
                         stops: [
                             .init(color: .white,               location: 0.00),
-                            .init(color: .white,               location: 0.82),
-                            .init(color: .white.opacity(0.75), location: 0.92),
+                            .init(color: .white,               location: 0.64),
+                            .init(color: .white.opacity(0.75), location: 0.86),
                             .init(color: .clear,               location: 1.00)
                         ],
                         startPoint: .leading, endPoint: .trailing

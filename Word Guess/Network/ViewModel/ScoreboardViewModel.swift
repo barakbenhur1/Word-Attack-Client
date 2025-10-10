@@ -9,7 +9,7 @@ import SwiftUI
 
 @Observable
 class ScoreboardViewModel: ObservableObject {
-    var data: [Day] = []
+    var data: [Day]?
     private let queue = DispatchQueue.main
     
     private let network: Network

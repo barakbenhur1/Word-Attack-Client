@@ -104,6 +104,7 @@ public struct AIPackLoadingView: View {
                 
                 Spacer()
             }
+            .padding(.top, 20)
             .padding(20)
             .frame(width: proxy.size.width)
             .frame(height: proxy.size.height)

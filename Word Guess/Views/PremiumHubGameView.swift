@@ -51,8 +51,8 @@ struct PremiumHubGameView<VM: PremiumHubGameVM>: View {
     
     // Open/Close
     private let canBeSolved: Bool
-    private let openDuration: Double = 0.3
-    private let closeDuration: Double = 0.3
+    private let openDuration: Double = 0.4
+    private let closeDuration: Double = 0.4
     
     @State private var reveld = false
     @State private var isClosing = false
@@ -233,7 +233,7 @@ struct PremiumHubGameView<VM: PremiumHubGameVM>: View {
     
     @ViewBuilder private func gameBottom() -> some View {
         ZStack {
-            AsIfKeyboardHeightView(adjustBy: 40)
+            KeyboardHeightView(adjustBy: 43)
             AppTitle(size: 50)
                 .shadow(color: .black.opacity(0.12), radius: 4, x: 4, y: 4)
                 .shadow(color: .white.opacity(0.12), radius: 4, x: -4 ,y: -4)
@@ -733,9 +733,10 @@ struct CircularRevealGate<Content: View>: View {
     }
     
     var body: some View {
-        GeometryReader { geo in
-            let w = geo.size.width
-            let h = geo.size.height
+        GeometryReader { _ in
+            let size = UIScreen.main.bounds
+            let w = size.width
+            let h = size.height
             let diag = sqrt(w*w + h*h)
             
             PremiumBackground()

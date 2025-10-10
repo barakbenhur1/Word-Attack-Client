@@ -59,7 +59,7 @@ private extension DeepLinker {
     func difficultyGame(url: URL) {
         let comp = url.absoluteString.components(separatedBy: "=")
         guard let rawValue = comp.last else { return }
-        guard let diffculty = DifficultyType(rawValue: rawValue) else { return }
+        guard let diffculty = DifficultyType(stripedRawValue: rawValue) else { return }
         navigateTo(.game(diffculty: diffculty))
     }
     

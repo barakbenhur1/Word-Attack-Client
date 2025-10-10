@@ -11,9 +11,7 @@ import Combine
 // MARK: Cache + live updates
 @Observable
 final class KeyboardHeightStore: ObservableObject {
-    private var lastKnownHeight: CGFloat? {
-        didSet { UserDefaults.standard.set(lastKnownHeight, forKey: "kb.lastKnownHeight") }
-    }
+    private var lastKnownHeight: CGFloat?
     
     var height: CGFloat { max(0, lastKnownHeight ?? 0) }
     
@@ -21,27 +19,27 @@ final class KeyboardHeightStore: ObservableObject {
     
     init() {
         self.lastKnownHeight = UserDefaults.standard.object(forKey: "kb.lastKnownHeight") as? CGFloat
-        if self.lastKnownHeight == nil {
-            let willChange = NotificationCenter.default.publisher(for: UIResponder.keyboardWillChangeFrameNotification)
-            let willHide   = NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)
-            
-            willChange
-                .merge(with: willHide)
-                .sink { [weak self] note in
-                    guard let self else { return }
-                    let end = (note.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? NSValue)?.cgRectValue ?? .zero
-                    
-                    // Compute overlap with the key window (covers rotation, external displays, etc.)
-                    let window = UIApplication.shared.connectedScenes
-                        .compactMap { $0 as? UIWindowScene }
-                        .flatMap { $0.windows }
-                        .first { $0.isKeyWindow }
-                    
-                    let overlap = window.map { max(0, $0.bounds.maxY - end.origin.y) } ?? end.height
-                    lastKnownHeight = overlap.rounded(.toNearestOrAwayFromZero)
-                }
-                .store(in: &subs)
-        }
+        guard self.lastKnownHeight == nil || self.lastKnownHeight == 0 else { return }
+        let willChange = NotificationCenter.default.publisher(for: UIResponder.keyboardWillChangeFrameNotification)
+        let willHide   = NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)
+        
+        willChange
+            .merge(with: willHide)
+            .sink { [weak self] note in
+                guard let self else { return }
+                let end = (note.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? NSValue)?.cgRectValue ?? .zero
+                
+                // Compute overlap with the key window (covers rotation, external displays, etc.)
+                let window = UIApplication.shared.connectedScenes
+                    .compactMap { $0 as? UIWindowScene }
+                    .flatMap { $0.windows }
+                    .first { $0.isKeyWindow }
+                
+                let overlap = window.map { max(0, $0.bounds.maxY - end.origin.y) } ?? end.height
+                lastKnownHeight = overlap.rounded(.toNearestOrAwayFromZero)
+                UserDefaults.standard.set(lastKnownHeight, forKey: "kb.lastKnownHeight")
+            }
+            .store(in: &subs)
     }
 }
 
@@ -68,10 +66,16 @@ func estimatedKeyboardHeightFallback() -> CGFloat {
     }
 }
 
-// MARK: View: use "as-if keyboard" height even when hidden
-struct AsIfKeyboardHeightView: View {
-    var adjustBy: CGFloat = 0
-    @StateObject private var store = KeyboardHeightStore()
+// MARK: View: use keyboard height even when hidden
+struct KeyboardHeightView: View {
+    let adjustBy: CGFloat
+    private var store: KeyboardHeightStore
+    
+    init(adjustBy: CGFloat = 0) {
+        self.store = KeyboardHeightStore()
+        self.adjustBy = adjustBy
+    }
+    
     var body: some View {
         Color.clear
             .frame(height: store.height > 0 ? store.height - 35 + adjustBy : estimatedKeyboardHeightFallback())
