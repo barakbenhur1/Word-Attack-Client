@@ -20,7 +20,10 @@ public enum Difficulty: String, Codable, CaseIterable {
     
     var color: Color {
         switch self {
-        case .easy:   Color(hue: 0.33, saturation: 0.75, brightness: 0.32)
+        case .easy:   Color(UIColor { trait in
+            if trait.userInterfaceStyle == .dark { return UIColor(hue: 0.28, saturation: 0.28, brightness: 0.84, alpha: 1)}
+            else { return UIColor(hue: 0.33, saturation: 0.75, brightness: 0.32, alpha: 1) }
+        })
         case .medium: Color(hue: 0.15, saturation: 0.90, brightness: 0.60)
         case .hard:   Color(hue: 0.97, saturation: 0.8,  brightness: 0.38)
         }

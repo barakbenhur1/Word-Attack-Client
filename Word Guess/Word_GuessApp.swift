@@ -89,11 +89,11 @@ struct WordGuessApp: App {
             .task { await checker.check() }
             .overlay {
                 if !checker.isDismissed {
-                    if let n = checker.needUpdate {
+                    if let need = checker.needUpdate {
                         UpdateOverlayView(
-                            latest: n.latest,
-                            onUpdate: handleUpdate,
-                            onClose: checker.dismiss
+                            latest: need.latest,
+                            onUpdate: { UIApplication.shared.open(need.url) },
+                            onClose:  { checker.dismiss() }
                         )
                     }
                 }

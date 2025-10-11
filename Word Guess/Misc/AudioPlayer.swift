@@ -23,13 +23,13 @@ class AudioPlayer: NSObject, ObservableObject, AVAudioPlayerDelegate {
         try? session.setActive(true)
     }
     
-    func playSound(sound: String, type: String, loop: Bool = false) {
+    func playSound(sound: String, type: String, loop: Bool = false, volume: Float = 1) {
         guard isOn && !stopPlay else { return }
         if let path = Bundle.main.path(forResource: sound, ofType: type) {
             do {
                 audioPlayer = try AVAudioPlayer(contentsOf: URL(fileURLWithPath: path))
-                audioPlayer?.numberOfLoops = loop ? .max : 0
-                audioPlayer?.volume = type == "mp3" ? 0.3 : 1
+                audioPlayer?.numberOfLoops = loop ? -1 : 0
+                audioPlayer?.volume = volume
                 audioPlayer?.play()
             } catch { print("ERROR") }
         }

@@ -63,11 +63,11 @@ private struct FocusGlow: ViewModifier {
             .overlay(
                 RoundedRectangle(cornerRadius: cornerRadius)
                     .stroke(isFocused ? Color.yellow.opacity(0.25) : .clear, lineWidth: 1.0)
-                    .shadow(color: isFocused ? .yellow.opacity(0.10) : .clear, radius: 2)
+                    .shadow(color: isFocused ? Color.blue.opacity(0.10) : .clear, radius: 2)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: cornerRadius)
-                    .stroke(isFocused ? Color.yellow.opacity(0.3) : .clear, lineWidth: 6)
+                    .stroke(isFocused ? Color.blue.opacity(0.3) : .clear, lineWidth: 6)
                     .blur(radius: 2)
             )
             .animation(.easeOut(duration: 0.18), value: isFocused)
@@ -164,7 +164,6 @@ struct WordView<VM: WordViewModel>: View {
         HStack(spacing: 4) {
             ForEach(0..<length, id: \.self) { i in
                 let view = charView(i: i)
-                
                 if isAI {
                     if isCurrentRow {
                         let waiting = {
@@ -246,6 +245,7 @@ struct WordView<VM: WordViewModel>: View {
             .elevated(cornerRadius: 4)
             .premiumTile(cornerRadius: 4)
             .focusGlow(fieldFocus == .init(rawValue: i), cornerRadius: 4)
+            .focusGlow(fieldFocus == .init(rawValue: i), cornerRadius: 4)
             
             Rectangle().opacity(0.001)
                 .onTapGesture {
@@ -270,7 +270,7 @@ struct WordView<VM: WordViewModel>: View {
             .disabled(true)
             .background(
                 ZStack {
-                    guess.color.color.opacity(0.38)
+                    guess.color.color.opacity(0.46)
                     LinearGradient(
                         colors: [Color.white.opacity(0.08), .clear],
                         startPoint: .topLeading, endPoint: .bottomTrailing
@@ -300,7 +300,7 @@ struct WordView<VM: WordViewModel>: View {
             if current == 0 { fixedValue = fixedValue.capitalizedFirst }
             var next: Int = current
             for v in fixedValue {
-                guard next < word.count else { continue }
+                guard next < word.count else { return }
                 let char = String(v).returnChar(isFinal: false)
                 guard allowed == nil || allowed!.set.contains(char.lowercased()) else { word[next] = ""; allowed?.onInvalid(); continue }
                 word[next] = char.returnChar(isFinal: next == length - 1)

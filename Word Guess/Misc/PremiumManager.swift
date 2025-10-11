@@ -176,7 +176,7 @@ final class PremiumManager: PremiumManagerProtocol {
             }
         }
     }
-
+    
     private func verify<T>(_ result: VerificationResult<T>) -> T? {
         switch result {
         case .unverified: return nil
@@ -184,16 +184,51 @@ final class PremiumManager: PremiumManagerProtocol {
         }
     }
     
-    /// Treat ANY active auto-renewable sub as premium (keeps it simple & robust).
+    private func none() {
+        return
+    }
+    
+    private func handleTrasaction(_ t: StoreKit.Transaction) {
+        switch t.productType {
+        case .autoRenewable: handleAutoRenewable(t)
+        case .nonRenewable:  handleNonRenewable(t)
+        case .consumable:    handleConsumable(t)
+        case .nonConsumable: handleANonConsumable(t)
+        default:             none()
+        }
+    }
+    
     private func updateEntitlement() async {
-        var active = false
+        clear()
         for await result in StoreKit.Transaction.currentEntitlements {
             if let t: StoreKit.Transaction = verify(result) {
-                if t.productType == .autoRenewable { active = true }
+                handleTrasaction(t)
             }
         }
-        await MainActor.run {
-            self.isPremium = active
+    }
+}
+
+@MainActor
+extension PremiumManager {
+    private func handleAutoRenewable(_ t: StoreKit.Transaction) {
+        if let id = AutoRenewableID(rawValue: t.productID), premiumAutoRenewableIDs.contains(id) {
+            isPremium = true
         }
+    }
+    
+    private func handleNonRenewable(_ t: StoreKit.Transaction) {
+        return
+    }
+    
+    private func handleConsumable(_ t: StoreKit.Transaction) {
+        return
+    }
+    
+    private func handleANonConsumable(_ t: StoreKit.Transaction) {
+        return
+    }
+    
+    private func clear() {
+        isPremium = false
     }
 }

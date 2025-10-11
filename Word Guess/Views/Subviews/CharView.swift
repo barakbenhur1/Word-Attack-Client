@@ -19,7 +19,7 @@ struct CharView: View {
     var body: some View {
         TextField(usePlaceHolder ? "?" : "",
                   text: $text)
-        .accentColor(.yellow.opacity(0.08))
+        .accentColor(.blue.opacity(0.08))
         .frame(maxHeight: .infinity)
         .multilineTextAlignment(.center)
         .onKeyPress(.delete) {

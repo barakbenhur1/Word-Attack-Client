@@ -61,6 +61,7 @@ public struct PremiumHubView: View {
     
     @State private var isOpen: Bool
     @State private var text: String
+    @State private var duration: Double
     
     @State private var presentedSlot: MiniSlot?
     @State private var activeSlot: MiniSlot?
@@ -79,11 +80,12 @@ public struct PremiumHubView: View {
     private func closeView() {
         PremiumCoplitionHandler.shared.onForceEndPremium = { _, _ in }
         text = ""
-        withAnimation(.interpolatingSpring(duration: 1.2)) {
+        duration = 3
+        withAnimation(.interpolatingSpring(duration: duration)) {
             isOpen = false
         }
         Task {
-            try? await Task.sleep(nanoseconds: 1_500_000_000)
+            try? await Task.sleep(nanoseconds: 3_300_000_000)
             await MainActor.run {
                 hub.stop()
                 router.navigateBack()
@@ -94,6 +96,7 @@ public struct PremiumHubView: View {
     public init(uniqe: String?) {
         isOpen = false
         text = "Premium Hub  💎"
+        duration = 3
         didResolveSheet = false
         showError = false
         showTutorial = false
@@ -102,7 +105,7 @@ public struct PremiumHubView: View {
     }
     
     public var body: some View {
-        SlidingDoorOpen(isOpen: $isOpen, text: text, duration: 1.2) {
+        SlidingDoorOpen(isOpen: $isOpen, shimmer: true, text: text, duration: duration) {
             ZStack {
                 PremiumBackground()
                 VStack {
@@ -269,7 +272,8 @@ public struct PremiumHubView: View {
                 guard hub.vm.word == .empty else { return }
                 
                 text = "Premium Hub  💎"
-                withAnimation(.interpolatingSpring(duration: 1.2)) {
+                duration = 3
+                withAnimation(.interpolatingSpring(duration: duration)) {
                     isOpen = true
                 }
                 
@@ -285,7 +289,7 @@ public struct PremiumHubView: View {
                     }
                 } else {
                     Task {
-                        try? await Task.sleep(nanoseconds: 1_500_000_000)
+                        try? await Task.sleep(nanoseconds: 3_300_000_000)
                         await MainActor.run {
                             hub.initLoop()
                         }

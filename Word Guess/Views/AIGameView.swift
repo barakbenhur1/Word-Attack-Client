@@ -29,6 +29,7 @@ struct AIGameView<VM: AIWordViewModel>: View {
     private enum GameState { case inProgress, lose, win }
     private struct TurnFX { var show = false; var next: Turn = .player }
     
+    private let keyboardHeightStore: KeyboardHeightStore
     
     private let rows: Int = 5
     private var length: Int { DifficultyType.ai.getLength() }
@@ -84,6 +85,8 @@ struct AIGameView<VM: AIWordViewModel>: View {
     
     @State private var cleanCells: Bool
     @State private var aiIntroDone: Bool
+    
+    @State private var gameDone: Bool
     
     @State private var gameState: GameState {
         didSet {
@@ -272,7 +275,6 @@ struct AIGameView<VM: AIWordViewModel>: View {
         
         if guess.lowercased() == vm.wordValue.lowercased() || i == rows - 1 {
             disabled = true
-            audio.stop()
             
             let correct = guess.lowercased() == vm.wordValue.lowercased()
             return correct
@@ -295,7 +297,7 @@ struct AIGameView<VM: AIWordViewModel>: View {
             case .easy:   aiDifficultyPanding = .medium
             case .medium: aiDifficultyPanding = .hard
             case .hard:   aiDifficultyPanding = .boss
-            case .boss:   break
+            case .boss:   gameDone = true
             }
         }
     }
@@ -305,7 +307,10 @@ struct AIGameView<VM: AIWordViewModel>: View {
         makeHit(hp: $aiHP, hpParams: $aiHpAnimation, token: &aiHitToken, hitPoints: hitPoints, assignTo: .ai)
     }
     
-    private func makeHitOnPlayer(hitPoints: Int) { makeHit(hp: $playerHP, hpParams: $playerHpAnimation, token: &playerHitToken, hitPoints: hitPoints, assignTo: .player) }
+    private func makeHitOnPlayer(hitPoints: Int) {
+        gameDone = playerHP - hitPoints <= 0
+        makeHit(hp: $playerHP, hpParams: $playerHpAnimation, token: &playerHitToken, hitPoints: hitPoints, assignTo: .player)
+    }
     
     private func makeHit(hp: Binding<Int>, hpParams: Binding<HpAnimationParams>, token: inout UUID, hitPoints: Int, assignTo: HitTarget) {
         current = .max
@@ -390,6 +395,8 @@ struct AIGameView<VM: AIWordViewModel>: View {
                                                              count: DifficultyType.ai.getLength()),
                                       count: rows)
         
+        self.keyboardHeightStore = .init()
+        self.gameDone = false
         self.showGameEndPopup = false
         self.showExitPopup = false
         self.showAiIntro = false
@@ -567,24 +574,28 @@ struct AIGameView<VM: AIWordViewModel>: View {
     
     private func calculatePlayerTurn(i: Int) {
         guard i == current else { return }
+        UIApplication.shared.hideKeyboard()
         colors[i] = vm.calculateColors(with: matrix[i])
         saveToHistory(for: .player)
         if chackWord(index: i, matrix: matrix) {
             Task(priority: .userInitiated) {
                 try? await Task.sleep(nanoseconds: 1_000_000_000)
                 await MainActor.run {
+                    audio.stop()
                     audio.playSound(sound: "success", type: "wav")
-                    makeHitOnAI(hitPoints: rows * hitPoints - current * hitPoints)
+                    makeHitOnAI(hitPoints: rows * hitPoints - i * hitPoints)
                     guard aiDifficultyPanding == aiDifficulty else { return }
                     Task(priority: .userInitiated) {
                         try? await Task.sleep(nanoseconds: 1_000_000_000)
                         guard let uniqe, guardVisible() else { return }
-                        await vm.word(uniqe: uniqe)
+                        if !gameDone {
+                            await vm.word(uniqe: uniqe)
+                        }
                     }
                 }
             }
         } else {
-            if current == rows - 1 {
+            if i == rows - 1 {
                 delayedTurnTask?.cancel()
                 delayedTurnTask = Task {
                     try? await Task.sleep(nanoseconds: 1_000_000_000)
@@ -604,23 +615,27 @@ struct AIGameView<VM: AIWordViewModel>: View {
             Task(priority: .userInitiated) {
                 try? await Task.sleep(nanoseconds: 1_000_000_000)
                 await MainActor.run {
+                    audio.stop()
                     audio.playSound(sound: "fail", type: "wav")
-                    makeHitOnPlayer(hitPoints: rows * hitPoints - current * hitPoints)
+                    makeHitOnPlayer(hitPoints: rows * hitPoints - i * hitPoints)
                     guard aiDifficultyPanding == aiDifficulty else { return }
                     Task(priority: .userInitiated) {
                         try? await Task.sleep(nanoseconds: 1_000_000_000)
                         animatedTurnSwitch(to: .player)
                         guard let uniqe, guardVisible() else { return }
-                        await vm.word(uniqe: uniqe)
+                        if !gameDone {
+                            await vm.word(uniqe: uniqe)
+                        }
                     }
                 }
             }
         }
-        else if current < rows - 1 { current = i + 1 }
-        else if current == rows - 1 {
+        else if i < rows - 1 { current = i + 1 }
+        else if i == rows - 1 {
             Task(priority: .userInitiated) {
                 try? await Task.sleep(nanoseconds: 1_000_000_000)
                 await MainActor.run {
+                    audio.stop()
                     audio.playSound(sound: "fail", type: "wav")
                     makeHitOnPlayer(hitPoints: noGuessHitPoints)
                     makeHitOnAI(hitPoints: noGuessHitPoints)
@@ -629,7 +644,9 @@ struct AIGameView<VM: AIWordViewModel>: View {
                         try? await Task.sleep(nanoseconds: 1_000_000_000)
                         animatedTurnSwitch(to: .player)
                         guard let uniqe, guardVisible() else { return }
-                        await vm.word(uniqe: uniqe)
+                        if !gameDone {
+                            await vm.word(uniqe: uniqe)
+                        }
                     }
                 }
             }
@@ -639,7 +656,8 @@ struct AIGameView<VM: AIWordViewModel>: View {
     private func initalConfigirationForWord() {
         audio.playSound(sound: "backround",
                         type: "mp3",
-                        loop: true)
+                        loop: true,
+                        volume: 0.24)
         endFetchAnimation = true
         disabled = false
         current = 0
@@ -812,7 +830,7 @@ struct AIGameView<VM: AIWordViewModel>: View {
                                         .resizable()
                                         .scaledToFill()
                                         .shadow(radius: 4)
-                                        .frame(width: 50, height: 50)
+                                        .frame(width: 46, height: 46)
                                 }
                                 
                                 ZStack {
@@ -832,8 +850,7 @@ struct AIGameView<VM: AIWordViewModel>: View {
                                         .fixedSize()
                                 }
                             }
-                            .padding(.top, 2)
-                            .padding(.bottom, 2)
+                            .padding(.all, 2)
                         }
                         .opacity(turn == .player ? 1 : 0.4)
                         
@@ -850,7 +867,7 @@ struct AIGameView<VM: AIWordViewModel>: View {
                                         .resizable()
                                         .scaledToFill()
                                         .shadow(radius: 4)
-                                        .frame(width: 50, height: 50)
+                                        .frame(width: 46, height: 46)
                                         .opacity(turn == .ai ? 1 : 0.4)
                                         .tooltip(ai!.phrase,
                                                  language: language == "he" ? .he : .en,
@@ -876,8 +893,7 @@ struct AIGameView<VM: AIWordViewModel>: View {
                                 }
                                 .opacity(turn == .ai ? 1 : 0.4)
                             }
-                            .padding(.top, 2)
-                            .padding(.bottom, 2)
+                            .padding(.all, 2)
                         }
                         
                         Spacer()
@@ -969,6 +985,8 @@ struct AIGameView<VM: AIWordViewModel>: View {
                 }
             }
             .boardFlip(isAI: turn == .ai)
+            .opacity(keyboardHeightStore.height == 0 ? 0 : 1)
+            .animation(.easeIn(duration: 0.01), value: keyboardHeightStore.height)
         }
     }
     

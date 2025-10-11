@@ -27,7 +27,7 @@ struct WordZapProvider: TimelineProvider {
 #if DEBUG
     private let cycleSeconds: TimeInterval = 20           // fast in simulator
 #else
-    private let cycleSeconds: TimeInterval = 60 * 4      // 4 minutes on device
+    private let cycleSeconds: TimeInterval = 60 * 4       // 4 minutes on device
 #endif
     
     private let order: [Difficulty] = [.easy, .medium, .hard]
@@ -95,7 +95,7 @@ struct WordZapWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: "WordZapWidget", provider: WordZapProvider()) { entry in
             WordZapWidgetView(entry: entry)
-                .containerBackground(.fill.tertiary, for: .widget)
+                .containerBackground(.fill.tertiary, for: .widget) // system-safe bg
         }
         .configurationDisplayName("WordZap")
         .description("Daily stats and AI at a glance.")
@@ -106,6 +106,7 @@ struct WordZapWidget: Widget {
 // MARK: - View
 struct WordZapWidgetView: View {
     @Environment(\.widgetFamily) private var family
+    @Environment(\.colorScheme) private var colorScheme
     let entry: WordZapEntry
     
     private var hasStats: Bool {
@@ -114,14 +115,7 @@ struct WordZapWidgetView: View {
     
     var body: some View {
         ZStack {
-            LinearGradient(
-                colors: [
-                    Color(red: 173/255, green: 233/255, blue: 181/255), // Lime Green
-                    Color(red: 255/255, green: 249/255, blue: 177/255)  // Light Yellow
-                ],
-                startPoint: .top,
-                endPoint: .bottom
-            )
+            backgroundView
             switch family {
             case .systemSmall:      smallLayout
             case .systemMedium:     mediumLayout
@@ -131,25 +125,47 @@ struct WordZapWidgetView: View {
             }
         }
     }
-
+    
+    // Dynamic background that respects Dark/Light
+    private var backgroundView: some View {
+        // Light: original lime → soft yellow
+        let light = [
+            Color(red: 173/255, green: 233/255, blue: 181/255),
+            Color(red: 255/255, green: 249/255, blue: 177/255)
+        ]
+        // Dark: deep teal → warm olive (low brightness)
+        let dark = [
+            Color(hue: 0.47, saturation: 0.28, brightness: 0.18),
+            Color(hue: 0.14, saturation: 0.32, brightness: 0.12)
+        ]
+        return LinearGradient(colors: colorScheme == .dark ? dark : light,
+                              startPoint: .top, endPoint: .bottom)
+    }
+    
     // Generic placeholder block (no chip)
     @ViewBuilder
     private func statsPlaceholderBlock() -> some View {
-        // slightly larger text for large/XL
         let isLarge = (family == .systemLarge || family == .systemExtraLarge)
         let baseFont: Font = isLarge ? .footnote : .caption
-
+        
+        // Dynamic fills/strokes for dark/light
+        let fill   = colorScheme == .dark ? Color.white.opacity(0.06) : Color.black.opacity(0.06)
+        let stroke = colorScheme == .dark ? Color.white.opacity(0.20) : Color.black.opacity(0.35)
+        
         HStack(alignment: .top, spacing: 8) {
             Image(systemName: "hourglass")
                 .font(.body.weight(.semibold))
                 .foregroundStyle(.secondary)
-
+            
             VStack(alignment: .leading, spacing: 8) {
-                Text("No stats yet").fontWeight(.semibold)
+                Text("No stats yet")
+                    .fontWeight(.semibold)
+                    .foregroundStyle(.secondary)
                 if isLarge {
                     Text("Play a round\nto see Place,\nScore & Answers")
                         .font(family == .systemLarge ? .subheadline : .headline)
                         .minimumScaleFactor(0.7)
+                        .foregroundStyle(.secondary)
                 }
             }
             .multilineTextAlignment(.leading)
@@ -157,15 +173,15 @@ struct WordZapWidgetView: View {
         .font(baseFont)
         .foregroundStyle(.secondary)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(10)
+        .padding(.vertical ,10)
+        .padding(.horizontal ,5)
         .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Color.primary.opacity(0.06))     // faint fill
+            RoundedRectangle(cornerRadius: 12).fill(fill)
         )
         .overlay(
             RoundedRectangle(cornerRadius: 12)
-                .stroke(style: StrokeStyle(lineWidth: 1, dash: [4, 3])) // dashed = placeholdery
-                .foregroundStyle(.secondary.opacity(0.35))
+                .stroke(style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
+                .foregroundStyle(stroke)
         )
     }
     
@@ -175,22 +191,25 @@ struct WordZapWidgetView: View {
         _ text: String,
         icon: String? = nil,
         expand: Bool = true,
-        color: Color = .primary
+        color: Color = .primary // <- default to dynamic text
     ) -> some View {
-        // slightly smaller than before
         let isExtraLarge = family == .systemExtraLarge
         let chipFont: Font = isExtraLarge ? .footnote.weight(.semibold) : .caption2.weight(.semibold)
+        
+        // Dynamic glass surface
+        let chipFill   = colorScheme == .dark ? Color.white.opacity(0.10) : Color.black.opacity(0.08)
+        let chipStroke = colorScheme == .dark ? Color.white.opacity(0.14) : Color.black.opacity(0.12)
         
         HStack(spacing: 8) {
             if let icon {
                 Image(systemName: icon)
                     .font(.caption2.weight(.semibold))
-                    .foregroundColor(.primary.opacity(0.9))
+                    .foregroundStyle(color)
             }
             Text(text.localized)
                 .font(chipFont)
                 .monospacedDigit()
-                .foregroundColor(color)
+                .foregroundStyle(color) // dynamic or custom (e.g., difficulty color)
                 .lineLimit(1)
                 .truncationMode(.tail)
                 .minimumScaleFactor(1.0)   // keep all rows same size
@@ -199,26 +218,22 @@ struct WordZapWidgetView: View {
         .padding(.horizontal, 6)
         .padding(.vertical, isExtraLarge ? 7 : 6)
         .frame(maxWidth: expand ? .infinity : nil, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 12).fill(Color.primary.opacity(0.14)))
-        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.primary.opacity(0.16), lineWidth: 1))
+        .background(RoundedRectangle(cornerRadius: 12).fill(chipFill))
+        .overlay(RoundedRectangle(cornerRadius: 12).stroke(chipStroke, lineWidth: 1))
     }
     
     // MARK: Small
     private var smallLayout: some View {
         let shortDate = entry.date.formatted(.dateTime.day().month(.abbreviated).locale(Locale.current))
         return VStack(spacing: 8) {
-            Spacer(minLength: 2)
             AppTitle(isWidget: true)
                 .font(.headline)
-                .foregroundColor(.primary)
+                .foregroundStyle(.primary)
                 .frame(maxWidth: .infinity, alignment: .center)
             
-            HStack {
-                Spacer()
-                chip(shortDate, icon: "calendar", expand: false)
-                Spacer()
-            }
-            Spacer(minLength: 2)
+            chip(shortDate, icon: "calendar", expand: true, color: .primary)
+                .padding(4)
+                .softGlass()
         }
         .padding(.horizontal, 6)
     }
@@ -235,29 +250,30 @@ struct WordZapWidgetView: View {
         return VStack(spacing: 4) {
             AppTitle(isWidget: true)
                 .font(.headline)
-                .foregroundColor(.primary)
+                .foregroundStyle(.primary)
                 .frame(maxWidth: .infinity, alignment: .center)
             
             tapTarget("wordzap://play?difficulty=\(d.rawValue)") {
                 Grid(horizontalSpacing: 8, verticalSpacing: 6) {
-                    GridRow {
-                        chip(diff,              icon: "flag.checkered", color: d.color)
-                        chip(shortDate,         icon: "calendar")
-                        Color.clear
+                    HStack {
+                        chip(diff,              icon: "flag.checkered", expand: true,    color: d.color)
+                        chip(shortDate,         icon: "calendar",       expand: true,    color: .primary)
                     }
                     if hasStats {
                         GridRow {
-                            chip(place,          icon: "trophy")
-                            chip(score,          icon: "sum")
-                            chip(answers,        icon: "text.cursor")
+                            chip(place,          icon: "trophy",                         color: .primary)
+                            chip(score,          icon: "sum",                            color: .primary)
+                            chip(answers,        icon: "text.cursor",                    color: .primary)
                         }
                     } else {
                         GridRow {
-                            chip("No stats yet", icon: "hourglass")
-                                .gridCellColumns(2)
+                            chip("No stats yet", icon: "hourglass",     expand: true,    color: .secondary)
+                                .gridCellColumns(3)
                         }
                     }
                 }
+                .padding(4)
+                .softGlass()
             }
         }
         .padding(12)
@@ -268,10 +284,10 @@ struct WordZapWidgetView: View {
         let shortDate = entry.date.formatted(.dateTime.day().month(.abbreviated).locale(Locale.current))
         let d         = entry.difficulty
         
-        return VStack(spacing: 12) {
+        return VStack(spacing: 6) {
             AppTitle(isWidget: true)
                 .font(.title3).bold()
-                .foregroundColor(.primary)
+                .foregroundStyle(.primary)
                 .frame(maxWidth: .infinity, alignment: .center)
             
             GeometryReader { proxy in
@@ -280,12 +296,12 @@ struct WordZapWidgetView: View {
                         tapTarget("wordzap://play?difficulty=\(d.rawValue)") {
                             VStack(alignment: .leading, spacing: 12) {
                                 chip("\("Diff".localized): \(d.rawValue.localized.capitalized)", icon: "flag.checkered", color: d.color)
-                                chip("\("Today".localized): \(shortDate)", icon: "calendar")
+                                chip("\("Today".localized): \(shortDate)", icon: "calendar", color: .primary)
                                 
                                 if hasStats {
-                                    chip("\("Place".localized): \(entry.place.map { "#\($0)" } ?? "—")", icon: "trophy")
-                                    chip("\("Score".localized): \(entry.score != nil ? "\(entry.score!)" : "—")", icon: "sum")
-                                    chip("\("Answers".localized): \(entry.answers != nil ? "\(entry.answers!)" : "—")", icon: "text.cursor")
+                                    chip("\("Place".localized): \(entry.place.map { "#\($0)" } ?? "—")", icon: "trophy", color: .primary)
+                                    chip("\("Score".localized): \(entry.score != nil ? "\(entry.score!)" : "—")", icon: "sum", color: .primary)
+                                    chip("\("Answers".localized): \(entry.answers != nil ? "\(entry.answers!)" : "—")", icon: "text.cursor", color: .primary)
                                 } else {
                                     statsPlaceholderBlock()
                                 }
@@ -304,7 +320,7 @@ struct WordZapWidgetView: View {
                                 tooltip: entry.aiName == nil ? "start your ai journey" : entry.aiTooltip,
                                 isExtraLarge: false
                             )
-                            .frame(maxWidth: 114)
+                            .frame(maxWidth: 134)
                             .frame(height: proxy.size.height)
                             .softGlass()
                         }
@@ -319,17 +335,16 @@ struct WordZapWidgetView: View {
     
     // MARK: Extra Large
     private var extraLargeLayout: some View {
-        // Match Large date style for consistency
         let shortDate = entry.date.formatted(.dateTime.day().month(.abbreviated).locale(Locale.current))
         let d         = entry.difficulty
-
+        
         return VStack(spacing: 16) {
             AppTitle(isWidget: true)
                 .font(.title2).bold()
-                .foregroundColor(.primary)
+                .foregroundStyle(.primary)
                 .frame(maxWidth: .infinity, alignment: .center)
-
-            Grid(horizontalSpacing: 22, verticalSpacing: 0) {
+            
+            Grid(horizontalSpacing: 10, verticalSpacing: 0) {
                 GridRow {
                     VStack(alignment: .center, spacing: 0) {
                         Spacer()
@@ -338,6 +353,7 @@ struct WordZapWidgetView: View {
                                 .resizable()
                                 .scaledToFill()
                                 .frame(width: 40, height: 40)
+                                .foregroundStyle(.primary)
                         }
                         Spacer()
                         tapTarget("wordzap://scoreboard") {
@@ -345,22 +361,23 @@ struct WordZapWidgetView: View {
                                 .resizable()
                                 .scaledToFill()
                                 .frame(width: 40, height: 40)
+                                .foregroundStyle(.primary)
                         }
                         Spacer()
                     }
                     .padding(5)
                     .softGlass()
-
+                    
                     // Middle column: Play card (same content structure as Large)
                     tapTarget("wordzap://play?difficulty=\(d.rawValue)") {
                         VStack(alignment: .leading, spacing: 12) {
                             chip("\("Diff".localized): \(d.rawValue.localized.capitalized)", icon: "flag.checkered", color: d.color)
-                            chip("\("Today".localized): \(shortDate)", icon: "calendar")
-
+                            chip("\("Today".localized): \(shortDate)", icon: "calendar", color: .primary)
+                            
                             if hasStats {
-                                chip("\("Place".localized): \(entry.place.map { "#\($0)" } ?? "—")", icon: "trophy")
-                                chip("\("Score".localized): \(entry.score.map(String.init) ?? "—")", icon: "sum")
-                                chip("\("Answers".localized): \(entry.answers.map(String.init) ?? "—")", icon: "text.cursor")
+                                chip("\("Place".localized): \(entry.place.map { "#\($0)" } ?? "—")", icon: "trophy", color: .primary)
+                                chip("\("Score".localized): \(entry.score.map(String.init) ?? "—")", icon: "sum", color: .primary)
+                                chip("\("Answers".localized): \(entry.answers.map(String.init) ?? "—")", icon: "text.cursor", color: .primary)
                             } else {
                                 statsPlaceholderBlock()
                             }
@@ -369,7 +386,7 @@ struct WordZapWidgetView: View {
                         .softGlass()
                         .frame(maxWidth: .infinity, alignment: .leading)
                     }
-
+                    
                     // Right column: AI card
                     tapTarget("wordzap://ai") {
                         AICardWithTooltip(
@@ -397,13 +414,13 @@ private struct AICardWithTooltip: View {
     let isExtraLarge: Bool
     
     var body: some View {
-        let imageH: CGFloat = isExtraLarge ? 126 : 96
+        let imageH: CGFloat = isExtraLarge ? 124 : 108
         let bubbleMaxW: CGFloat = isExtraLarge ? 180 : 140
-        let bubbleLift: CGFloat =  isExtraLarge ? 4  : 6  // how much the bubble sits above the image
-        let imageTopPadding: CGFloat = isExtraLarge ? 50 : 25
-        let textTopPadding: CGFloat = isExtraLarge ? 2 : 8
+        let bubbleLift: CGFloat =  isExtraLarge ? 0  : 0
+        let imageTopPadding: CGFloat = isExtraLarge ? 0 : 0
+        let textTopPadding: CGFloat = isExtraLarge ? 0 : 0
         let textBottomPadding: CGFloat = isExtraLarge ? 2 : 4
-        let brainSize: CGFloat = isExtraLarge ? 94 : 78
+        let brainSize: CGFloat = isExtraLarge ? 124 : 108
         
         VStack(spacing: 2) {
             // Fixed-height image area
@@ -417,7 +434,7 @@ private struct AICardWithTooltip: View {
                         .resizable()
                         .scaledToFit()
                         .frame(width: brainSize, height: brainSize)
-                        .foregroundColor(.primary.opacity(0.6))
+                        .foregroundStyle(.primary.opacity(0.6))
                 }
             }
             .frame(height: imageH)  // <- constant image height (keeps overall size stable)
@@ -437,40 +454,45 @@ private struct AICardWithTooltip: View {
             
             Text(name.localized)
                 .font(.callout.weight(.semibold))
-                .foregroundColor(.primary)
+                .foregroundStyle(.primary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
                 .padding(.top, textTopPadding)
                 .padding(.bottom, textBottomPadding)
         }
-        .padding(.top, 8)
         .padding(14)
+        .padding(.top, 42.5)
     }
 }
 
 private struct TooltipBubble: View {
+    @Environment(\.colorScheme) private var colorScheme
     let text: String
     let isExtraLarge: Bool
     
     var body: some View {
         let font: Font = isExtraLarge ? .footnote.weight(.semibold) : .caption2.weight(.semibold)
         let maxWidth: CGFloat = isExtraLarge ? 200 : 140
+        
+        let bubbleFill   = colorScheme == .dark ? Color.white.opacity(0.10) : Color.black.opacity(0.06)
+        let bubbleStroke = colorScheme == .dark ? Color.white.opacity(0.12) : Color.black.opacity(0.12)
+        
         VStack(spacing: 0) {
             Text(text.localized)
                 .font(font)
                 .lineLimit(2)
                 .minimumScaleFactor(0.5)
                 .multilineTextAlignment(.center)
-                .foregroundColor(.primary)
+                .foregroundStyle(.primary)
                 .padding(.horizontal, 10)
                 .padding(.vertical, 6)
-                .background(Capsule().fill(Color.primary.opacity(0.14)))
-                .overlay(Capsule().stroke(Color.primary.opacity(0.16), lineWidth: 1))
+                .background(Capsule().fill(bubbleFill))
+                .overlay(Capsule().stroke(bubbleStroke, lineWidth: 1))
                 .frame(maxWidth: maxWidth)
             Triangle()
-                .fill(Color.primary.opacity(0.14))
+                .fill(bubbleFill)
                 .frame(width: 10, height: 10)
-                .overlay(Triangle().stroke(Color.primary.opacity(0.16), lineWidth: 1))
+                .overlay(Triangle().stroke(bubbleStroke, lineWidth: 1))
         }
         .shadow(radius: 1.5, y: 1)
     }
@@ -496,14 +518,20 @@ private extension View {
 }
 
 private struct SoftGlass: ViewModifier {
+    @Environment(\.colorScheme) private var colorScheme
+    
     func body(content: Content) -> some View {
+        let fill   = colorScheme == .dark ? Color.white.opacity(0.08) : Color.black.opacity(0.05)
+        let stroke = colorScheme == .dark ? Color.white.opacity(0.14) : Color.black.opacity(0.12)
+        
         content
-            .background(RoundedRectangle(cornerRadius: 14).fill(Color.primary.opacity(0.10)))
-            .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.primary.opacity(0.12), lineWidth: 1))
+            .background(RoundedRectangle(cornerRadius: 14).fill(fill))
+            .overlay(RoundedRectangle(cornerRadius: 14).stroke(stroke, lineWidth: 1))
     }
 }
 private extension View { func softGlass() -> some View { modifier(SoftGlass()) } }
 
+// MARK: - Link helper
 @ViewBuilder
 private func tapTarget<Content: View>(
     _ urlString: String,

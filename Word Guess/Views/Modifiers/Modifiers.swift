@@ -223,6 +223,7 @@ private struct RealStoneModifier: ViewModifier {
             .overlay(content.padding(.all, max(6, bevel * 0.4)))
             .onAppear { ensureCracks(size: size) }
             .onChange(of: size) { _, newValue in ensureCracks(size: newValue) }
+            .ignoresSafeArea()
         }
     }
     

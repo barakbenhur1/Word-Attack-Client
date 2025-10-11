@@ -95,7 +95,7 @@ struct DifficultyView: View {
     }
     
     var body: some View {
-        SlidingDoorOpen(isOpen: $isOpen, text: text, duration: 1.2) {
+        SlidingDoorOpen(isOpen: $isOpen, shimmer: true, text: text, duration: 3) {
             ZStack {
                 GeometryReader { _ in
                     BackgroundDecor().ignoresSafeArea()
@@ -117,7 +117,7 @@ struct DifficultyView: View {
             }
             .onAppear {
                 text = ""
-                withAnimation(.interpolatingSpring(duration: 1.2)) {
+                withAnimation(.interpolatingSpring(duration: 3)) {
                     isOpen = true
                 }
             }
@@ -181,11 +181,11 @@ struct DifficultyView: View {
                 action: {
                     if premium.isPremium {
                         text = "Premium Hub  💎"
-                        withAnimation(.interpolatingSpring(duration: 1.2)) {
+                        withAnimation(.interpolatingSpring(duration: 3)) {
                             isOpen = false
                         }
                         Task {
-                            try? await Task.sleep(nanoseconds: 1_500_000_000)
+                            try? await Task.sleep(nanoseconds: 3_300_000_000)
                             router.navigateToSync(.premium(uniqe: loginHandeler.model?.uniqe))
                         }
                     }

@@ -289,7 +289,7 @@ struct PremiumHubGameView<VM: PremiumHubGameVM>: View {
     }
     
     private func startAmbient() {
-        audio.playSound(sound: "backround", type: "mp3", loop: true)
+        audio.playSound(sound: "backround", type: "mp3", loop: true, volume: 0.24)
     }
     
     private func forceEnd(reset: Bool, withHistory: Bool = false) {

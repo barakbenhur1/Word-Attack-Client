@@ -308,7 +308,7 @@ struct GameView<VM: DifficultyWordViewModel>: View {
                     .opacity(0.2)
                 }
             }
-            .opacity(diffculty == .tutorial && keyboardHeightStore.height == 0 ? 0 : 1)
+            .opacity(keyboardHeightStore.height == 0 ? 0 : 1)
             .animation(.easeIn(duration: 0.01), value: keyboardHeightStore.height)
         }
     }
@@ -453,7 +453,8 @@ struct GameView<VM: DifficultyWordViewModel>: View {
         case .tutorial: break
         default: audio.playSound(sound: "backround",
                                  type: "mp3",
-                                 loop: true)
+                                 loop: true,
+                                 volume: 0.24)
         }
         current = vm.word.word.guesswork.count
     }

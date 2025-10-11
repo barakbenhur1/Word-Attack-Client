@@ -41,6 +41,7 @@ struct AppTitle: View {
         }
         .frame(maxWidth: .infinity, alignment: .center)
         .environment(\.layoutDirection, .leftToRight)
+        .scaleEffect(isWidget ? .init(width: 0.8, height: 0.8) : .init(width: 1, height: 1))
         .task {
             if animated {
                 wordZapColorsForAnimation = comp.map { Array(repeating: .noGuess, count: $0.count) }
@@ -82,7 +83,7 @@ struct AppTitle: View {
                 .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.black, lineWidth: 1))
             }
         }
-        .frame(maxWidth: .infinity, alignment: .center) // FIX: make each HStack occupy a full line
+        .frame(maxWidth: .infinity, alignment: .center)
     }
 }
 

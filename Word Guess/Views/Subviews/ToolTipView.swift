@@ -16,8 +16,8 @@ public struct Tooltip<Content: View>: View {
     private let cornerRadius: CGFloat
     private let offsetY: CGFloat = -5
     private let padding: CGFloat
-    private let background: AnyShapeStyle
-    private let foreground: Color
+    private let background: AnyShapeStyle           // base surface (material by default)
+    private let foreground: Color                   // .primary by default (dynamic)
     private let shadowRadius: CGFloat
     private let contentGap: CGFloat
     private let userMaxWidth: CGFloat?
@@ -36,6 +36,24 @@ public struct Tooltip<Content: View>: View {
     
     // appear/disappear driver
     @State private var pop: Bool = false
+    
+    // Color scheme
+    @Environment(\.colorScheme) private var colorScheme
+    
+    // Dynamic surface tweaks (tint + border) so Material reads well in dark & light
+    private var bubbleTint: Color {
+        // very subtle tint on top of Material
+        colorScheme == .dark ? Color.white.opacity(0.06) : Color.black.opacity(0.04)
+    }
+    private var bubbleBorder: Color {
+        colorScheme == .dark ? Color.white.opacity(0.16) : Color.black.opacity(0.12)
+    }
+    private var arrowShadow: Color {
+        colorScheme == .dark ? Color.black.opacity(0.55) : Color.black.opacity(0.25)
+    }
+    private var bubbleShadow: Color {
+        colorScheme == .dark ? Color.black.opacity(0.60) : Color.black.opacity(0.25)
+    }
     
     // Screen width snapshot
     private let screenWidth: CGFloat = {
@@ -59,8 +77,8 @@ public struct Tooltip<Content: View>: View {
         cornerRadius: CGFloat = 12,
         offsetY: CGFloat = -5,
         padding: CGFloat = 10,
-        background: some ShapeStyle = .ultraThinMaterial,
-        foreground: Color = .primary,
+        background: some ShapeStyle = .ultraThinMaterial,   // ✅ dynamic by default
+        foreground: Color = .primary,                       // ✅ dynamic by default
         shadowRadius: CGFloat = 6,
         contentGap: CGFloat = 10,
         maxWidth: CGFloat? = 420,
@@ -90,9 +108,9 @@ public struct Tooltip<Content: View>: View {
     private func setPresented(_ v: Bool) { if let b = externalIsPresented { b.wrappedValue = v } else { isPresentedLocal = v } }
     
     public var body: some View {
-        HostSizeReader(size: $hostSize) {                           // ✅ single writer for host size
+        HostSizeReader(size: $hostSize) {
             content()
-                .background(GlobalFrameReader(frame: $hostFrame))   // ✅ debounced global frame
+                .background(GlobalFrameReader(frame: $hostFrame))
                 .overlay(alignment: .center) {
                     if isPresented {
                         let isEN = (language == .en)
@@ -119,7 +137,8 @@ public struct Tooltip<Content: View>: View {
                 .background(
                     Group {
                         if dismissOnTapOutside && isPresented {
-                            Color.black.opacity(0.001)
+                            Color.clear
+                                .contentShape(Rectangle())
                                 .ignoresSafeArea()
                                 .onTapGesture { hide() }
                         }
@@ -141,9 +160,11 @@ public struct Tooltip<Content: View>: View {
         HStack {
             if isEN {
                 Arrow(direction: .left)
-                    .fill(.ultraThinMaterial)
+                    .fill(background)                                 // base material
+                    .overlay(Arrow(direction: .left).fill(bubbleTint)) // subtle tint per mode
+                    .overlay(Arrow(direction: .left).stroke(bubbleBorder, lineWidth: 1))
                     .frame(width: arrowSize.width, height: arrowSize.height)
-                    .shadow(radius: shadowRadius * 0.6, y: 0.5)
+                    .shadow(color: arrowShadow, radius: shadowRadius * 0.6, y: 0.5)
                 
                 bubble
                     .offset(x:  -(arrowSize.width + 1.5))
@@ -154,10 +175,12 @@ public struct Tooltip<Content: View>: View {
                     .zIndex(2)
                 
                 Arrow(direction: .right)
-                    .fill(.ultraThinMaterial)
+                    .fill(background)
+                    .overlay(Arrow(direction: .right).fill(bubbleTint))
+                    .overlay(Arrow(direction: .right).stroke(bubbleBorder, lineWidth: 1))
                     .offset(x: -contentGap)
                     .frame(width: arrowSize.width, height: arrowSize.height)
-                    .shadow(radius: shadowRadius * 0.6, y: 0.5)
+                    .shadow(color: arrowShadow, radius: shadowRadius * 0.6, y: 0.5)
             }
         }
     }
@@ -172,10 +195,10 @@ public struct Tooltip<Content: View>: View {
         let shouldShrink = measuredBubbleOuter.height > hostSize.height - 10
         let font: Font = shouldShrink ? .caption2 : .caption
         
-        return BubbleSizeReader(size: $measuredBubbleOuter) {       // ✅ single writer for bubble size
+        return BubbleSizeReader(size: $measuredBubbleOuter) {
             Text(text)
                 .font(font)
-                .foregroundColor(foreground)
+                .foregroundColor(foreground)    // ✅ .primary by default: adapts to scheme
                 .multilineTextAlignment(.center)
                 .lineLimit(nil)
                 .fixedSize(horizontal: false, vertical: true)
@@ -184,10 +207,17 @@ public struct Tooltip<Content: View>: View {
                 .padding(.vertical, padding - 5)
                 .background(
                     RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                        .fill(.white)
-                        .fill(background)
+                        .fill(background)                         // base (Material or custom)
+                        .overlay(                                // subtle mode-aware tint
+                            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                                .fill(bubbleTint)
+                                )
+                        .overlay(                                // crisp border for contrast
+                            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                                .stroke(bubbleBorder, lineWidth: 1)
+                                )
                 )
-                .shadow(radius: shadowRadius, y: 1)
+                .shadow(color: bubbleShadow, radius: shadowRadius, y: 1)
                 .animation(sizeSpring, value: shouldShrink)
         }
         .frame(minWidth: minBubbleWidth)
@@ -209,13 +239,9 @@ public struct Tooltip<Content: View>: View {
     }
     
     private func horizontalOffsetUsingClampedWidth() -> CGFloat {
-        // host half-width
         let halfHost = hostSize.width / 2
-        // bubble half-width (fallback to min width until measured)
         let halfBubble = max(measuredBubbleOuter.width, minBubbleWidth) / 2
-        // gap + arrow so the arrow has room between host and bubble
         let delta = halfHost + contentGap + arrowSize.width + halfBubble + 5
-
         return (language == .en) ? delta : -delta
     }
     
@@ -285,12 +311,10 @@ private struct GlobalFrameReader: View {
 }
 
 // MARK: - Distinct preference keys + readers
-
 private struct HostSizeKey: PreferenceKey {
     static var defaultValue: CGSize = .zero
     static func reduce(value: inout CGSize, nextValue: () -> CGSize) { value = nextValue() }
 }
-
 private struct BubbleSizeKey: PreferenceKey {
     static var defaultValue: CGSize = .zero
     static func reduce(value: inout CGSize, nextValue: () -> CGSize) { value = nextValue() }
@@ -301,7 +325,6 @@ private struct HostSizeReader<C: View>: View {
     @State private var last: CGSize = .zero
     var threshold: CGFloat = 0.5
     let content: () -> C
-    
     var body: some View {
         content()
             .background(
@@ -324,7 +347,6 @@ private struct BubbleSizeReader<C: View>: View {
     @State private var last: CGSize = .zero
     var threshold: CGFloat = 0.5
     let content: () -> C
-    
     var body: some View {
         content()
             .background(
@@ -343,7 +365,6 @@ private struct BubbleSizeReader<C: View>: View {
 }
 
 // MARK: - View sugar
-
 public extension View {
     func tooltip(
         _ text: String,
@@ -365,8 +386,8 @@ public extension View {
             arrowSize: arrowSize,
             cornerRadius: 12,
             padding: 10,
-            background: .ultraThinMaterial,
-            foreground: .primary,
+            background: .ultraThinMaterial,   // dynamic (light/dark)
+            foreground: .primary,             // dynamic (light/dark)
             shadowRadius: 6,
             contentGap: contentGap,
             maxWidth: maxWidth,

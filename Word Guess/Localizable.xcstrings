@@ -3271,13 +3271,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "PREMIUM HUB ♛"
+            "value" : "PREMIUM HUB"
           }
         },
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "היכל פרימיום ♛"
+            "value" : "היכל פרימיום"
           }
         }
       }

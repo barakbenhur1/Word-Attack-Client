@@ -13,6 +13,7 @@ public struct SlidingDoorOpen<Content: View>: View {
     }
     
     @Binding private var isOpen: Bool
+    private let shimmer: Bool
     private let durationInner: Double
     private let textInner: String
     private let delayInner: Double                 // base delay for both doors
@@ -45,6 +46,7 @@ public struct SlidingDoorOpen<Content: View>: View {
     ///   - content: The revealed content behind the doors.
     public init(
         isOpen: Binding<Bool>,
+        shimmer: Bool,
         text: String = "",
         duration: Double = 1.2,
         delay: Double = 0.05,
@@ -57,6 +59,7 @@ public struct SlidingDoorOpen<Content: View>: View {
         @ViewBuilder content: () -> Content
     ) {
         self._isOpen = isOpen
+        self.shimmer = shimmer
         self.textInner = text.localized
         self.durationInner = duration
         self.delayInner = delay
@@ -134,7 +137,7 @@ public struct SlidingDoorOpen<Content: View>: View {
                                       perspective: 0.8)
                     .animation(baseAnim.delay(rightDelay), value: isOpen)
             }
-            .allowsHitTesting(!isOpen) // pass touches through when open
+            .allowsHitTesting(!isOpen)
             .ignoresSafeArea()
         }
         .contentShape(Rectangle())
@@ -149,9 +152,9 @@ public struct SlidingDoorOpen<Content: View>: View {
     
     private func componnets() -> (start: String, end: String) {
         if text.count >= 2 {
-            let centerOfWord: Int = text.count / 2
-            let start = String(text[...centerOfWord]).trimLeadingAndTrailingSpacesAndNewlines()
-            let end = String(text[(centerOfWord+1)...]).trimLeadingAndTrailingSpacesAndNewlines()
+            let componnets = text.components(separatedBy: .whitespaces)
+            let start = componnets[0].trimLeadingAndTrailingSpacesAndNewlines()
+            let end = componnets[1].trimLeadingAndTrailingSpacesAndNewlines()
             return (start, end)
         }
         
@@ -164,17 +167,21 @@ public struct SlidingDoorOpen<Content: View>: View {
                 .fill(doorMaterial(left: left).opacity(0.88))
                 .realStone(cornerRadius: cornerRadius, left: left)
                 .background(.ultraThickMaterial)
-                .frame(width: width, height: height)
+            
+            DoorOrnamentsView(cornerRadius: cornerRadius,
+                              shimmer: shimmer,
+                              side: left ? .left : .right,
+                              openProgress: p)
             
             DebossedText(text: text)
-                .foregroundStyle(.primary)
-                .shadow(color: .dynamicBlack, radius: 10 * (1 - p), y: 4 * (1 - p))
-                .padding(left ? .trailing : .leading, 25)
+                .padding(left ? .trailing : .leading, 74)
+                .padding(.bottom, 2.5)
         }
+        .frame(width: width, height: height)
+        .cornerRadius(cornerRadius)
         .allowsHitTesting(false)
         .accessibilityHidden(true)
     }
-
     
     /// A neutral material that adapts to Light/Dark without requiring iOS 18 "dark materials".
     private func doorMaterial(left: Bool) -> some ShapeStyle {
@@ -335,15 +342,15 @@ public extension String {
 /// Debossed (stamped into surface) text
 struct DebossedText: View {
     let text: String
-    var font: Font = .system(.largeTitle, design: .rounded).weight(.heavy)
+    var font: Font = .system(size: 16, weight: .heavy, design: .rounded)
     var depth: CGFloat = 1.5      // offset of inner bevel
     var blur: CGFloat = 1.5       // softness of bevel
 
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
-        let dark  = scheme == .dark ? Color.gold.opacity(0.65) : Color.gold.opacity(0.25)
-        let light = scheme == .dark ? Color.gold.opacity(0.25) : Color.gold.opacity(0.75)
+        let dark  = scheme == .dark ? Color.gold : Color.gold.opacity(0.65)
+        let light = scheme == .dark ? Color.gold.opacity(0.85) : Color.gold
 
         ZStack {
             // base fill slightly dimmed so the bevel reads

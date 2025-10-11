@@ -222,7 +222,13 @@ public extension GuessingGlyphView {
         return letters
     }
     
-    static var placeholderBase: Color { Color(white: 0.25).opacity(0.42) }
+    static var placeholderBase: Color {
+        Color(UIColor { trait in
+            if trait.userInterfaceStyle == .dark { return .white.withAlphaComponent(0.52) }
+            else { return UIColor(white: 0.25, alpha: 0.42) }
+        })
+    }
+    
     static var placeholderOutline: Color { Color(white: 0.0).opacity(0.12) }
     
     static var neon: LinearGradient {
@@ -232,7 +238,7 @@ public extension GuessingGlyphView {
         let edgeB = Color(white: 0.72)
         return LinearGradient(
             gradient: Gradient(stops: [
-                .init(color: edgeA.opacity(0.22), location: 0.00),
+                .init(color: edgeA.opacity(0.22),  location: 0.00),
                 .init(color: mid1.opacity(0.06),   location: 0.46),
                 .init(color: mid2.opacity(0.04),   location: 0.54),
                 .init(color: edgeB.opacity(0.22),  location: 1.00)
