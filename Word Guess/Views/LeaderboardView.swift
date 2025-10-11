@@ -1,5 +1,5 @@
 //
-//  Scoreboard.swift
+//  LeaderboardView.swift
 //  WordZap
 //
 //  Created by Barak Ben Hur on 15/10/2024.
@@ -94,7 +94,7 @@ private struct WidthReporter: ViewModifier {
 }
 
 // MARK: - Scoreboard
-struct LeaderboardView<VM: ScoreboardViewModel>: View {
+struct LeaderboardView<VM: LeaderboardViewModel>: View {
     @EnvironmentObject private var loginHandeler: LoginHandeler
     @EnvironmentObject private var router: Router
     @EnvironmentObject private var local: LanguageSetting
@@ -227,7 +227,9 @@ struct LeaderboardView<VM: ScoreboardViewModel>: View {
                                     )
                                     .padding(.horizontal, isPadLike ? 4 : 0)
                                     
-                                    if !myuniqeLower.isEmpty {
+                                    let currentRows = rowsPerDifficulty[safe: selectedDifficultyIndex] ?? []
+                                    let hasMe = currentRows.contains(where: { $0.isMe })
+                                    if !myuniqeLower.isEmpty && hasMe {
                                         Button {
                                             scrollToMe(
                                                 proxy: proxy,
@@ -308,7 +310,13 @@ struct LeaderboardView<VM: ScoreboardViewModel>: View {
                                     )
                                     
                                     // ---- TABLE AREA — the ONLY scrollable region ----
-                                    ScrollView(.vertical) {
+                                    ScrollView(.vertical, showsIndicators: false) {
+                                        // TOP ANCHOR (target for "go to top")
+                                        Color.clear
+                                            .frame(height: 1)
+                                            .id("top-anchor")
+
+                                        // (no structural change)
                                         LeaderboardCard(
                                             rows: rowsPerDifficulty[
                                                 safe: selectedDifficultyIndex
@@ -329,8 +337,8 @@ struct LeaderboardView<VM: ScoreboardViewModel>: View {
                                         }
                                         .padding(.bottom, 8)
                                     }
-                                    .scrollIndicators(.visible)
-                                    .contentMargins(.bottom, 50)
+                                    .contentMargins(.top, 0)     // remove top edge gap
+                                    .contentMargins(.bottom, 70) // keep your existing bottom margin
                                     .onAppear {
                                         scrollToMe(
                                             proxy: proxy,
@@ -352,6 +360,29 @@ struct LeaderboardView<VM: ScoreboardViewModel>: View {
                                     maxHeight: .infinity,
                                     alignment: .top
                                 )
+                                
+                                // === Go To Top Button ===
+                                .overlay(alignment: .bottomTrailing) {
+                                    Button {
+                                        withAnimation(.easeInOut) {
+                                            proxy.scrollTo("top-anchor", anchor: .top)
+                                        }
+                                    } label: {
+                                        Image(systemName: "arrow.up.circle.fill")
+                                            .font(.system(size: isPadLike ? 34 : 32, weight: .bold))
+                                            .symbolRenderingMode(.hierarchical)
+                                            .foregroundStyle(.white)
+                                            .padding(12)
+                                            .background(.ultraThinMaterial, in: Circle())
+                                            .shadow(color: .black.opacity(0.25), radius: 10, y: 4)
+                                    }
+                                    .buttonStyle(.plain)
+                                    .padding(.trailing, 16)
+                                    .padding(.bottom, 2) // sits above your banner inset
+                                    .accessibilityLabel("Scroll to top")
+                                    .zIndex(50)
+                                }
+                                // === End Go To Top Button ===
                             }
                         }
                     } else {
@@ -492,7 +523,7 @@ private struct DatePager: View {
                 .font(
                     .system(
                         size: UIDevice.current.userInterfaceIdiom == .pad
-                        ? 28 : 26,
+                        ? 22 : 20,
                         weight: .bold,
                         design: .rounded
                     )
@@ -665,6 +696,7 @@ private struct RankBadge: View {
             HStack(spacing: 2) {
                 if rank == 1 { Image(systemName: "crown.fill") }
                 Text("\(rank)")
+                    .minimumScaleFactor(0.3)
                     .font(.callout)
                     .fontWeight(.semibold)
                     .monospacedDigit()
@@ -694,7 +726,7 @@ private struct RankBadge: View {
 private struct EmptyStateCard: View {
     var body: some View {
         ScrollViewReader { _ in
-            ScrollView(.vertical) {
+            ScrollView(.vertical, showsIndicators: false) {
                 VStack(spacing: 12) {
                     Image(systemName: "chart.bar.doc.horizontal")
                         .font(.system(size: 34, weight: .semibold))

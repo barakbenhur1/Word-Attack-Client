@@ -8,7 +8,7 @@
 import SwiftUI
 
 @Observable
-class PremiumScoreboardViewModel: ObservableObject {
+class PremiumLeaderboardViewModel: ObservableObject {
     var data: [PremiumScoreData]?
     
     private let service: PremiumScoreProvider

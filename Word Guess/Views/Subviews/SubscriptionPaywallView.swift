@@ -40,6 +40,7 @@ struct SubscriptionPaywallView: View {
             // Card
             VStack(spacing: 18) {
                 header
+                    .frame(maxHeight: 180)
 
                 FeatureRow(icon: "sparkles",
                            text: "Exclusive Mini-Games – Access fun and challenging modes only in the Hub.".localized)

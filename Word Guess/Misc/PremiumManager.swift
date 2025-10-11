@@ -88,7 +88,7 @@ final class PremiumManager: PremiumManagerProtocol {
                 if monthlyYearCost > 0 {
                     let pct = Int((NSDecimalNumber(decimal: savings).doubleValue /
                                    NSDecimalNumber(decimal: monthlyYearCost).doubleValue) * 100.0 + 0.5)
-                    yearlyBadgeText = pct >= 5 ? "Save \(pct)%" : nil
+                    yearlyBadgeText = pct >= 5 ? "\("Save".localized) \(pct)%" : nil
                 } else {
                     yearlyBadgeText = nil
                 }
@@ -146,9 +146,9 @@ final class PremiumManager: PremiumManagerProtocol {
     private func introOfferText(from product: Product?) -> String? {
         guard let offer = product?.subscription?.introductoryOffer else { return nil }
         switch offer.paymentMode {
-        case .freeTrial: return "\(periodText(offer.period)) free trial"
+        case .freeTrial: return "\(periodText(offer.period)) \("free trial".localized)"
         case .payAsYouGo, .payUpFront:
-            if offer.price == 0 { return "\(periodText(offer.period)) free trial" }
+            if offer.price == 0 { return "\(periodText(offer.period)) \("free trial".localized)" }
             return nil
         default: return nil
         }
@@ -157,10 +157,10 @@ final class PremiumManager: PremiumManagerProtocol {
     private func periodText(_ period: Product.SubscriptionPeriod) -> String {
         let v = period.value
         switch period.unit {
-        case .day:   return v == 1 ? "1-day"   : "\(v)-day"
-        case .week:  return v == 1 ? "1-week"  : "\(v)-week"
-        case .month: return v == 1 ? "1-month" : "\(v)-month"
-        case .year:  return v == 1 ? "1-year"  : "\(v)-year"
+        case .day:   return v == 1 ? "1-\("day".localized)"   : "\(v)-\("day".localized)"
+        case .week:  return v == 1 ? "1-\("week".localized)"  : "\(v)-\("week".localized)"
+        case .month: return v == 1 ? "1-\("month".localized)" : "\(v)-\("month".localized)"
+        case .year:  return v == 1 ? "1-\("year".localized)"  : "\(v)-\("year".localized)"
         @unknown default: return "\(v)"
         }
     }

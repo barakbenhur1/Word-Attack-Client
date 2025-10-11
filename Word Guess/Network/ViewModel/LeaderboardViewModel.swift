@@ -8,7 +8,7 @@
 import SwiftUI
 
 @Observable
-class ScoreboardViewModel: ObservableObject {
+class LeaderboardViewModel: ObservableObject {
     var data: [Day]?
     private let queue = DispatchQueue.main
     

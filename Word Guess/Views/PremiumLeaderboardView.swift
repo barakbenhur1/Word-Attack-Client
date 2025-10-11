@@ -3,7 +3,6 @@
 //  WordZap
 //
 //  Created by Barak Ben Hur on 13/09/2025.
-//  Updated 2025-10-02: Auto-scroll to current user's row + "Jump to my rank" button
 //
 
 import SwiftUI
@@ -11,7 +10,7 @@ import Observation
 
 // MARK: - Leaderboard
 
-struct PremiumLeaderboardView<VM: PremiumScoreboardViewModel>: View {
+struct PremiumLeaderboardView<VM: PremiumLeaderboardViewModel>: View {
     @EnvironmentObject private var router: Router
     @EnvironmentObject private var loginHandeler: LoginHandeler
     @Environment(\.horizontalSizeClass) private var hSize
@@ -47,6 +46,28 @@ struct PremiumLeaderboardView<VM: PremiumScoreboardViewModel>: View {
                                     // Auto-scroll when data refreshes
                                     scrollToMe(proxy: proxy, items: vm.data ?? [])
                                 }
+                                // === Go To Top Button ===
+                                .overlay(alignment: .bottomTrailing) {
+                                    Button {
+                                        withAnimation(.easeInOut) {
+                                            proxy.scrollTo("top-anchor", anchor: .top)
+                                        }
+                                    } label: {
+                                        Image(systemName: "arrow.up.circle.fill")
+                                            .font(.system(size: 32, weight: .bold))
+                                            .symbolRenderingMode(.hierarchical)
+                                            .foregroundStyle(.white)
+                                            .padding(12)
+                                            .background(.ultraThinMaterial, in: Circle())
+                                            .shadow(color: .black.opacity(0.25), radius: 10, y: 4)
+                                    }
+                                    .buttonStyle(.plain)
+                                    .padding(.trailing, 16)
+                                    .padding(.bottom, 16)
+                                    .accessibilityLabel("Scroll to top")
+                                    .zIndex(50)
+                                }
+                                // === End Go To Top Button ===
                         }
                     }
                 }
@@ -112,6 +133,11 @@ struct PremiumLeaderboardView<VM: PremiumScoreboardViewModel>: View {
             }
             
             ScrollView(showsIndicators: false) {
+                // TOP ANCHOR (target for "go to top")
+                Color.clear
+                    .frame(height: 1)
+                    .id("top-anchor")
+                
                 VStack(spacing: 10) {
                     ForEach(Array(sorted.enumerated()), id: \.element.id) { idx, entry in
                         if let uniqe {
@@ -128,6 +154,8 @@ struct PremiumLeaderboardView<VM: PremiumScoreboardViewModel>: View {
                 .padding(.horizontal, 1)
                 .padding(.bottom, 24)
             }
+            .contentMargins(.top, 0)      // remove top edge gap
+            .contentMargins(.bottom, 50)  // keep bottom breathing room
         }
     }
     
@@ -143,7 +171,7 @@ struct PremiumLeaderboardView<VM: PremiumScoreboardViewModel>: View {
     }
     
     private var emptyState: some View {
-        ScrollView(.vertical) {
+        ScrollView(.vertical, showsIndicators: false) {
             VStack(spacing: 8) {
                 Text("No scores yet")
                     .font(.headline)
@@ -232,6 +260,7 @@ private struct RankBadge: View {
         ZStack {
             Circle().fill(badgeBackground)
             Text("\(rank)")
+                .minimumScaleFactor(0.3)
                 .font(.system(.subheadline, design: .rounded).weight(.heavy))
                 .foregroundStyle(.black.opacity(0.85))
                 .padding(.horizontal, 2)

@@ -236,7 +236,7 @@
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "חוויה חלקה ונטולת פרסומות"
+            "value" : "משחק ללא פרסומות – חוויית משחק חלקה ורציפה."
           }
         }
       }
@@ -957,6 +957,17 @@
         }
       }
     },
+    "day" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ימים"
+          }
+        }
+      }
+    },
     "Declension denied" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1473,6 +1484,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "מנצח לנצח"
+          }
+        }
+      }
+    },
+    "free trial" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "תקופת נסיון"
           }
         }
       }
@@ -2488,6 +2510,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "פספסת שוב"
+          }
+        }
+      }
+    },
+    "month" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "חודשים"
           }
         }
       }
@@ -3562,6 +3595,17 @@
         }
       }
     },
+    "Save" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "חסוך"
+          }
+        }
+      }
+    },
     "Saving AI Model" : {
       "localizations" : {
         "he" : {
@@ -3619,6 +3663,9 @@
           }
         }
       }
+    },
+    "Scroll to top" : {
+
     },
     "Semantic drift" : {
       "extractionState" : "manual",
@@ -4734,6 +4781,17 @@
         }
       }
     },
+    "week" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "שבועות"
+          }
+        }
+      }
+    },
     "Wellcome!" : {
       "localizations" : {
         "he" : {
@@ -4899,6 +4957,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "טועה-לוג"
+          }
+        }
+      }
+    },
+    "year" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "שנים"
           }
         }
       }
