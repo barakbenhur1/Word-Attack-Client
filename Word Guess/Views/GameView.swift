@@ -284,17 +284,20 @@ struct GameView<VM: DifficultyWordViewModel>: View {
             ZStack {
                 let gainFocus = Binding(get: { current == i && endFetchAnimation && timeAttackAnimationDone },
                                         set: { _ in })
-                WordView(cleanCells: $cleanCells,
-                         current: $current,
-                         length: length,
-                         word: $matrix[i],
-                         gainFocus: gainFocus,
-                         colors: $colors[i]) {
-                    guard i == current else { return }
-                    nextLine(i: i)
-                }
-                         .disabled(current != i)
-                         .shadow(radius: 4)
+                WordView(
+                    cleanCells: $cleanCells,
+                    current: $current,
+                    length: length,
+                    word: $matrix[i],
+                    gainFocus: gainFocus,
+                    colors: $colors[i]) {
+                        guard i == current else { return }
+                        nextLine(i: i)
+                    }
+                    .opacity(current == i ? 1 : 0.9)
+                    .allowsHitTesting(current == i)
+                    .disabled(current != i)
+                    .shadow(radius: 4)
                 
                 if vm.word.isTimeAttack && timeAttackAnimationDone && current == i {
                     let start = Date()
@@ -519,7 +522,12 @@ struct GameView<VM: DifficultyWordViewModel>: View {
             switch diffculty {
             case .tutorial:
                 Task(priority: .userInitiated) {
-                    try? await Task.sleep(nanoseconds: 1_000_000_000)
+                    await MainActor.run {
+                        let sound = isCorrect ? "success" : "fail"
+                        audio.playSound(sound: sound,
+                                        type: "wav")
+                    }
+                    try? await Task.sleep(nanoseconds: 800_000_000)
                     guard guardVisible() else { return }
                     navBack()
                 }
@@ -528,7 +536,7 @@ struct GameView<VM: DifficultyWordViewModel>: View {
                 let isTimeAttack = vm.word.isTimeAttack
                 let rows = rows
                 Task.detached(priority: .userInitiated) {
-                    try? await Task.sleep(nanoseconds: 1_000_000_000)
+                    try? await Task.sleep(nanoseconds: 800_000_000)
                     await MainActor.run {
                         let sound = isCorrect ? "success" : "fail"
                         audio.playSound(sound: sound,

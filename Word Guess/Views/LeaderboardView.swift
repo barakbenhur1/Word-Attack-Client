@@ -28,9 +28,9 @@ private enum LBLayout {
         if isPadLike {
             // Percentages of `available`
             let placeP: CGFloat = 0.10
-            let scoreP: CGFloat = 0.15
+            let scoreP: CGFloat = 0.25
             let guessP: CGFloat = 0.15
-            let totalP: CGFloat = 0.15
+            let totalP: CGFloat = 0.35
             let nameP: CGFloat = 1.0 - (placeP + scoreP + guessP + totalP)  // = 0.45
             
             var place = available * placeP
@@ -44,8 +44,7 @@ private enum LBLayout {
             score = max(score, 90)
             guess = max(guess, 90)
             total = max(total, 90)
-            name = max(min(name, 420), 260)  // cap name (<=420) and keep readable (>=260)
-            
+           
             // If rounding/clamping pushed us over, nudge name down
             let sum = place + score + guess + total + name
             if sum > available {
@@ -54,7 +53,7 @@ private enum LBLayout {
             
             return .init(
                 place: place,
-                name: name,
+                name: .infinity,
                 score: score,
                 guessed: guess,
                 total: total
@@ -63,10 +62,10 @@ private enum LBLayout {
             // Phone – keep compact widths; name flexes
             return .init(
                 place: 44,
-                name: .zero,
-                score: 66,
+                name: .infinity,
+                score: 76,
                 guessed: 62,
-                total: 66
+                total: 88
             )
         }
     }
@@ -255,7 +254,7 @@ struct LeaderboardView<VM: LeaderboardViewModel>: View {
                                             selectedIndex: $selectedDifficultyIndex
                                         )
                                         .frame(
-                                            maxWidth: isPadLike ? 520 : .infinity
+                                            maxWidth: .infinity
                                         )
                                         .padding(.horizontal, 8)
                                         .transition(.opacity)
@@ -334,6 +333,9 @@ struct LeaderboardView<VM: LeaderboardViewModel>: View {
                                         .modifier(WidthReporter())
                                         .onPreferenceChange(WidthKey.self) {
                                             cardWidth = $0
+                                        }
+                                        .onAppear {
+                                            cardWidth = UIScreen.main.bounds.width - 20
                                         }
                                         .padding(.bottom, 8)
                                     }
@@ -637,7 +639,7 @@ private struct LeaderboardRow: View {
                 //                }
             }
             .frame(
-                maxWidth: (isPadLike ? cols.name : .infinity),
+                maxWidth: (.infinity),
                 alignment: isRTL ? .trailing : .leading
             )
             .layoutPriority(2)
@@ -774,6 +776,7 @@ extension Collection {
     }
 }
 
+@MainActor
 private func prettyDifficulty(_ raw: String) -> String {
     let lower = raw.lowercased()
     if lower.contains("easy") { return "😀 Easy".localized }

@@ -29,7 +29,7 @@ final class AppStoreVersionChecker: ObservableObject {
     }
 
     private let bundleId = Bundle.main.bundleIdentifier ?? ""
-    private var notice: Result? = nil
+    private var notice: Result? = nil   
 
     var needUpdate: Result? { notice }
     

@@ -101,7 +101,7 @@ extension String {
     subscript(range: PartialRangeThrough<Int>) -> SubSequence { self[...index(startIndex, offsetBy: range.upperBound)] }
     subscript(range: PartialRangeUpTo<Int>) -> SubSequence { self[..<index(startIndex, offsetBy: range.upperBound)] }
     
-    var localized: String { NSLocalizedString(self, comment: "") }
+    @MainActor var localized: String { NSLocalizedString(self, comment: "") }
 }
 
 extension String {

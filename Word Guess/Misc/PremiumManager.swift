@@ -229,6 +229,7 @@ extension PremiumManager {
     }
     
     private func clear() {
-        isPremium = false
+        let active = false
+        isPremium = active
     }
 }

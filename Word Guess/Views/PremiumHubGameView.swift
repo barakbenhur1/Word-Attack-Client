@@ -54,6 +54,8 @@ struct PremiumHubGameView<VM: PremiumHubGameVM>: View {
     private let openDuration: Double = 0.4
     private let closeDuration: Double = 0.4
     
+    private let keyboardHeightStore: KeyboardHeightStore
+    
     @State private var reveld = false
     @State private var isClosing = false
     
@@ -95,6 +97,7 @@ struct PremiumHubGameView<VM: PremiumHubGameVM>: View {
         self.length = vm.wordValue.count
         self.initilizeHistory = history
         self.canBeSolved = canBeSolved
+        self.keyboardHeightStore = .init()
         
         var seedMatrix = Array(repeating: Array(repeating: "", count: vm.wordValue.count), count: rows)
         var seedColors = Array(repeating: Array(repeating: CharColor.noGuess, count: vm.wordValue.count), count: rows)
@@ -275,8 +278,12 @@ struct PremiumHubGameView<VM: PremiumHubGameVM>: View {
                     guard i == current, !endBannerUp else { return }
                     nextLine(i: i)
                 }
+                .opacity(current == i ? 1 : 0.9)
+                .allowsHitTesting(current == i && !endBannerUp)
                 .disabled(current != i || endBannerUp)
                 .shadow(radius: 4)
+                .opacity(keyboardHeightStore.height == 0 ? 0 : 1)
+                .animation(.easeIn(duration: 0.01), value: keyboardHeightStore.height)
             }
         }
         .opacity(endBannerUp ? 0.25 : 1)
@@ -321,14 +328,14 @@ struct PremiumHubGameView<VM: PremiumHubGameVM>: View {
                 wins += 1
                 if let uniqe { Task.detached(priority: .high, operation: { await vm.score(uniqe: uniqe) }) }
                 Task { @MainActor in
-                    try? await Task.sleep(nanoseconds: 1_000_000_000)
+                    try? await Task.sleep(nanoseconds: 800_000_000)
                     guard isVisible else { return }
                     audio.playSound(sound: "success", type: "wav")
                     withAnimation(.spring(response: 0.55, dampingFraction: 0.75)) { showWinBanner = true }
                 }
             } else {
                 Task { @MainActor in
-                    try? await Task.sleep(nanoseconds: 1_000_000_000)
+                    try? await Task.sleep(nanoseconds: 800_000_000)
                     guard isVisible else { return }
                     loseResetFlag = true
                     audio.playSound(sound: "fail", type: "wav")

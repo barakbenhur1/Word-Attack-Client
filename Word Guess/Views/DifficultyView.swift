@@ -33,7 +33,7 @@ enum DifficultyType: String, Codable, CaseIterable {
         }
     }
     
-    var stringValue: String { rawValue.localized }
+    @MainActor var stringValue: String { rawValue.localized }
     
     var liveValue: Difficulty {
         switch self {
@@ -200,6 +200,7 @@ struct DifficultyView: View {
             .attentionIfNew(isActive: $premium.justDone)
         }
         .padding(.horizontal, 4)
+        .frame(maxHeight: 100)
     }
     
     @ViewBuilder private func buttonList() -> some View {

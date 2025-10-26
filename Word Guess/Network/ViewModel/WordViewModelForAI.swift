@@ -31,7 +31,7 @@ class AIWordViewModel: WordViewModel {
         wordNumber = UserDefaults.standard.integer(forKey: "aiWordNumber")
         maxErrorCount = 3
         errorCount = 0
-        aiDownloaded = ModelStorage.localHasUsableModels()
+        aiDownloaded = true
     }
     
     func initMoc() async {

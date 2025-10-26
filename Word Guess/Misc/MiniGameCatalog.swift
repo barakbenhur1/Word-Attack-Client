@@ -19,6 +19,7 @@ public enum MiniKind: CaseIterable, Hashable {
          symbolPuzzle, luckyWait, claw, memory, cardShuffle,
          popBalloon, sliderAlign, longPress, shakeReveal, tapTarget
     
+    @MainActor
     public var title: String {
         switch self {
         case .sand: "Sand Dig".localized
@@ -265,7 +266,7 @@ private struct SandDigMini: View {
                     .overlay(RoundedRectangle(cornerRadius: 18).stroke(PremiumPalette.stroke, lineWidth: 1))
                 if hasLetter {
                     Text(String(seeded))
-                        .font(.system(size: min(geo.size.width, geo.size.height) * 0.42, weight: .heavy, design: .rounded))
+                        .font(.system(size: min(UIScreen.main.bounds.width, UIScreen.main.bounds.height) * 0.42, weight: .heavy, design: .rounded))
                         .foregroundStyle(Color.dynamicBlack)
                         .position(letterPos)
                         .mask(RevealMask(points: strokes))
@@ -313,8 +314,8 @@ private struct SandDigMini: View {
             .onAppear {
                 seeded = letter ?? PremiumHubModel.randomLetter()
                 let inset: CGFloat = 60
-                letterPos = CGPoint(x: .random(in: inset...(geo.size.width - inset)),
-                                    y: .random(in: inset...(geo.size.height - inset)))
+                letterPos = CGPoint(x: .random(in: inset...(UIScreen.main.bounds.width - inset)),
+                                    y: .random(in: inset...(UIScreen.main.bounds.height - inset)))
             }
         }
         .frame(height: 300)
@@ -393,7 +394,7 @@ struct WaxPressMini: View {
                     Text(String(seeded))
                         .font(
                             .system(
-                                size: min(geo.size.width, geo.size.height) * 0.42,
+                                size: min(UIScreen.main.bounds.width, UIScreen.main.bounds.height) * 0.42,
                                 weight: .heavy,
                                 design: .rounded
                             )
@@ -502,8 +503,8 @@ struct WaxPressMini: View {
                 // seed letter and position
                 seeded = letter ?? PremiumHubModel.randomLetter()
                 letterPos = CGPoint(
-                    x: .random(in: inset...(geo.size.width  - inset)),
-                    y: .random(in: inset...(geo.size.height - inset))
+                    x: .random(in: inset...(UIScreen.main.bounds.width  - inset)),
+                    y: .random(in: inset...(UIScreen.main.bounds.height - inset))
                 )
             }
             .onChange(of: geo.size) { _, newSize in
@@ -543,7 +544,7 @@ private struct FogWipeMini: View {
                 if hasLetter {
                     Text(String(seeded))
                         .font(.system(
-                            size: min(geo.size.width, geo.size.height) * 0.42,
+                            size: min(UIScreen.main.bounds.width, UIScreen.main.bounds.height) * 0.42,
                             weight: .heavy,
                             design: .rounded
                         ))
@@ -608,8 +609,8 @@ private struct FogWipeMini: View {
                 seeded = letter ?? PremiumHubModel.randomLetter()
                 let inset: CGFloat = 70
                 letterPos = CGPoint(
-                    x: .random(in: inset...(geo.size.width - inset)),
-                    y: .random(in: inset...(geo.size.height - inset))
+                    x: .random(in: inset...(UIScreen.main.bounds.width - inset)),
+                    y: .random(in: inset...(UIScreen.main.bounds.height - inset))
                 )
             }
         }
@@ -659,7 +660,7 @@ private struct SonarMini: View {
                 // letter (only after success), animated in-place
                 if solved, let ch = letterToShow {
                     Text(String(ch))
-                        .font(.system(size: min(geo.size.width, geo.size.height) * 0.40,
+                        .font(.system(size: min(UIScreen.main.bounds.width, UIScreen.main.bounds.height) * 0.40,
                                       weight: .heavy, design: .rounded))
                         .foregroundStyle(Color.dynamicBlack)
                         .position(target)
@@ -717,8 +718,8 @@ private struct SonarMini: View {
                 letterToShow = hasLetter ? seed : nil  // freeze once
                 let inset: CGFloat = 70
                 target = CGPoint(
-                    x: .random(in: inset...(geo.size.width - inset)),
-                    y: .random(in: inset...(geo.size.height - inset))
+                    x: .random(in: inset...(UIScreen.main.bounds.width - inset)),
+                    y: .random(in: inset...(UIScreen.main.bounds.height - inset))
                 )
             }
         }
@@ -765,7 +766,7 @@ private struct RippleMini: View {
                 // Letter appears only when solved, and animates in place
                 if solved, hasLetter {
                     Text(String(seeded))
-                        .font(.system(size: min(geo.size.width, geo.size.height) * 0.40,
+                        .font(.system(size: min(UIScreen.main.bounds.width, UIScreen.main.bounds.height) * 0.40,
                                       weight: .heavy, design: .rounded))
                         .foregroundStyle(Color.dynamicBlack)
                         .position(target)
@@ -841,8 +842,8 @@ private struct RippleMini: View {
             .onAppear {
                 seeded = letter ?? PremiumHubModel.randomLetter()
                 let inset: CGFloat = 70
-                target = CGPoint(x: .random(in: inset...(geo.size.width - inset)),
-                                 y: .random(in: inset...(geo.size.height - inset)))
+                target = CGPoint(x: .random(in: inset...(UIScreen.main.bounds.width - inset)),
+                                 y: .random(in: inset...(UIScreen.main.bounds.height - inset)))
             }
         }
         .frame(height: 280)
@@ -872,7 +873,7 @@ private struct MagnetMini: View {
     
     var body: some View {
         GeometryReader { geo in
-            let bounds = geo.size
+            let bounds = UIScreen.main.bounds
             ZStack {
                 // Background
                 RoundedRectangle(cornerRadius: 18)
@@ -1043,7 +1044,7 @@ private struct FrostMini: View {
                 // letter reveal
                 if hasLetter {
                     Text(String(seeded))
-                        .font(.system(size: min(geo.size.width, geo.size.height) * 0.42,
+                        .font(.system(size: min(UIScreen.main.bounds.width, UIScreen.main.bounds.height) * 0.42,
                                       weight: .heavy, design: .rounded))
                         .foregroundStyle(Color.dynamicBlack)
                         .position(letterPos)
@@ -1117,8 +1118,8 @@ private struct FrostMini: View {
                 seeded = letter ?? PremiumHubModel.randomLetter()
                 let inset: CGFloat = 70
                 letterPos = CGPoint(
-                    x: .random(in: inset...(geo.size.width - inset)),
-                    y: .random(in: inset...(geo.size.height - inset))
+                    x: .random(in: inset...(UIScreen.main.bounds.width - inset)),
+                    y: .random(in: inset...(UIScreen.main.bounds.height - inset))
                 )
             }
         }
@@ -1292,10 +1293,10 @@ private struct PlayTagMini: View {
                 
                 // Safe spawns
                 let inset: CGFloat = 36
-                ball = CGPoint(x: .random(in: inset...(geo.size.width - inset)),
-                               y: .random(in: inset...(geo.size.height - inset)))
-                target = CGPoint(x: .random(in: inset...(geo.size.width - inset)),
-                                 y: .random(in: inset...(geo.size.height - inset)))
+                ball = CGPoint(x: .random(in: inset...(UIScreen.main.bounds.width - inset)),
+                               y: .random(in: inset...(UIScreen.main.bounds.height - inset)))
+                target = CGPoint(x: .random(in: inset...(UIScreen.main.bounds.width - inset)),
+                                 y: .random(in: inset...(UIScreen.main.bounds.height - inset)))
                 lastBallPos = ball
                 lastMoveAt = Date()
                 lastTickAt = Date()
@@ -2274,8 +2275,8 @@ struct CardShuffleMini: View {
                 let cardSize = CGSize(width: 86, height: 118)
                 let spacing: CGFloat = 18
                 let total = cardSize.width * 3 + spacing * 2
-                let startX = (geo.size.width - total) / 2 + cardSize.width / 2
-                let y = geo.size.height / 2
+                let startX = (UIScreen.main.bounds.width - total) / 2 + cardSize.width / 2
+                let y = UIScreen.main.bounds.height / 2
                 
                 ZStack {
                     // cards
@@ -2316,7 +2317,7 @@ struct CardShuffleMini: View {
                         }
                     }
                         .frame(width: total, height: cardSize.height)
-                        .position(x: geo.size.width/2, y: y)
+                        .position(x: UIScreen.main.bounds.width/2, y: y)
                 )
             }
             .frame(height: 150)

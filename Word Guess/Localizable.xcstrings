@@ -446,6 +446,17 @@
         }
       }
     },
+    "Are you sure?" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אתה בטוח?"
+          }
+        }
+      }
+    },
     "Available letters" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -3665,7 +3676,14 @@
       }
     },
     "Scroll to top" : {
-
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "גלול למעלה"
+          }
+        }
+      }
     },
     "Semantic drift" : {
       "extractionState" : "manual",

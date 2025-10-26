@@ -55,6 +55,7 @@ struct AIPackDownloadView: View {
         GeometryReader { _ in
             GameViewBackground().ignoresSafeArea()
             VStack {
+                Spacer()
                 VStack(spacing: 24) {
                     SafeSymbol("icloud.and.arrow.down.fill")
                         .font(.system(size: 56, weight: .semibold))
@@ -69,7 +70,7 @@ struct AIPackDownloadView: View {
                     
                     VStack(alignment: .leading, spacing: 10) {
                         CapsuleProgressBar(progress: progressValue > 0.01 ? progressValue : 0, height: 20)
-                            .frame(maxWidth: 520)
+                            .frame(maxWidth: .infinity)
                             .padding(.horizontal)
                         HStack {
                             Text(progressLabel).monospacedDigit().font(.headline)
@@ -79,7 +80,7 @@ struct AIPackDownloadView: View {
                                 .monospacedDigit().font(.headline)
                                 .foregroundStyle(Color.dynamicBlack.opacity(0.65))
                         }
-                        .frame(maxWidth: 520)
+                        .frame(maxWidth: .infinity)
                         .padding(.horizontal)
                     }
                     
@@ -106,7 +107,6 @@ struct AIPackDownloadView: View {
                     .padding(.bottom, 14)
                     .accessibilityLabel("Cancel")
                 }
-                .padding(.top, 260)
                 .padding(.horizontal)
                 Spacer()
             }

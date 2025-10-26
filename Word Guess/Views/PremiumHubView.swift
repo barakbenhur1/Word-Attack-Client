@@ -68,6 +68,7 @@ public struct PremiumHubView: View {
     @State private var didResolveSheet: Bool
     
     @State private var showError: Bool
+    @State private var showExitPopup: Bool
     
     // Tutorial
     @State private var showTutorial: Bool
@@ -100,6 +101,7 @@ public struct PremiumHubView: View {
         didResolveSheet = false
         showError = false
         showTutorial = false
+        showExitPopup = false
         engine = try? CHHapticEngine()
         _hub = StateObject(wrappedValue: PremiumHubModel(uniqe: uniqe))
     }
@@ -110,7 +112,7 @@ public struct PremiumHubView: View {
                 PremiumBackground()
                 VStack {
                     HStack(spacing: 12) {
-                        BackPill { closeView() }
+                        BackPill { showExitPopup = true }
                             .padding(.trailing, 20)
                         SolvedCounterPill(
                             count: hub.solvedWords,
@@ -145,16 +147,17 @@ public struct PremiumHubView: View {
                             
                             Grid3x3(hub: hub, presentedSlot: $presentedSlot, engine: engine)
                             
-                            VStack(alignment: .leading, spacing: 6) {
-                                Text("Available letters")
-                                    .font(.footnote.weight(.semibold))
-                                    .foregroundStyle(Color.dynamicBlack.opacity(0.7))
-                                DiscoveredBeltView(letters: Array(hub.discoveredLetters).sorted())
-                            }
-                            .padding(.horizontal, 8)
-                            .padding(.top, 4)
                             
                             if !UIDevice.isPad {
+                                VStack(alignment: .leading, spacing: 6) {
+                                    Text("Available letters")
+                                        .font(.footnote.weight(.semibold))
+                                        .foregroundStyle(Color.dynamicBlack.opacity(0.7))
+                                    DiscoveredBeltView(letters: Array(hub.discoveredLetters).sorted())
+                                }
+                                .padding(.horizontal, 8)
+                                .padding(.top, 4)
+                                
                                 Button { lightTap(engine) } label: {
                                     HStack {
                                         Text("Find letters in mini-games")
@@ -188,33 +191,45 @@ public struct PremiumHubView: View {
                     }
                     
                     if UIDevice.isPad {
-                        Button { lightTap(engine) } label: {
-                            HStack {
-                                Text("Find letters in mini-games")
-                                Spacer()
-                                Image(systemName: language == "he" ? "arrow.left" : "arrow.right")
+                        VStack {
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text("Available letters")
+                                    .font(.footnote.weight(.semibold))
+                                    .foregroundStyle(Color.dynamicBlack.opacity(0.7))
+                                DiscoveredBeltView(letters: Array(hub.discoveredLetters).sorted())
                             }
-                            .font(.system(.headline, design: .rounded))
-                            .foregroundStyle(Color.dynamicBlack)
-                            .padding(.horizontal, 16)
-                            .frame(height: 56)
-                            .background(LinearGradient(
-                                colors: scheme == .light
-                                ? [
-                                    Color.white,
-                                    Color(hue: 0.66, saturation: 0.06, brightness: 0.99)
-                                ]
-                                : [
-                                    Color.black,
-                                    Color(hue: 0.64, saturation: 0.25, brightness: 0.18)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing),
-                                        in: RoundedRectangle(cornerRadius: 18, style: .continuous)
-                            )
-                            .overlay(RoundedRectangle(cornerRadius: 18).stroke(Color.dynamicBlack.opacity(0.08)))
+                            .padding(.horizontal, 8)
+                            .padding(.top, 4)
+                            
+                            Button { lightTap(engine) } label: {
+                                HStack {
+                                    Text("Find letters in mini-games")
+                                    Spacer()
+                                    Image(systemName: language == "he" ? "arrow.left" : "arrow.right")
+                                }
+                                .font(.system(.headline, design: .rounded))
+                                .foregroundStyle(Color.dynamicBlack)
+                                .padding(.horizontal, 16)
+                                .frame(height: 56)
+                                .background(LinearGradient(
+                                    colors: scheme == .light
+                                    ? [
+                                        Color.white,
+                                        Color(hue: 0.66, saturation: 0.06, brightness: 0.99)
+                                    ]
+                                    : [
+                                        Color.black,
+                                        Color(hue: 0.64, saturation: 0.25, brightness: 0.18)
+                                    ],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing),
+                                            in: RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                )
+                                .overlay(RoundedRectangle(cornerRadius: 18).stroke(Color.dynamicBlack.opacity(0.08)))
+                            }
+                            .padding(.horizontal, 12)
+                            .padding(.bottom, 80)
                         }
-                        .padding(.bottom, 80)
                     }
                 }
             }
@@ -310,6 +325,13 @@ public struct PremiumHubView: View {
                          actionText: "OK",
                          action: closeView,
                          message: { Text("something went wrong") })
+            .customAlert("Exit",
+                         type: .info,
+                         isPresented: $showExitPopup,
+                         actionText: "OK",
+                         cancelButtonText: "Cancel",
+                         action: closeView,
+                         message: { Text("Are you sure?") })
             .overlay {
                 if showTutorial {
                     HubTutorialOverlay {

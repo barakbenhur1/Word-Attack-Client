@@ -20,7 +20,8 @@ class AIViewModel {
     private typealias BossProvider = (() -> String?)
     private let lang: Language
     private let phraseProvider: PhraseProvider
-    private var solver: WordZapAI?
+//    private var solver: WordZapAI?
+    private var provider: AIProvider
     private var history: [GuessHistory]
     private var solverWarmedup: Bool = false
     private var bossProvider: BossProvider = { nil } {
@@ -29,28 +30,24 @@ class AIViewModel {
     
     // MARK: - Public Parameters
     var isReadyToGuess: Bool { solverWarmedup }
-    var phrase: String { phraseProvider.phrase }
+    @MainActor var phrase: String { phraseProvider.phrase }
     var showPhraseValue: Bool { phraseProvider.showPhraseValue }
     
     init(language: Language, startingHistory: [GuessHistory] = []) {
         lang           = language
         history        = startingHistory
         phraseProvider = PhraseProvider()
-        handleSolver()
+        provider = .init()
+        warmUP()
     }
     
-    private func handleSolver() {
-        let provider = WordZapAIProvider.shared
-        solverWarmedup = provider.aiReady
-        guard !solverWarmedup else { solver = provider.fetch(); return }
-        // Warm-up off the main actor; hop back only to update state.
-        Task.detached(priority: .high) {
-            guard let s = provider.fetch() else { return }
-            s.warmUp()
+    private func warmUP() {
+        let provider = provider
+        Task.detached(priority: .utility) {
+            let value = await provider.warmUpAi()
             await MainActor.run { [weak self] in
                 guard let self else { return }
-                solver = s
-                solverWarmedup = provider.aiReady
+                solverWarmedup = value
             }
         }
     }
@@ -68,30 +65,33 @@ extension AIViewModel {
     }
     
     func addDetachedFirstGuess(with formatter: @escaping (_ value: String) -> GuessHistory?) async {
-        guard let solver else { return }
-        guard let guess = try? solver.pickFirstGuessFromModel(lang: lang) else { return }
-        let animated = guess.map { String($0).returnChar(isFinal: $0 == guess.last) }.joined()
-        guard let formatted = formatter(animated) else { return }
-        saveToHistory(guess: formatted)
+//        guard let solver else { return }
+//        guard let guess = try? solver.pickFirstGuessFromModel(lang: lang) else { return }
+//        let animated = guess.map { String($0).returnChar(isFinal: $0 == guess.last) }.joined()
+//        guard let formatted = formatter(animated) else { return }
+        //        saveToHistory(guess: formatted)
     }
     
     func getFeedback(for difficulty: AIDifficulty) async -> String? {
-        guard let solver else { return nil }
-        do { return try solver.guessNext(history: history, lang: lang, difficulty: difficulty) }
-        catch {
-            #if DEBUG
-            fatalError(error.localizedDescription)
-            #else
+        let value = await provider.aiWord(history: history, lang: lang, difficulty: difficulty)
+        let guess = value?.guess
+        
+        guard let guess else {
+#if DEBUG
+            fatalError("No Ai Word!!!")
+#else
             return generateWord(for: lang)
-            #endif
+#endif
         }
+        
+        return guess
     }
     
     @MainActor
     func release() {
         phraseProvider.hidePhrase()
         phraseProvider.stop()
-        solver = nil
+//        solver = nil
         WordZapAIProvider.shared.release()
     }
 }
@@ -100,6 +100,6 @@ extension AIViewModel {
 private extension AIViewModel {
     private func fallbackGuess() -> String { generateWord(for: lang, length: 5) }
     private func installBossEnhancementProvider(bossProvider: @escaping BossProvider) {
-        solver?.installBossEnhancementProvider(bossProvider)
+//        solver?.installBossEnhancementProvider(bossProvider)
     }
 }

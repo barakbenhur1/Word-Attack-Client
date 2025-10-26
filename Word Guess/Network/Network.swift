@@ -11,7 +11,7 @@ import Foundation
 
 protocol DataSource: ObservableObject {}
 
-internal enum APIRoute: String { case root = "", word, score, gender, changeLanguage, getPremiumScore, getAllPremiumScores, scoreboard, place, getScore, getWord, addGuess, premiumScore, isLoggedin }
+internal enum APIRoute: String { case root = "", word, score, gender, changeLanguage, getPremiumScore, getAllPremiumScores, scoreboard, place, getScore, getWord, addGuess, premiumScore, isLoggedin, aiGuess, aiHealth }
 
 // MARK: Networkble
 private protocol Networkble: DataSource {
@@ -40,8 +40,17 @@ internal enum HttpMethod: String {
 
 // MARK: Network
 class Network: Networkble {
-    enum APIRoot: String { case login, score, words }
+    enum APIRoot: String { case login, score, words, ai }
     static private var base: String = ""
+    
+    var baseURL: String {
+#if DEBUG
+//        return "http://localhost:3000"
+        return Network.base
+#else
+        return Network.base
+#endif
+    }
     
     // MARK: responedQueue
     fileprivate let responedQueue: DispatchQueue = DispatchQueue.main
@@ -101,11 +110,8 @@ class Network: Networkble {
     ///  - parameters
     ///  - complition
     ///  - error
-    private func send<T: Codable>(method: HttpMethod, url: String, parameters: [String: Any]) async -> Result<T, NetworkError> {
+    private func send<T: Codable>(request: URLRequest) async -> Result<T, NetworkError> {
         return await withCheckedContinuation({ c in
-            do {
-                let request = try Request(method: method, url: url, parameters: parameters).build()
-                
                 URLSession.shared.dataTask(with: request) { data, response, err in
                     guard let err else {
                         do {
@@ -125,9 +131,6 @@ class Network: Networkble {
                     c.resume(returning: .failure(.custom(error: err)))
                     
                 }.resume()
-                
-                // handele expetions
-            } catch let err { c.resume(returning: .failure(.custom(error: err))) }
         })
     }
 }
@@ -143,17 +146,41 @@ extension Network {
     ///  - error
     internal func send<T: Codable>(method: HttpMethod = .post, route: APIRoute, parameters: [String: Any] = [:]) async -> T? {
         let url = url(route)
-        let result: Result<T, NetworkError> = await send(method: method,
-                                                         url: url,
-                                                         parameters: parameters)
-        
-        switch result {
-        case .success(let success):
-            return success
-        case .failure(let failure):
-            print(failure)
-            return nil
-        }
+        do {
+            let request = try Request(method: method, url: url, parameters: parameters).build()
+            let result: Result<T, NetworkError> = await send(request: request)
+            
+            switch result {
+            case .success(let success):
+                return success
+            case .failure(let failure):
+                print(failure)
+                return nil
+            }
+        } catch { print(error.localizedDescription); return nil }
+    }
+    
+    // MARK: send - call send to network and unwrap (result || error)
+    /// - Parameters: data
+    ///  - method
+    ///  - url
+    ///  - parameters
+    ///  - complition
+    ///  - error
+    internal func send<T: Codable>(method: HttpMethod = .post, route: APIRoute, parameters: Data) async -> T? {
+        let url = url(route)
+        do {
+            let request = try Request(method: method, url: url).buildWith(parameters)
+            let result: Result<T, NetworkError> = await send(request: request)
+            
+            switch result {
+            case .success(let success):
+                return success
+            case .failure(let failure):
+                print(failure)
+                return nil
+            }
+        } catch { print(error.localizedDescription); return nil }
     }
     
     // MARK: ComplitionHandeler
@@ -196,14 +223,23 @@ extension Network {
         
         let method: HttpMethod
         let url: String
-        let parameters: [String: Any]
+        var parameters: [String: Any] = [:]
         
         // MARK: build
         var build: () throws -> URLRequest { newRequest }
+        var buildWith: (_ data: Data) throws -> URLRequest { newRequestWith }
         
         // MARK: Private
         private func newRequest() throws -> URLRequest {
             return try createRequestWithType()
+                .withHttpMethod(method.rawValue)
+                .withHeaders(.init(value: "application/json", headerField: "Content-Type"),
+                             .init(value: "application/json", headerField: "Accept"))
+        }
+        
+        private func newRequestWith(httpBody: Data) throws -> URLRequest {
+            return try createRequest()
+                .withHttpBody(httpBody)
                 .withHttpMethod(method.rawValue)
                 .withHeaders(.init(value: "application/json", headerField: "Content-Type"),
                              .init(value: "application/json", headerField: "Accept"))
@@ -263,7 +299,7 @@ extension NetworkError: LocalizedError {
 
 extension Dictionary {
     func httpBody() -> Data? {
-        return try? JSONSerialization.data(withJSONObject: self)
+        return try? JSONSerialization.data(withJSONObject: self, options: [])
     }
     
     func requestFormatted() -> String {

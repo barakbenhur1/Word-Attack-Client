@@ -452,7 +452,7 @@ struct AIGameView<VM: AIWordViewModel>: View {
             }
             guard let uniqe else { return }
             if currentShow != aiDifficulty {
-                try? await Task.sleep(nanoseconds: 1_000_000_000)
+                try? await Task.sleep(nanoseconds: 800_000_000)
                 await vm.word(uniqe: uniqe)
             }
         }
@@ -579,7 +579,7 @@ struct AIGameView<VM: AIWordViewModel>: View {
         saveToHistory(for: .player)
         if chackWord(index: i, matrix: matrix) {
             Task(priority: .userInitiated) {
-                try? await Task.sleep(nanoseconds: 1_000_000_000)
+                try? await Task.sleep(nanoseconds: 800_000_000)
                 await MainActor.run {
                     audio.stop()
                     audio.playSound(sound: "success", type: "wav")
@@ -603,7 +603,11 @@ struct AIGameView<VM: AIWordViewModel>: View {
                     await MainActor.run { animatedTurnSwitch(to: .ai) }
                 }
             }
-            getAiWord()
+            
+            Task.detached(priority: .utility) {
+                try? await Task.sleep(nanoseconds: 4_200_000_000)
+                await MainActor.run { getAiWord() }
+            }
         }
     }
     
@@ -613,7 +617,7 @@ struct AIGameView<VM: AIWordViewModel>: View {
         saveToHistory(for: .ai)
         if chackWord(index: i, matrix: aiMatrix) {
             Task(priority: .userInitiated) {
-                try? await Task.sleep(nanoseconds: 1_000_000_000)
+                try? await Task.sleep(nanoseconds: 800_000_000)
                 await MainActor.run {
                     audio.stop()
                     audio.playSound(sound: "fail", type: "wav")
@@ -633,7 +637,7 @@ struct AIGameView<VM: AIWordViewModel>: View {
         else if i < rows - 1 { current = i + 1 }
         else if i == rows - 1 {
             Task(priority: .userInitiated) {
-                try? await Task.sleep(nanoseconds: 1_000_000_000)
+                try? await Task.sleep(nanoseconds: 800_000_000)
                 await MainActor.run {
                     audio.stop()
                     audio.playSound(sound: "fail", type: "wav")
@@ -823,6 +827,7 @@ struct AIGameView<VM: AIWordViewModel>: View {
                         ZStack(alignment: .center) {
                             EmptyCard(height: 76)
                                 .realisticCell(color: .dynamicBlack.opacity(0.4), cornerRadius: 8)
+                                .opacity(turn == .player ? 1 : 0.4)
                                 .frame(width: 112)
                             VStack(spacing: 4) {
                                 ZStack {
@@ -852,7 +857,6 @@ struct AIGameView<VM: AIWordViewModel>: View {
                             }
                             .padding(.all, 2)
                         }
-                        .opacity(turn == .player ? 1 : 0.4)
                         
                         Spacer()
                         
@@ -868,7 +872,6 @@ struct AIGameView<VM: AIWordViewModel>: View {
                                         .scaledToFill()
                                         .shadow(radius: 4)
                                         .frame(width: 46, height: 46)
-                                        .opacity(turn == .ai ? 1 : 0.4)
                                         .tooltip(ai!.phrase,
                                                  language: language == "he" ? .he : .en,
                                                  trigger: .manual,
@@ -891,7 +894,6 @@ struct AIGameView<VM: AIWordViewModel>: View {
                                         .blur(radius: 0.5)
                                         .fixedSize()
                                 }
-                                .opacity(turn == .ai ? 1 : 0.4)
                             }
                             .padding(.all, 2)
                         }
@@ -960,6 +962,7 @@ struct AIGameView<VM: AIWordViewModel>: View {
                         colors: $colors[i],
                         done: { calculatePlayerTurn(i: i) }
                     )
+                    .opacity(current == i ? 1 : 0.9)
                     .allowsHitTesting(!disabled && current == i)
                     .disabled(disabled || current != i)
                     .shadow(radius: 4)
@@ -978,6 +981,7 @@ struct AIGameView<VM: AIWordViewModel>: View {
                         colors: $aiColors[i],
                         done: { calculateAITurn(i: i) }
                     )
+                    .opacity(current == i ? 1 : 0.9)
                     .allowsHitTesting(false)
                     .disabled(true)
                     .shadow(radius: 4)

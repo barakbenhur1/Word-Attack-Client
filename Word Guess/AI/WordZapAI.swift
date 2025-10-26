@@ -12,7 +12,17 @@ import SwiftUI
 
 // MARK: - Public API
 
+public struct GuessRow: Codable {
+    let word: String
+    let feedback: String
+}
+
 public typealias GuessHistory = (word: String, feedback: String)
+
+public extension Array where Element == GuessHistory {
+    var jsonValid: [GuessRow] { map { GuessRow(word: $0.word, feedback: String($0.feedback.map { $0 == "🟩" ? "G" : $0 == "🟨" ? "Y" : "-" })) } }
+}
+
 public typealias AIDifficultyItem = (image: String, name: String, color: Color)
 
 public enum AIDifficulty {
@@ -29,6 +39,15 @@ public enum AIDifficulty {
         case ("hardAI", "Spynet", .orange):      self = .hard
         case ("bossAI", "This Guy", .red):       self = .boss
         default:                                 fatalError()
+        }
+    }
+    
+    var stringValue: String {
+        switch self {
+        case .easy:   "easy"
+        case .medium: "medium"
+        case .hard:   "hard"
+        case .boss:   "boss"
         }
     }
     

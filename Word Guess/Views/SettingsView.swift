@@ -10,7 +10,7 @@ import SwiftUI
 enum SettingsOption: String {
     case language = "language", sound = "sound", ai = "ai", premium = "Premium", share = "Share", update = "Update"
     
-    var stringValue: String { rawValue.localized }
+    @MainActor var stringValue: String { rawValue.localized }
 }
 
 struct SettingsOptionButton: Identifiable, Hashable {

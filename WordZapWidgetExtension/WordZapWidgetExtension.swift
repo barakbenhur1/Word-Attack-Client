@@ -416,14 +416,15 @@ private struct AICardWithTooltip: View {
     var body: some View {
         let imageH: CGFloat = isExtraLarge ? 124 : 108
         let bubbleMaxW: CGFloat = isExtraLarge ? 180 : 140
-        let bubbleLift: CGFloat =  isExtraLarge ? 0  : 0
+        let bubbleLift: CGFloat =  isExtraLarge ? 6  : 0
         let imageTopPadding: CGFloat = isExtraLarge ? 0 : 0
         let textTopPadding: CGFloat = isExtraLarge ? 0 : 0
-        let textBottomPadding: CGFloat = isExtraLarge ? 2 : 4
-        let brainSize: CGFloat = isExtraLarge ? 124 : 108
+        let textBottomPadding: CGFloat = isExtraLarge ? 4 : -5
+        let brainSize: CGFloat = isExtraLarge ? 104 : 94
         
         VStack(spacing: 2) {
             // Fixed-height image area
+            Spacer()
             Group {
                 if let img = imageName, UIImage(named: img) != nil {
                     Image(img)
@@ -459,6 +460,8 @@ private struct AICardWithTooltip: View {
                 .minimumScaleFactor(0.7)
                 .padding(.top, textTopPadding)
                 .padding(.bottom, textBottomPadding)
+            
+            Spacer()
         }
         .padding(14)
         .padding(.top, 42.5)

@@ -33,7 +33,7 @@ final class PhraseProvider: ObservableObject {
         }
     }
     
-    var phrase: String { currentPhrase.localized }
+    @MainActor var phrase: String { currentPhrase.localized }
     
     var showPhraseValue: Bool { showPhrase }
     

@@ -77,7 +77,8 @@ struct KeyboardHeightView: View {
     }
     
     var body: some View {
+        let isPad = UIDevice.current.userInterfaceIdiom == .pad
         Color.clear
-            .frame(height: store.height > 0 ? store.height - 35 + adjustBy : estimatedKeyboardHeightFallback())
+            .frame(height: store.height > 0 ? store.height - (isPad ? 15 : 35) + adjustBy : estimatedKeyboardHeightFallback())
     }
 }

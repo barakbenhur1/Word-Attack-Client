@@ -31,7 +31,7 @@ class DeepLinker: Singleton {
         if GIDSignIn.sharedInstance.handle(url) { return }
         Task(priority: .userInitiated) {
             await router.popToRoot()
-            try? await Task.sleep(nanoseconds: 1_000_000_000)
+            try? await Task.sleep(nanoseconds: 500_000_000)
             await MainActor.run {
                 switch url.absoluteString {
                 case let absoluteString where absoluteString.contains(.resume):     resume(url: url)
