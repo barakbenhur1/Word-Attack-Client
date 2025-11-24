@@ -91,7 +91,7 @@ struct VsPlayerGameView<VM: VsPlayerGameViewModel>: View {
     private var allBestGuesses: [BestGuess] { return vm.perIndexCandidatesSparse(matrix: p1Matrix,
                                                                                  colors: p1Colors,
                                                                                  matrix2: p2Matrix,
-                                                                                 colors2: p1Colors) }
+                                                                                 colors2: p2Colors) }
     
     // MARK: - Init
     
@@ -186,13 +186,10 @@ struct VsPlayerGameView<VM: VsPlayerGameViewModel>: View {
             
             // If we are *gaining* the turn, then the opponent must have just
             // finished a row on the previous state.
-            if prevTurn == .player2 && isMyTurn && result == .none {
+            if prevTurn == .player2 && isMyTurn {
                 handleOpponentRowComplete(row: prevRow)
             }
-            
-            // Opponent move may have ended the game.
-            guard result == .none else { return }
-            
+           
             // If the server says there is no valid next row for us (e.g. 5),
             // that simply means no more turns. Lock input and stop.
             guard nextRow >= 0 && nextRow < rows else {
@@ -427,10 +424,6 @@ struct VsPlayerGameView<VM: VsPlayerGameViewModel>: View {
             // Tell server this row is done; it will emit pvp:turn with nextRow
             Task { @MainActor in
                 disabled = true
-                try? await Task.sleep(nanoseconds: 800_000_000)
-                withAnimation {
-                    turn = .player2
-                }
                 vm.notifyRowDone(uniqe: uniqe, row: i)
                 // Do NOT change `turn` or `currentRow` here
             }
@@ -708,6 +701,9 @@ struct VsPlayerGameView<VM: VsPlayerGameViewModel>: View {
     private func gameTable() -> some View {
         ForEach(0..<rows, id: \.self) { i in
             ZStack {
+                let hasPrevGuess = currentRow == i && (p1Matrix[0].contains { !$0.isEmpty } || p2Matrix[0].contains { !$0.isEmpty })
+                let placeHolderData = hasPrevGuess ? allBestGuesses : nil
+                
                 switch turn {
                 case .player1:
                     // Active player is LOCAL on this device
@@ -722,9 +718,6 @@ struct VsPlayerGameView<VM: VsPlayerGameViewModel>: View {
                         },
                         set: { _ in }
                     )
-                    
-                    let hasPrevGuess = i > 0 && currentRow == i && p2Matrix[currentRow - 1].contains { !$0.isEmpty }
-                    let placeHolderData = hasPrevGuess ? allBestGuesses : nil
                     
                     WordView(
                         cleanCells: $cleanCells,
@@ -761,6 +754,7 @@ struct VsPlayerGameView<VM: VsPlayerGameViewModel>: View {
                         isAI: false, // reuse AI style for opponent
                         current: $currentRow,
                         length: length,
+                        placeHolderData: placeHolderData,
                         isSolved: .constant(
                             !vm.wordValue.isEmpty &&
                             p2Matrix[i].joined().lowercased() == vm.wordValue.lowercased()

@@ -561,9 +561,9 @@ final class PvPSocketClient {
         connectIfNeeded()
         playerLeftHandler = handler
         
-        socket.off("pvp:playerLeft")
+        socket.off("pvp:opponentLeft")
         
-        socket.on("pvp:playerLeft") { [weak self] data, _ in
+        socket.on("pvp:opponentLeft") { [weak self] data, _ in
             guard let self else { return }
             guard let dict = data.first as? [String: Any] else {
                 print("[PVP] pvp:playerLeft malformed payload:", data)
