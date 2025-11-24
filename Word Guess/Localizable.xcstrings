@@ -488,6 +488,9 @@
         }
       }
     },
+    "Back to queue" : {
+
+    },
     "Basic" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -5232,6 +5235,9 @@
           }
         }
       }
+    },
+    "חזרה לתור" : {
+
     }
   },
   "version" : "1.1"

@@ -88,10 +88,14 @@ struct VsPlayerGameView<VM: VsPlayerGameViewModel>: View {
         local.locale.identifier.components(separatedBy: "_").first
     }
     
-    private var allBestGuesses: [BestGuess] { return vm.perIndexCandidatesSparse(matrix: p1Matrix,
-                                                                                 colors: p1Colors,
-                                                                                 matrix2: p2Matrix,
-                                                                                 colors2: p2Colors) }
+    private var allBestGuesses: [BestGuess] {
+        vm.perIndexCandidatesSparse(
+            matrix: p1Matrix,
+            colors: p1Colors,
+            matrix2: p2Matrix,
+            colors2: p2Colors
+        )
+    }
     
     // MARK: - Init
     
@@ -164,40 +168,33 @@ struct VsPlayerGameView<VM: VsPlayerGameViewModel>: View {
             let chars = Array(guess)
             var row = [String](repeating: "", count: length)
             for i in 0..<min(length, chars.count) {
-                row[i] = String(chars[i])
+                let c = String(chars[i])
+                guard c != "_" else { continue }
+                row[i] = c
             }
             p2Matrix[rowIndex] = row
         }
     }
     
     /// Listen for server turn changes (row-based).
-    /// This is the key loop: every `pvp:rowDone` on the server produces a `pvp:turn`
-    /// broadcast, and we decide:
-    ///  - did the opponent just finish a row? → color + check win/draw
-    ///  - do we get a next row? → update `turn`, `currentRow`, `disabled`
     @MainActor
     private func startTurnListenerIfNeeded(for localPlayerId: String) {
         vm.observeTurnChanges(localPlayerId: localPlayerId) { isMyTurn, nextRow in
             guard result == .none else { return }
             
-            // State *before* applying the new turn.
             let prevTurn = turn
             let prevRow  = currentRow
             
-            // If we are *gaining* the turn, then the opponent must have just
-            // finished a row on the previous state.
+            // Opponent just finished a row
             if prevTurn == .player2 && isMyTurn {
                 handleOpponentRowComplete(row: prevRow)
             }
-           
-            // If the server says there is no valid next row for us (e.g. 5),
-            // that simply means no more turns. Lock input and stop.
+            
             guard nextRow >= 0 && nextRow < rows else {
                 disabled = true
                 return
             }
             
-            // Normal turn switch
             turnOverlayTask?.cancel()
             
             Task {
@@ -221,7 +218,7 @@ struct VsPlayerGameView<VM: VsPlayerGameViewModel>: View {
         guard let uniqe else { return }
         guard vm.currentMatchId?.isEmpty == false else { return }
         
-        let guess = p1Matrix[row].joined()
+        let guess = p1Matrix[row].map { $0.isEmpty ? "_" : $0 }.joined()
         vm.sendTypingUpdate(uniqe: uniqe, row: row, guess: guess)
     }
     
@@ -259,7 +256,18 @@ struct VsPlayerGameView<VM: VsPlayerGameViewModel>: View {
         self.result = result
         disabled = true
         showTurnOverlay = false
-        showGameEndPopup = true
+        
+        switch result {
+        case .player1Win, .player2Win:
+            // Show popup and then back to queue on button tap.
+            showGameEndPopup = true
+        case .draw, .none:
+            // Tie: go straight back to queue (no popup).
+            showGameEndPopup = false
+            Task { @MainActor in
+                await goBackToQueue()
+            }
+        }
     }
     
     @MainActor
@@ -317,14 +325,11 @@ struct VsPlayerGameView<VM: VsPlayerGameViewModel>: View {
                 coinFlipRequestInFlight = false
                 
                 if let winner {
-                    // server answered (real match) or local (preview)
                     coinFlipWinner = winner
                 } else if usesServer {
-                    // real match but server never answered – show error
                     print("[PVP] coinflip failed in real match – showing error")
                     showError = true
                 } else {
-                    // preview fallback
                     coinFlipWinner = .player1
                 }
             }
@@ -360,6 +365,74 @@ struct VsPlayerGameView<VM: VsPlayerGameViewModel>: View {
         endFetchAnimation = true
     }
     
+    // MARK: - Matching / queue
+    
+    @MainActor
+    private func beginMatching() {
+        guard let uniqe else {
+            showError = true
+            return
+        }
+        
+        isMatching = true
+        
+        vm.startMatchQueue(
+            uniqe: uniqe,
+            languageCode: language,
+            onWaiting: { waiting in
+                Task { @MainActor in
+                    isMatching = waiting
+                    print("[PVP] waiting:", waiting)
+                }
+            },
+            onMatchFound: { matchId, _, opponentId in
+                Task { @MainActor in
+                    isMatching = false
+                    print("[PVP] match found id=\(matchId) vs \(opponentId)")
+                    vm.joinMatch(matchId: matchId, uniqe: uniqe)
+                    await startGame(fetchNewWord: true)
+                    startOpponentTypingListenerIfNeeded()
+                    startTurnListenerIfNeeded(for: uniqe)
+                    
+                    // Listen for opponent leaving the match
+                    vm.observeOpponentLeft(localPlayerId: uniqe) { _ in
+                        Task { @MainActor in
+                            guard result == .none else { return }
+                            disabled = true
+                            showCoinFlip = false
+                            showTurnOverlay = false
+                            showGameEndPopup = false
+                            showOpponentLeftPopup = true
+                        }
+                    }
+                }
+            },
+            onError: { reason in
+                Task { @MainActor in
+                    isMatching = false
+                    print("[PVP] queue error:", reason ?? "unknown")
+                    showError = true
+                }
+            }
+        )
+    }
+    
+    /// Called after win/lose popup (or directly on draw) to go back to the queue.
+    @MainActor
+    private func goBackToQueue() async {
+        showGameEndPopup = false
+        result = .none
+        endFetchAnimation = false
+        didStart = false
+        showCoinFlip = false
+        showTurnOverlay = false
+        resetBoard()
+        
+        // Clean up any existing queue / match state before re-queueing
+        vm.leaveMatchQueue()
+        beginMatching()
+    }
+    
     // MARK: - Back / navigation
     
     private func backButtonTap() {
@@ -376,6 +449,7 @@ struct VsPlayerGameView<VM: VsPlayerGameViewModel>: View {
         cancelAllTasks()
         screenManager.keepScreenOn = false
         audio.stop()
+        vm.leaveMatchQueue()
         //        session.finishRound()
         
         delayedNavTask?.cancel()
@@ -400,11 +474,7 @@ struct VsPlayerGameView<VM: VsPlayerGameViewModel>: View {
     }
     
     /// Local player finishes a row.
-    /// EXACTLY ONE row per turn:
-    /// - submit,
-    /// - color,
-    /// - notify server,
-    /// - wait for `pvp:turn` from server to actually switch turn.
+    /// EXACTLY ONE row per turn.
     private func calculatePlayer1Turn(i: Int) {
         guard turn == .player1, i == currentRow else { return }
         guard p1Matrix[i].allSatisfy({ !$0.isEmpty }) else { return }
@@ -418,23 +488,30 @@ struct VsPlayerGameView<VM: VsPlayerGameViewModel>: View {
             Task { @MainActor in
                 audio.stop()
                 audio.playSound(sound: "success", type: "wav")
+                try? await Task.sleep(nanoseconds: 4_000_000_000)
                 finishRound(as: .player1Win)
             }
         } else {
             // Tell server this row is done; it will emit pvp:turn with nextRow
             Task { @MainActor in
                 disabled = true
-                vm.notifyRowDone(uniqe: uniqe, row: i)
-                // Do NOT change `turn` or `currentRow` here
+                if i == rows - 1 && p2Matrix[p2Matrix.count - 1].allSatisfy({ !$0.isEmpty }) {
+                    try? await Task.sleep(nanoseconds: 4_000_000_000)
+                    finishRound(as: .draw)
+                }
             }
+        }
+        
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 2_000_000_000)
+            vm.notifyRowDone(uniqe: uniqe, row: i)
         }
     }
     
     /// Opponent finished a row (from THIS device's POV).
-    /// We color their row locally and check win/draw.
     @MainActor
     private func handleOpponentRowComplete(row i: Int) {
-        guard i >= 0 && i < rows else { return }
+        guard  i < rows else { return }
         guard endFetchAnimation, didStart, !vm.wordValue.isEmpty else { return }
         
         let guessRow = p2Matrix[i]
@@ -445,12 +522,20 @@ struct VsPlayerGameView<VM: VsPlayerGameViewModel>: View {
         if isCorrectGuess(matrix: p2Matrix, row: i) {
             audio.stop()
             audio.playSound(sound: "fail", type: "wav")
-            finishRound(as: .player2Win)
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 2_000_000_000)
+                finishRound(as: .player2Win)
+            }
         } else if i == rows - 1 {
             // Only after *opponent* has also used their last row → draw
             audio.stop()
             audio.playSound(sound: "fail", type: "wav")
-            finishRound(as: .draw)
+            if p1Matrix[p1Matrix.count - 1].allSatisfy({ !$0.isEmpty }) {
+                Task { @MainActor in
+                    try? await Task.sleep(nanoseconds: 2_000_000_000)
+                    finishRound(as: .draw)
+                }
+            }
         }
     }
     
@@ -485,13 +570,24 @@ struct VsPlayerGameView<VM: VsPlayerGameViewModel>: View {
                     winner: $coinFlipWinner,
                     isRequesting: $coinFlipRequestInFlight,
                     onRequestServerFlip: {
-                        // This will run automatically on BOTH devices
-                        // as soon as the overlay appears.
                         requestCoinFlipFromServer()
                     },
                     onAutoStart: { winner in
                         Task { @MainActor in
                             applyStartingTurn(winner)
+                        }
+                    }
+                )
+            }
+            
+            // Win / Lose popup – after tap we go back to queue
+            if showGameEndPopup {
+                PvPGameResultOverlay(
+                    result: result,
+                    language: language,
+                    onDone: {
+                        Task { @MainActor in
+                            await goBackToQueue()
                         }
                     }
                 )
@@ -503,55 +599,12 @@ struct VsPlayerGameView<VM: VsPlayerGameViewModel>: View {
             opponentGender = opponentGender ?? "male"
             //            session.startNewRound(id: .pvp)
             
-            guard let uniqe else {
+            guard uniqe != nil else {
                 showError = true
                 return
             }
             
-            // Start matching immediately
-            isMatching = true
-            
-            vm.startMatchQueue(
-                uniqe: uniqe,
-                languageCode: language,
-                onWaiting: { waiting in
-                    Task { @MainActor in
-                        isMatching = waiting
-                        print("[PVP] waiting:", waiting)
-                    }
-                },
-                onMatchFound: { matchId, _, opponentId in
-                    Task { @MainActor in
-                        isMatching = false
-                        print("[PVP] match found id=\(matchId) vs \(opponentId)")
-                        vm.joinMatch(matchId: matchId, uniqe: uniqe)
-                        await startGame(fetchNewWord: true)
-                        startOpponentTypingListenerIfNeeded()
-                        startTurnListenerIfNeeded(for: uniqe)
-                        
-                        // Listen for opponent leaving the match
-                        vm.observeOpponentLeft(localPlayerId: uniqe) { _ in
-                            Task { @MainActor in
-                                // Stop all interaction in this match
-                                disabled = true
-                                showCoinFlip = false
-                                showTurnOverlay = false
-                                showGameEndPopup = false
-                                
-                                // Show “opponent left” popup – OK will close the view
-                                showOpponentLeftPopup = true
-                            }
-                        }
-                    }
-                },
-                onError: { reason in
-                    Task { @MainActor in
-                        isMatching = false
-                        print("[PVP] queue error:", reason ?? "unknown")
-                        showError = true
-                    }
-                }
-            )
+            beginMatching()
         }
         .onDisappear {
             isVisible = false
@@ -701,7 +754,8 @@ struct VsPlayerGameView<VM: VsPlayerGameViewModel>: View {
     private func gameTable() -> some View {
         ForEach(0..<rows, id: \.self) { i in
             ZStack {
-                let hasPrevGuess = currentRow == i && (p1Matrix[0].contains { !$0.isEmpty } || p2Matrix[0].contains { !$0.isEmpty })
+                let hasPrevGuess = currentRow == i &&
+                (p1Matrix[0].contains { !$0.isEmpty } || p2Matrix[0].contains { !$0.isEmpty })
                 let placeHolderData = hasPrevGuess ? allBestGuesses : nil
                 
                 switch turn {
@@ -739,14 +793,11 @@ struct VsPlayerGameView<VM: VsPlayerGameViewModel>: View {
                     .shadow(radius: 4)
                     .cardFlip(degrees: turn == .player2 ? 180 : 0)
                     .onChange(of: p1Matrix[i]) {
-                        // push typing updates for the active row
                         sendTypingUpdateIfNeeded(row: i)
                     }
                     
                 case .player2:
                     // Active player is OPPONENT on this device.
-                    // This still shows the OPPONENT board on BOTH devices,
-                    // but only they have input enabled on their own device.
                     let isOpponentRow = (currentRow == i)
                     
                     WordView(
@@ -1127,5 +1178,72 @@ fileprivate struct CoinFlipOverlay: View {
                 }
             }
         }
+    }
+}
+
+// MARK: - Simple Win/Lose Overlay
+
+fileprivate struct PvPGameResultOverlay: View {
+    var result: PvPResult
+    var language: String?
+    var onDone: () -> Void
+    
+    @Environment(\.colorScheme) private var scheme
+    
+    private var title: String {
+        switch result {
+        case .player1Win: return "You win".localized
+        case .player2Win: return "You lose".localized
+        case .draw, .none: return "Tie".localized
+        }
+    }
+    
+    private var message: String {
+        switch result {
+        case .player1Win:
+            return "You guessed the word first."
+        case .player2Win:
+            return "Your opponent guessed the word first."
+        case .draw, .none:
+            return "No one guessed the word."
+        }
+    }
+    
+    var body: some View {
+        ZStack {
+            Rectangle()
+                .fill(.ultraThinMaterial)
+                .opacity(scheme == .dark ? 0.98 : 0.98)
+                .ignoresSafeArea()
+            
+            VStack(spacing: 18) {
+                Text(title)
+                    .font(.system(size: 24, weight: .heavy, design: .rounded))
+                
+                Text(message.localized)
+                    .font(.system(.body, design: .rounded))
+                    .multilineTextAlignment(.center)
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 16)
+                
+                Button(action: onDone) {
+                    Text(language == "he" ? "חזרה לתור" : "Back to queue")
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
+                        .background(Color.accentColor.opacity(0.90))
+                        .foregroundStyle(.white)
+                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                }
+            }
+            .padding(24)
+            .background(
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .fill(.ultraThickMaterial)
+                    .shadow(color: .black.opacity(0.35), radius: 24, y: 12)
+            )
+            .padding(32)
+        }
+        .transition(.opacity.combined(with: .scale))
+        .animation(.spring(response: 0.45, dampingFraction: 0.9), value: result)
     }
 }

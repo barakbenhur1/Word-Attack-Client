@@ -604,17 +604,28 @@ struct ParallaxVerticalScroll<Content: View>: View {
                                     let t = min(absDistance / maxDistance, 1) // 0 = center, 1 = far
                                     
                                     // 3D-ish params
-                                    let minScale: CGFloat = 0.7
+                                    let minScale: CGFloat = 0.72
                                     let scale = 1 - (1 - minScale) * t
                                     
-                                    let minOpacity: CGFloat = 0.15
+                                    let minOpacity: CGFloat = 0.08
                                     let opacity = 1 - (1 - minOpacity) * t
+                                    
+                                    let signedT = max(-1, min(distance / maxDistance, 1))
+                                    let maxTilt: Double = 38       // max degrees of tilt
+                                    let angle = Angle.degrees(Double(signedT) * maxTilt)
                                     
                                     // ---- wheel mapping ----
                                     // shift by -1 so the LAST logical item is visually above the FIRST
                                     let logicalIndex = (rawIndex - 1 + itemCount) % itemCount
                                     
                                     content(logicalIndex)
+                                        .rotation3DEffect(
+                                            angle,
+                                            axis: (x: 1, y: 0, z: 0),   // X axis = “spinning” in-plane
+                                            anchor: .center,
+                                            anchorZ: 0,
+                                            perspective: 0.7
+                                        )
                                         .scaleEffect(scale)
                                         .opacity(opacity)
                                     // only the centered-ish one is tappable
@@ -631,6 +642,9 @@ struct ParallaxVerticalScroll<Content: View>: View {
                         }
                     }
                     .coordinateSpace(name: "PARALLAX_SCROLL")
+//                    .highPriorityGesture(
+//                        DragGesture()  // you can add minDistance: if you want, but not required
+//                    )
                     // start at the middle copy so we can scroll infinitely up/down
                     .onAppear {
                         let startRow = baseStart        // logical index 0 in middle block
