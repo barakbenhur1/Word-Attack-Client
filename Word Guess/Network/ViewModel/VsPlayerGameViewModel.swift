@@ -89,7 +89,7 @@ class VsPlayerGameViewModel: GameViewModel {
         length: Int,
         languageCode: String?
     ) async -> SimpleWord? {
-        guard var components = URLComponents(string: "http://localhost:3000/pvp/word") else {
+        guard var components = URLComponents(string: "https://word-attack-server.onrender.com/pvp/word") else {
             return nil
         }
         
@@ -357,7 +357,7 @@ final class PvPSocketClient {
     private var pendingQueueJoinPayload: [String: Any]?
     
     private init() {
-        let url = URL(string: "http://localhost:3000" /* prod URL here */)!
+        let url = URL(string: "https://word-attack-server.onrender.com" /* prod URL here */)!
         manager = SocketManager(
             socketURL: url,
             config: [

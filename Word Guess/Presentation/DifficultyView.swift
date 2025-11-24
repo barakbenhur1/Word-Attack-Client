@@ -220,7 +220,6 @@ struct DifficultyView: View {
                     ParallaxVerticalScroll(itemCount: buttons.count) { i in
                         let button = buttons[i]
                         difficultyButton(type: button.type)
-                            .shadow(color: .black.opacity(0.12), radius: 8, y: 4)
                     }
                 }
                 .padding(14)
@@ -252,11 +251,11 @@ struct DifficultyView: View {
     @ViewBuilder private func difficultyButton(type: DifficultyType) -> some View {
         let style: ElevatedButtonStyle = {
             switch type {
-            case .easy:        ElevatedButtonStyle(palette: .green)
-            case .medium:      ElevatedButtonStyle(palette: .amber)
-            case .hard:        ElevatedButtonStyle(palette: .rose)
-            case .ai:          ElevatedButtonStyle(palette: .teal)
-            case .pvp: ElevatedButtonStyle(palette: .purple)
+            case .easy:        ElevatedButtonStyle(palette: .green, height: 68)
+            case .medium:      ElevatedButtonStyle(palette: .amber, height: 68)
+            case .hard:        ElevatedButtonStyle(palette: .rose, height: 68)
+            case .ai:          ElevatedButtonStyle(palette: .teal, height: 68)
+            case .pvp:         ElevatedButtonStyle(palette: .purple, height: 68)
             default:           ElevatedButtonStyle()
             }
         }()
@@ -604,7 +603,7 @@ struct ParallaxVerticalScroll<Content: View>: View {
                                     let t = min(absDistance / maxDistance, 1) // 0 = center, 1 = far
                                     
                                     // 3D-ish params
-                                    let minScale: CGFloat = 0.72
+                                    let minScale: CGFloat = 0.88
                                     let scale = 1 - (1 - minScale) * t
                                     
                                     let minOpacity: CGFloat = 0.08
