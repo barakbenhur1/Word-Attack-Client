@@ -13,7 +13,7 @@ enum WordLanguage: String {
 }
 
 @Observable
-class DifficultyWordViewModel: WordViewModel {
+class DifficultyWordViewModel: GameViewModel {
     private let wordService: WordService
     private let scoreService: ScoreService
     var word: WordData

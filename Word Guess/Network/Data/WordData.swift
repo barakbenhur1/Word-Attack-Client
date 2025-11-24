@@ -48,7 +48,7 @@ struct AIHealth: Codable {
 }
 
 enum WarmupStatus {
-    case ready(AIHealth)
+    case ready(Health)
     case notReady(String?)    // server answered but not ready
 }
 

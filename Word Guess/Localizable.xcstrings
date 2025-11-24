@@ -979,6 +979,16 @@
         }
       }
     },
+    "Day: %@" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "יום: %@"
+          }
+        }
+      }
+    },
     "Declension denied" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1117,6 +1127,16 @@
         }
       }
     },
+    "Difficulty" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "קושי"
+          }
+        }
+      }
+    },
     "DIFFICULTY" : {
       "localizations" : {
         "he" : {
@@ -1196,22 +1216,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "לחיצה כפולה לערוך"
-          }
-        }
-      }
-    },
-    "Downloading AI Pack" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Downloading AI"
-          }
-        },
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "מוריד מודל"
           }
         }
       }
@@ -2945,6 +2949,20 @@
         }
       }
     },
+    "Opponent left" : {
+
+    },
+    "Opponent Turn" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "התור של היריב"
+          }
+        }
+      }
+    },
     "Orthography fail" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -3159,6 +3177,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "מקום"
+          }
+        }
+      }
+    },
+    "Placeholder" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "שומר מקום"
           }
         }
       }
@@ -3428,6 +3456,16 @@
         }
       }
     },
+    "Rank %lld" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "דירוג %lld"
+          }
+        }
+      }
+    },
     "Rare word, rarer win" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -3617,16 +3655,6 @@
         }
       }
     },
-    "Saving AI Model" : {
-      "localizations" : {
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "שומר מודל"
-          }
-        }
-      }
-    },
     "Schooled" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -3675,12 +3703,12 @@
         }
       }
     },
-    "Scroll to top" : {
+    "Scroll to your position in the list" : {
       "localizations" : {
         "he" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "גלול למעלה"
+            "value" : "גלול למיקום ברשימה"
           }
         }
       }
@@ -5054,6 +5082,23 @@
         }
       }
     },
+    "YOU vs PLAYER 2" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "YOU vs Opponent"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אתה נגד יריב"
+          }
+        }
+      }
+    },
     "You were invited by" : {
       "localizations" : {
         "he" : {
@@ -5107,6 +5152,9 @@
           }
         }
       }
+    },
+    "Your opponent left the match." : {
+
     },
     "Your tense is wrong" : {
       "extractionState" : "manual",

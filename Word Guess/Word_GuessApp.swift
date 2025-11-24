@@ -52,8 +52,9 @@ struct WordGuessApp: App {
                 Task(priority: .high) { await router.popToRoot() }
             }
             .onChange(of: loginHandeler.model?.gender) {
-                guard loginHandeler.model?.gender != nil else { return }
+                guard loginHandeler.hasGender else { return }
                 deepLinker.preform()
+                Task { await consumeQueuedDeepLink() }
             }
             .onChange(of: local.locale) {
                 guard let uniqe = loginHandeler.model?.uniqe else { return }
@@ -70,13 +71,13 @@ struct WordGuessApp: App {
             }
             .onOpenURL { url in
                 deepLinker.set(url: url)
-                guard loginHandeler.model?.gender != nil else { return }
+                guard loginHandeler.hasGender else { return }
                 deepLinker.preform()
             }
             .onReceive(NotificationCenter.default.publisher(for: .DeepLinkOpen)) { note in
                 if let url = note.userInfo?["url"] as? URL {
                     deepLinker.set(url: url)
-                    guard loginHandeler.model?.gender != nil else { return }
+                    guard loginHandeler.hasGender else { return }
                     deepLinker.preform()
                 }
             }
@@ -149,6 +150,7 @@ struct WordGuessApp: App {
     }
     
     private func consumeQueuedDeepLink() async {
+        guard loginHandeler.hasGender else { return }
         if let url = await DeepLinkInbox.shared.take() {
             deepLinker.set(url: url)
             deepLinker.preform()

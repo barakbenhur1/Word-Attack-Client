@@ -9,7 +9,7 @@ import SwiftUI
 import Alamofire
 
 @Observable
-class PremiumHubViewModel: WordViewModel {
+class PremiumHubViewModel: GameViewModel {
     private let scoreProvider: PremiumScoreProvider
     private let wordProvider: WordProvider
     var isError: Bool

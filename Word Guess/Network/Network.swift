@@ -11,7 +11,7 @@ import Foundation
 
 protocol DataSource: ObservableObject {}
 
-internal enum APIRoute: String { case root = "", word, score, gender, changeLanguage, getPremiumScore, getAllPremiumScores, scoreboard, place, getScore, getWord, addGuess, premiumScore, isLoggedin, aiGuess, aiHealth }
+internal enum APIRoute: String { case root = "", word, score, gender, changeLanguage, getPremiumScore, getAllPremiumScores, scoreboard, place, getScore, getWord, addGuess, premiumScore, isLoggedin, aiGuess, aiHealth = "health" }
 
 // MARK: Networkble
 private protocol Networkble: DataSource {
@@ -40,12 +40,11 @@ internal enum HttpMethod: String {
 
 // MARK: Network
 class Network: Networkble {
-    enum APIRoot: String { case login, score, words, ai }
+    enum APIRoot: String { case login, score, words, ai, pvp }
     static private var base: String = ""
     
     var baseURL: String {
 #if DEBUG
-//        return "http://localhost:3000"
         return Network.base
 #else
         return Network.base
@@ -68,8 +67,8 @@ class Network: Networkble {
     
     // MARK: init
     //    "http://localhost:3000"
-    //    "https://word-attack.onrender.com"
-    internal init(root: APIRoot, base: String = "https://word-attack.onrender.com") {
+    //    "https://word-attack-server.onrender.com"
+    internal init(root: APIRoot, base: String = "http://localhost:3000") {
         self.root = root.rawValue
         Network.base = base
     }
@@ -77,7 +76,7 @@ class Network: Networkble {
     enum DeviceTokenService {
         static var apiBase: String {
             // Point to your Node server (https + real host in production)
-            // e.g., "https://word-attack.onrender.com"
+            // e.g., "https://word-attack-server.onrender.com"
             return BaseUrl.value
         }
         

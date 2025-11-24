@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		4F370C872CC6A5BF00632E10 /* GoogleUserMessagingPlatform in Frameworks */ = {isa = PBXBuildFile; productRef = 4F370C862CC6A5BF00632E10 /* GoogleUserMessagingPlatform */; };
 		4F370C8D2CC6A72F00632E10 /* GoogleMobileAds in Frameworks */ = {isa = PBXBuildFile; productRef = 4F370C8C2CC6A72F00632E10 /* GoogleMobileAds */; };
+		4F4C04922EC97D7C00F51BC8 /* SocketIO in Frameworks */ = {isa = PBXBuildFile; productRef = 4F4C04912EC97D7C00F51BC8 /* SocketIO */; };
 		4FA2D2D12E66F3A900C687D0 /* ZIPFoundation in Frameworks */ = {isa = PBXBuildFile; productRef = 4FA2D2D02E66F3A900C687D0 /* ZIPFoundation */; };
 		4FC1113A2E636F30007D1E2B /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4FC111392E636F30007D1E2B /* WidgetKit.framework */; };
 		4FC1113C2E636F30007D1E2B /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4FC1113B2E636F30007D1E2B /* SwiftUI.framework */; };
@@ -85,16 +86,16 @@
 		4FC111B72E6378BD007D1E2B /* Exceptions for "Word Guess" folder in "WordZapWidgetExtensionExtension" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
-				AI/PhraseProvider.swift,
 				Assets.xcassets,
 				Localizable.xcstrings,
-				Misc/DynamicColors.swift,
-				Misc/SharedStore.swift,
 				Network/Data/LeaderboaredPlaceData.swift,
 				Network/Network.swift,
 				Network/ViewModel/SocreProvider.swift,
-				Views/Subviews/AppTitle.swift,
-				Views/Subviews/ToolTipView.swift,
+				Presentation/Subviews/AppTitle.swift,
+				Presentation/Subviews/ToolTipView.swift,
+				Services/DynamicColors.swift,
+				Services/PhraseProvider.swift,
+				Services/SharedStore.swift,
 			);
 			target = 4FC111362E636F30007D1E2B /* WordZapWidgetExtensionExtension */;
 		};
@@ -151,6 +152,7 @@
 				4FCDAC372E53E416001A758F /* SwiftUITooltip in Frameworks */,
 				4FD6D28E2CB9A2C000755D03 /* FirebaseFirestore in Frameworks */,
 				4FD6D28C2CB9A2C000755D03 /* FirebaseCore in Frameworks */,
+				4F4C04922EC97D7C00F51BC8 /* SocketIO in Frameworks */,
 				4FFD7DBA2E81F2DB00A01BAD /* FirebaseRemoteConfig in Frameworks */,
 				4FFF87412E3F289500D612F0 /* Transformers in Frameworks */,
 				4FD6D2962CB9A2F200755D03 /* FacebookLogin in Frameworks */,
@@ -269,6 +271,7 @@
 				4FA2D2D02E66F3A900C687D0 /* ZIPFoundation */,
 				4FFD7DB72E81F2DB00A01BAD /* FirebaseAnalytics */,
 				4FFD7DB92E81F2DB00A01BAD /* FirebaseRemoteConfig */,
+				4F4C04912EC97D7C00F51BC8 /* SocketIO */,
 			);
 			productName = "Word Guess";
 			productReference = 4FD6D2382CB9A1F400755D03 /* WordZap.app */;
@@ -370,6 +373,7 @@
 				4FFF873F2E3F289500D612F0 /* XCRemoteSwiftPackageReference "swift-tokenizers" */,
 				4FCDAC352E53E416001A758F /* XCRemoteSwiftPackageReference "SwiftUI-Tooltip" */,
 				4FA2D2CF2E66F3A900C687D0 /* XCRemoteSwiftPackageReference "ZIPFoundation" */,
+				4F4C04902EC97D7C00F51BC8 /* XCRemoteSwiftPackageReference "socket" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 4FD6D2392CB9A1F400755D03 /* Products */;
@@ -472,7 +476,7 @@
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
 				CODE_SIGN_ENTITLEMENTS = WordZapWidgetExtensionExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 18;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = WordZapWidgetExtension/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = WordZapWidgetExtension;
@@ -483,7 +487,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 1.036;
+				MARKETING_VERSION = 1.039;
 				PRODUCT_BUNDLE_IDENTIFIER = com.barak.wordzap.WordZapWidgetExtension;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -500,7 +504,7 @@
 				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
 				CODE_SIGN_ENTITLEMENTS = WordZapWidgetExtensionExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 18;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = WordZapWidgetExtension/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = WordZapWidgetExtension;
@@ -511,7 +515,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 1.036;
+				MARKETING_VERSION = 1.039;
 				PRODUCT_BUNDLE_IDENTIFIER = com.barak.wordzap.WordZapWidgetExtension;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -660,8 +664,7 @@
 				CODE_SIGN_ENTITLEMENTS = "Word Guess/Word Guess.entitlements";
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_ASSET_PATHS = "\"Word Guess/Preview Content\"";
+				CURRENT_PROJECT_VERSION = 18;
 				DEVELOPMENT_TEAM = D6DN86P8S8;
 				EMBED_ASSET_PACKS_IN_PRODUCT_BUNDLE = YES;
 				ENABLE_PREVIEWS = YES;
@@ -680,7 +683,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.036;
+				MARKETING_VERSION = 1.039;
 				ON_DEMAND_RESOURCES_INITIAL_INSTALL_TAGS = "";
 				"OTHER_LDFLAGS[arch=*]" = "-ObjC";
 				PRODUCT_BUNDLE_IDENTIFIER = com.barak.wordzap;
@@ -704,8 +707,7 @@
 				CODE_SIGN_ENTITLEMENTS = "Word Guess/Word Guess.entitlements";
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_ASSET_PATHS = "\"Word Guess/Preview Content\"";
+				CURRENT_PROJECT_VERSION = 18;
 				DEVELOPMENT_TEAM = D6DN86P8S8;
 				EMBED_ASSET_PACKS_IN_PRODUCT_BUNDLE = NO;
 				ENABLE_PREVIEWS = YES;
@@ -724,7 +726,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.036;
+				MARKETING_VERSION = 1.039;
 				ON_DEMAND_RESOURCES_INITIAL_INSTALL_TAGS = "";
 				PRODUCT_BUNDLE_IDENTIFIER = com.barak.wordzap;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -874,6 +876,14 @@
 				minimumVersion = 11.10.0;
 			};
 		};
+		4F4C04902EC97D7C00F51BC8 /* XCRemoteSwiftPackageReference "socket" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/socketio/socket.io-client-swift";
+			requirement = {
+				branch = master;
+				kind = branch;
+			};
+		};
 		4FA2D2CF2E66F3A900C687D0 /* XCRemoteSwiftPackageReference "ZIPFoundation" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/weichsel/ZIPFoundation.git";
@@ -942,6 +952,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 4F370C8B2CC6A72F00632E10 /* XCRemoteSwiftPackageReference "swift-package-manager-google-mobile-ads" */;
 			productName = GoogleMobileAds;
+		};
+		4F4C04912EC97D7C00F51BC8 /* SocketIO */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4F4C04902EC97D7C00F51BC8 /* XCRemoteSwiftPackageReference "socket" */;
+			productName = SocketIO;
 		};
 		4FA2D2D02E66F3A900C687D0 /* ZIPFoundation */ = {
 			isa = XCSwiftPackageProductDependency;

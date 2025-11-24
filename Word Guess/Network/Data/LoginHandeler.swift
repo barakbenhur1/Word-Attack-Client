@@ -10,5 +10,5 @@ import SwiftUI
 @Observable
 class LoginHandeler: ObservableObject {
     var model: LoginAuthModel?
-    var hasGender: Bool { model != nil && !model!.gender.isEmpty }
+    var hasGender: Bool { model != nil && model?.gender != nil && !model!.gender!.isEmpty }
 }
