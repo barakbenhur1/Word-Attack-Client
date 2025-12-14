@@ -60,7 +60,7 @@ struct WordGuessApp: App {
                 guard let uniqe = loginHandeler.model?.uniqe else { return }
                 Task.detached(priority: .high) { await login.changeLanguage(uniqe: uniqe) }
             }
-            .onChange(of: deepLinker.inviteRef) { newValue in
+            .onChange(of: deepLinker.inviteRef) { _, newValue in
                 isInvite = newValue != nil
             }
             .task {
