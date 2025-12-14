@@ -42,7 +42,7 @@ struct GameView<VM: DifficultyWordViewModel>: View {
     private let rows: Int = 5
     private let diffculty: DifficultyType
     private var length: Int { return diffculty.getLength() }
-    private var uniqe: String? { return loginHandeler.model?.uniqe }
+    private var uniqe: String? { return diffculty == .tutorial ? "" : loginHandeler.model?.uniqe }
     
     private let keyboardHeightStore: KeyboardHeightStore
     
@@ -60,6 +60,7 @@ struct GameView<VM: DifficultyWordViewModel>: View {
     @State private var timeAttackAnimationDone: Bool
     @State private var endFetchAnimation: Bool
     @State private var showError: Bool
+    @State private var disabled: Bool
     
     @State private var cleanCells: Bool
     
@@ -88,7 +89,7 @@ struct GameView<VM: DifficultyWordViewModel>: View {
         default: Task(priority: .utility) { await SharedStore.writeDifficultyStatsAsync(.init(answers: vm.word.number, score: vm.score), for: diffculty.liveValue) }
         }
         
-        guard interstitialAdManager == nil || !interstitialAdManager!.shouldShowInterstitial(for: vm.word.number) else { interstitialAdManager?.loadInterstitialAd(); return }
+        guard interstitialAdManager == nil || !interstitialAdManager!.shouldShowInterstitial(for: vm.wordCount) else { interstitialAdManager?.loadInterstitialAd(); return }
         Task {
             try? await Task.sleep(nanoseconds: 1_000_000)
             initalConfigirationForWord()
@@ -136,7 +137,7 @@ struct GameView<VM: DifficultyWordViewModel>: View {
             colors[i] = vm.calculateColors(with: matrix[i])
         }
         
-        guard interstitialAdManager == nil || !interstitialAdManager!.shouldShowInterstitial(for: vm.word.number) else { return }
+        guard interstitialAdManager == nil || !interstitialAdManager!.shouldShowInterstitial(for: vm.wordCount) else { return }
         guard vm.word.isTimeAttack else { return }
         current = guesswork.count
     }
@@ -148,11 +149,11 @@ struct GameView<VM: DifficultyWordViewModel>: View {
         default: session.startNewRound(id: diffculty)
         }
         interstitialAdManager = AdProvider.interstitialAdsManager(id: "GameInterstitial")
-        if let interstitialAdManager, diffculty != .tutorial {
+        if let interstitialAdManager, diffculty != .tutorial, !interstitialAdManager.shouldShowInterstitial(for: vm.wordCount) {
             interstitialAdManager.displayInitialInterstitialAd {
                 guard guardVisible() else { return }
                 Task.detached(priority: .userInitiated) {
-                    await handleNewWord(uniqe: uniqe)
+                    await handleNewWord(uniqe: uniqe, newWord: false)
                     await MainActor.run {
                         endFetchAnimation = true
                         didStart = vm.word != .empty
@@ -161,7 +162,7 @@ struct GameView<VM: DifficultyWordViewModel>: View {
             }
         } else {
             Task.detached(priority: .userInitiated) {
-                await handleNewWord(uniqe: uniqe)
+                await handleNewWord(uniqe: uniqe, newWord: false)
                 await MainActor.run {
                     endFetchAnimation = true
                     didStart = vm.word != .empty
@@ -170,9 +171,9 @@ struct GameView<VM: DifficultyWordViewModel>: View {
         }
     }
     
-    private func handleNewWord(uniqe: String) async {
+    private func handleNewWord(uniqe: String, newWord: Bool = true) async {
         await vm.getScore(diffculty: diffculty, uniqe: uniqe)
-        await vm.word(diffculty: diffculty, uniqe: uniqe)
+        await vm.word(diffculty: diffculty, uniqe: uniqe, newWord: newWord)
     }
     
     init(diffculty: DifficultyType) {
@@ -195,6 +196,7 @@ struct GameView<VM: DifficultyWordViewModel>: View {
         self.isVisible = false
         self.scoreAnimation = (0, CGFloat(0), CGFloat(0), CGFloat(30))
         self.current = 0
+        self.disabled = false
     }
     
     var body: some View {
@@ -283,7 +285,7 @@ struct GameView<VM: DifficultyWordViewModel>: View {
     @ViewBuilder private func gameTable() -> some View {
         ForEach(0..<rows, id: \.self) { i in
             ZStack {
-                let gainFocus = Binding(get: { current == i && endFetchAnimation && timeAttackAnimationDone },
+                let gainFocus = Binding(get: { current == i && endFetchAnimation && timeAttackAnimationDone && !disabled },
                                         set: { _ in })
                 WordView(
                     cleanCells: $cleanCells,
@@ -298,10 +300,10 @@ struct GameView<VM: DifficultyWordViewModel>: View {
                     }
                     .opacity(current == i ? 1 : 0.9)
                     .allowsHitTesting(current == i)
-                    .disabled(current != i)
+                    .disabled(current != i || disabled)
                     .shadow(radius: 4)
                 
-                if vm.word.isTimeAttack && timeAttackAnimationDone && current == i {
+                if vm.word.isTimeAttack && timeAttackAnimationDone && current == i && !disabled {
                     let start = Date()
                     let end = start.addingTimeInterval(diffculty == .easy ? 20 : 15)
                     ProgressBarView(
@@ -559,19 +561,32 @@ struct GameView<VM: DifficultyWordViewModel>: View {
                     await scoreAnimation()
                     
                     guard let uniqe else { return }
+                    await MainActor.run {
+                        disabled = true
+                    }
                     
                     await vm.addGuess(diffculty: diffculty, uniqe: uniqe, guess: guess)
-                    
                     await vm.score(diffculty: diffculty, uniqe: uniqe, isCorrect: isCorrect)
                     
+                    await MainActor.run {
+                        disabled = false
+                    }
                     await handleNewWord(uniqe: uniqe)
                 }
             }
         } else if i == current && i + 1 > vm.word.word.guesswork.count {
             guard let uniqe else { return }
             current = i + 1
+            
             Task(priority: .userInitiated) {
+                await MainActor.run {
+                    disabled = true
+                }
                 await vm.addGuess(diffculty: diffculty, uniqe: uniqe, guess: guess)
+                
+                await MainActor.run {
+                    disabled = false
+                }
             }
         }
     }

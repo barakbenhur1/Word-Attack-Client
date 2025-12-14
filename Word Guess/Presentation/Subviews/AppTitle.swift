@@ -6,13 +6,14 @@
 //
 
 import SwiftUI
+import WidgetKit
 
 struct AppTitle: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     
     private let title = "Word Guess".localized
     private let size: CGFloat
-    private let isWidget: Bool
+    private let widgetType: WidgetFamily?
     private let animated: Bool
     
     private let wordZapColors: [CharColor] = [
@@ -24,9 +25,9 @@ struct AppTitle: View {
     @State private var wordZapColorsForAnimation: [[CharColor]] = []
     @State private var comp: [String]
     
-    init(size: CGFloat = 40, animated: Bool = false, isWidget: Bool = false) {
+    init(size: CGFloat = 40, animated: Bool = false, widgetType: WidgetFamily? = nil) {
         self.size = size
-        self.isWidget = isWidget
+        self.widgetType = widgetType
         self.animated = animated
         _comp = State(initialValue: title.split(whereSeparator: { $0.isWhitespace }).map(String.init))
     }
@@ -41,7 +42,7 @@ struct AppTitle: View {
         }
         .frame(maxWidth: .infinity, alignment: .center)
         .environment(\.layoutDirection, .leftToRight)
-        .scaleEffect(isWidget ? .init(width: 0.8, height: 0.8) : .init(width: 1, height: 1))
+        .scaleEffect(widgetType == nil ? .init(width: 1, height: 1) : widgetType! == .systemSmall ? .init(width: 0.6, height: 0.6) : widgetType! == .systemMedium ? .init(width: 0.6, height: 0.6) : .init(width: 0.7, height: 0.7) )
         .task {
             if animated {
                 wordZapColorsForAnimation = comp.map { Array(repeating: .noGuess, count: $0.count) }

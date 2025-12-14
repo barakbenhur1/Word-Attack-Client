@@ -322,11 +322,11 @@ struct LeaderboardView<VM: LeaderboardViewModel>: View {
             guard let uniqe else { return }
             await vm.items(uniqe: uniqe)
         }
-        .onAppear {
-            guard interstitialAdManager == nil || !(interstitialAdManager?.initialInterstitialAdLoaded ?? false) else { return }
-            interstitialAdManager = AdProvider.interstitialAdsManager(id: "GameInterstitial")
-            interstitialAdManager?.displayInitialInterstitialAd()
-        }
+//        .onAppear {
+//            guard interstitialAdManager == nil || !(interstitialAdManager?.initialInterstitialAdLoaded ?? false) else { return }
+//            interstitialAdManager = AdProvider.interstitialAdsManager(id: "GameInterstitial")
+//            interstitialAdManager?.displayInitialInterstitialAd()
+//        }
         .onChange(of: vm.data) {
             guard let items = vm.data else { return }
             current = max(items.count - 1, 0)

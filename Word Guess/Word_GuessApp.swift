@@ -39,8 +39,8 @@ struct WordGuessApp: App {
     var body: some Scene {
         WindowGroup {
             RouterView {
-                if loginHandeler.model == nil { LoginView() }
-                else if loginHandeler.hasGender { DifficultyView() }
+//                if loginHandeler.model == nil { LoginView() }
+                if loginHandeler.model == nil || loginHandeler.hasGender { DifficultyView() }
                 else { ServerLoadingView() }
             }
             .handleBackground()
@@ -48,7 +48,10 @@ struct WordGuessApp: App {
             .onAppear { onAppear() }
             .onDisappear { tooltipPusher.stop() }
             .onChange(of: loginHandeler.model) {
-                guard loginHandeler.model == nil else { return }
+                guard loginHandeler.model == nil else {
+                    Task(priority: .high) { await consumeQueuedDeepLink() }
+                    return
+                }
                 Task(priority: .high) { await router.popToRoot() }
             }
             .onChange(of: loginHandeler.model?.gender) {
@@ -117,6 +120,7 @@ struct WordGuessApp: App {
         .environmentObject(premium)
         .environmentObject(session)
         .environmentObject(checker)
+        .environmentObject(deepLinker)
         .environment(\.locale, local.locale)
         .environment(\.managedObjectContext, persistenceController.container.viewContext)
     }

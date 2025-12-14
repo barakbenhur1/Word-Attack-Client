@@ -20,12 +20,16 @@ class DifficultyWordViewModel: GameViewModel {
     var score: Int
     var isError: Bool
     
+    private var wordNumber: Int
+    var wordCount: Int { wordNumber }
+    
     override var wordValue: String { word.word.value }
     
     required override init() {
         wordService = .init()
         scoreService = .init()
         word = .empty
+        wordNumber = UserDefaults.standard.integer(forKey: "wordNumber")
         score = 0
         isError = false
     }
@@ -37,7 +41,7 @@ class DifficultyWordViewModel: GameViewModel {
         }
     }
     
-    func word(diffculty: DifficultyType, uniqe: String) async {
+    func word(diffculty: DifficultyType, uniqe: String, newWord: Bool = true) async {
         switch diffculty {
         case .tutorial:
             let local = LanguageSetting()
@@ -53,6 +57,9 @@ class DifficultyWordViewModel: GameViewModel {
                 guard let value else { isError = true; return }
                 Trace.log("🛟", "Word is \(value.word.value)", Fancy.mag)
                 word = value
+                
+                guard newWord else { return }
+                incraseAndSaveWordNumber()
             }
         }
     }
@@ -93,6 +100,13 @@ class DifficultyWordViewModel: GameViewModel {
                 score = value.score
             }
         }
+    }
+    
+    @MainActor
+    private func incraseAndSaveWordNumber() {
+        guard word != .empty else { return }
+        wordNumber += 1
+        UserDefaults.standard.set(wordNumber, forKey: "wordNumber")
     }
 }
 

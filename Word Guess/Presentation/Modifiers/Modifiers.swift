@@ -70,6 +70,7 @@ struct LoadingViewModifier: ViewModifier {
     func body(content: Content) -> some View {
         ZStack {
             content
+                .ignoresSafeArea(.keyboard)
                 .disabled(show)                 // block taps behind the loader
                 .blur(radius: show ? 1 : 0)
             

@@ -37,6 +37,7 @@ class DeepLinker: Singleton {
                 case let deepLinkString where deepLinkString.contains(.settings):   navigateTo(.settings)
                 case let deepLinkString where deepLinkString.contains(.scoreboard): navigateTo(.score)
                 case let deepLinkString where deepLinkString.contains(.ai):         navigateTo(.game(diffculty: .ai))
+                case let deepLinkString where deepLinkString.contains(.pvp):        navigateTo(.game(diffculty: .pvp))
                 case let deepLinkString where deepLinkString.contains(.difficulty): difficultyGame(url: url)
                 default:                                                            break
                 }
@@ -93,7 +94,7 @@ private extension DeepLinker {
 }
 
 private extension String {
-    enum DeepLinkType: String { case home, settings, scoreboard, ai, difficulty, resume, invite}
+    enum DeepLinkType: String { case home, settings, scoreboard, ai, pvp, difficulty, resume, invite}
     
     func toDeepLink() -> DeepLinkType? {
         return .init(rawValue: self)

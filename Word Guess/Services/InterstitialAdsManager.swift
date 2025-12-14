@@ -12,10 +12,35 @@ import SwiftUI
 @Observable
 class InterstitialAdsManager: NSObject, GADFullScreenContentDelegate, ObservableObject {
     
-    // Properties
+    // MARK: - Cooldown (90s global)
+    private let minAdInterval: TimeInterval = 90
+    private let lastAdShownKey = "InterstitialAdsManager.lastAdShownAt"
+    
+    /// Backed by UserDefaults so it survives new manager instances / app relaunch.
+    private var lastAdShownAt: Date? {
+        get {
+            let t = UserDefaults.standard.double(forKey: lastAdShownKey)
+            return t > 0 ? Date(timeIntervalSince1970: t) : nil
+        }
+        set {
+            if let date = newValue {
+                UserDefaults.standard.set(date.timeIntervalSince1970, forKey: lastAdShownKey)
+            } else {
+                UserDefaults.standard.removeObject(forKey: lastAdShownKey)
+            }
+        }
+    }
+    
+    private func canShowAnotherAd() -> Bool {
+        guard let last = lastAdShownAt else { return true }
+        return Date().timeIntervalSince(last) >= minAdInterval
+    }
+    
+    // MARK: - Properties
     var isPresenting: Bool = false
     var interstitialAdLoaded: Bool = false { didSet { isPresenting = interstitialAdLoaded } }
     var initialInterstitialAdLoaded: Bool = false { didSet { isPresenting = initialInterstitialAdLoaded } }
+    
     private var initialInterstitialAd: GADInterstitialAd?
     private var interstitialAd: GADInterstitialAd?
     
@@ -23,6 +48,8 @@ class InterstitialAdsManager: NSObject, GADFullScreenContentDelegate, Observable
     private let adUnitID: String
     private var didDismissInitial: () -> () = {}
     private var didDismiss: () -> () = {}
+    
+    // MARK: - Init
     
     init(adUnitID: String) {
         self.adUnitID = adUnitID.toKey()
@@ -34,101 +61,141 @@ class InterstitialAdsManager: NSObject, GADFullScreenContentDelegate, Observable
         firebaseFlags.refashRemoteConfig()
     }
     
+    /// Frequency + cooldown in one place.
     func shouldShowInterstitial(for number: Int) -> Bool {
-        return number > 0 && number % firebaseFlags.remoteConfig.adFrequency == 0
+        guard number > 0,
+              number % firebaseFlags.remoteConfig.adFrequency == 0 else {
+            return false
+        }
+        return canShowAnotherAd()
     }
     
-    func loadInitialInterstitialAd(){
+    // MARK: - Load
+    
+    func loadInitialInterstitialAd() {
         GADInterstitialAd.load(withAdUnitID: adUnitID, request: GADRequest()) { [weak self] add, error in
-            guard let self = self else { return }
+            guard let self else { return }
             self.initialInterstitialAdLoaded = true
-            if let error = error {
-                print("🔴: \(error.localizedDescription)")
-                didDismissInitial()
+            
+            if let error {
+                print("🔴 initial load error: \(error.localizedDescription)")
+                self.didDismissInitial()
                 return
             }
-            print("🟢: Loading succeeded")
+            
+            print("🟢 initial interstitial loaded")
             self.initialInterstitialAd = add
             self.initialInterstitialAd?.fullScreenContentDelegate = self
-            guard initialInterstitialAd != nil else { didDismissInitial(); return }
-            displayInitialInterstitialAd(didDismiss: didDismissInitial)
+            guard self.initialInterstitialAd != nil else {
+                self.didDismissInitial()
+                return
+            }
+            self.displayInitialInterstitialAd(didDismiss: self.didDismissInitial)
         }
     }
     
-    // Load InterstitialAd
-    func loadInterstitialAd(){
+    func loadInterstitialAd() {
         GADInterstitialAd.load(withAdUnitID: adUnitID, request: GADRequest()) { [weak self] add, error in
-            guard let self = self else { return }
-            if let error = error {
-                print("🔴: \(error.localizedDescription)")
+            guard let self else { return }
+            if let error {
+                print("🔴 load error: \(error.localizedDescription)")
                 self.interstitialAdLoaded = false
                 return
             }
-            print("🟢: Loading succeeded")
+            print("🟢 interstitial loaded")
             self.interstitialAd = add
             self.interstitialAdLoaded = true
             self.interstitialAd?.fullScreenContentDelegate = self
         }
     }
     
-    // Display InterstitialAd
+    // MARK: - Display
+    
     func displayInitialInterstitialAd(didDismiss: @escaping () -> () = {}) {
         guard let root = UIApplication.shared.connectedScenes
-            .filter({$0.activationState == .foregroundActive})
-            .compactMap({$0 as? UIWindowScene})
+            .filter({ $0.activationState == .foregroundActive })
+            .compactMap({ $0 as? UIWindowScene })
             .first?.windows
-            .filter({$0.isKeyWindow}).first?.rootViewController else { return }
+            .first(where: { $0.isKeyWindow })?.rootViewController else { return }
         
         self.didDismissInitial = didDismiss
-       
+        
+        // 60s cooldown
+        guard canShowAnotherAd() else {
+            print("⏱️ Skipping INITIAL interstitial – cooldown active")
+            DispatchQueue.main.async {
+                didDismiss()
+            }
+            return
+        }
+        
         if let ad = initialInterstitialAd {
-            self.initialInterstitialAdLoaded = true
+            initialInterstitialAdLoaded = true
             ad.present(fromRootViewController: root)
         } else {
-            print("🔵: Ad wasn't ready")
-            self.initialInterstitialAdLoaded = false
-            self.loadInitialInterstitialAd()
+            print("🔵 initial ad not ready")
+            initialInterstitialAdLoaded = false
+            loadInitialInterstitialAd()
         }
     }
     
-    // Display InterstitialAd
     func displayInterstitialAd(didDismiss: @escaping () -> ()) {
         guard let root = UIApplication.shared.connectedScenes
-            .filter({$0.activationState == .foregroundActive})
-            .compactMap({$0 as? UIWindowScene})
+            .filter({ $0.activationState == .foregroundActive })
+            .compactMap({ $0 as? UIWindowScene })
             .first?.windows
-            .filter({$0.isKeyWindow}).first?.rootViewController else { return }
+            .first(where: { $0.isKeyWindow })?.rootViewController else { return }
+        
+        self.didDismiss = didDismiss
+        
+        // 60s cooldown
+        guard canShowAnotherAd() else {
+            print("⏱️ Skipping interstitial – cooldown active")
+            DispatchQueue.main.async {
+                didDismiss()
+            }
+            return
+        }
         
         if let ad = interstitialAd {
-            self.didDismiss = didDismiss
             ad.present(fromRootViewController: root)
         } else {
-            print("🔵: Ad wasn't ready")
-            self.interstitialAdLoaded = false
-            self.loadInterstitialAd()
+            print("🔵 interstitial not ready")
+            interstitialAdLoaded = false
+            loadInterstitialAd()
+            // No ad actually shown, continue flow
+            DispatchQueue.main.async {
+                didDismiss()
+            }
         }
     }
     
-    // Failure notification
-    func ad(_ ad: GADFullScreenPresentingAd, didFailToPresentFullScreenContentWithError error: Error) {
-        print("🟡: Failed to display interstitial ad")
+    // MARK: - GADFullScreenContentDelegate
+    
+    func ad(_ ad: GADFullScreenPresentingAd,
+            didFailToPresentFullScreenContentWithError error: Error) {
+        print("🟡 failed to present interstitial: \(error.localizedDescription)")
         if interstitialAdLoaded {
             interstitialAdLoaded = false
-            self.loadInterstitialAd()
-        } else { loadInitialInterstitialAd() }
+            loadInterstitialAd()
+        } else {
+            loadInitialInterstitialAd()
+        }
     }
     
-    // Indicate notification
     func adWillPresentFullScreenContent(_ ad: GADFullScreenPresentingAd) {
-        print("🤩: Displayed an interstitial ad")
+        print("🤩 presenting interstitial")
     }
     
-    // Close notification
     func adDidDismissFullScreenContent(_ ad: GADFullScreenPresentingAd) {
-        print("😔: Interstitial ad closed")
+        // Mark the moment an ad is actually shown – start cooldown.
+        print("😔 interstitial dismissed")
+        lastAdShownAt = Date()
         if interstitialAdLoaded {
-            didDismiss()
             interstitialAdLoaded = false
-        } else { didDismissInitial() }
+            didDismiss()
+        } else {
+            didDismissInitial()
+        }
     }
 }

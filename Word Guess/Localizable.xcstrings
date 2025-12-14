@@ -128,6 +128,17 @@
         }
       }
     },
+    "🌍 PVP" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "🌍 שחקן נגד שחקן"
+          }
+        }
+      }
+    },
     "🏆" : {
       "localizations" : {
         "he" : {
@@ -487,9 +498,6 @@
           }
         }
       }
-    },
-    "Back to queue" : {
-
     },
     "Basic" : {
       "extractionState" : "manual",
@@ -869,6 +877,16 @@
         }
       }
     },
+    "Continue as guest" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "המשך כאורח"
+          }
+        }
+      }
+    },
     "Continue with Apple" : {
       "localizations" : {
         "he" : {
@@ -992,6 +1010,16 @@
         }
       }
     },
+    "Deciding…" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מחליט…"
+          }
+        }
+      }
+    },
     "Declension denied" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1021,6 +1049,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "נדחה!"
+          }
+        }
+      }
+    },
+    "Defeat" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "תבוסה"
           }
         }
       }
@@ -1219,6 +1258,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "לחיצה כפולה לערוך"
+          }
+        }
+      }
+    },
+    "Draw" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "תיקו"
           }
         }
       }
@@ -2046,6 +2096,17 @@
         }
       }
     },
+    "It's a Tie" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "תיקו"
+          }
+        }
+      }
+    },
     "Jargon jammed" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2352,6 +2413,17 @@
         }
       }
     },
+    "Login" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "התחבר"
+          }
+        }
+      }
+    },
     "Logophile? Doubtful" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2376,6 +2448,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "התנתק"
+          }
+        }
+      }
+    },
+    "Looking for another player in the same language You can cancel at any time." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Looking for another player in the same language.\nYou can cancel at any time."
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "נחפש שחקן אחר באותה שפה.\nאפשר לבטל בכל רגע."
           }
         }
       }
@@ -2693,6 +2782,17 @@
         }
       }
     },
+    "Nice! You cracked the word first." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "נחמד! ניחשת את המילה ראשון."
+          }
+        }
+      }
+    },
     "No" : {
       "localizations" : {
         "he" : {
@@ -2809,6 +2909,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "לא תואם"
+          }
+        }
+      }
+    },
+    "No one guessed the word." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אף אחד לא ניחש את המילה."
+          }
+        }
+      }
+    },
+    "No one managed to guess the word this time." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אף אחד לא ניחש את המילה הפעם."
           }
         }
       }
@@ -2952,8 +3074,35 @@
         }
       }
     },
+    "Opponent" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "יריב"
+          }
+        }
+      }
+    },
     "Opponent left" : {
-
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "היריב עזב"
+          }
+        }
+      }
+    },
+    "Opponent starts" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "יריב מתחיל"
+          }
+        }
+      }
     },
     "Opponent Turn" : {
       "extractionState" : "manual",
@@ -3374,6 +3523,16 @@
         }
       }
     },
+    "Preparing…" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מתכונן…"
+          }
+        }
+      }
+    },
     "Preposition predator" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -3712,6 +3871,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "גלול למיקום ברשימה"
+          }
+        }
+      }
+    },
+    "Searching for opponent…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מחפש יריב…"
           }
         }
       }
@@ -4413,6 +4583,17 @@
         }
       }
     },
+    "Tie" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "תיקו"
+          }
+        }
+      }
+    },
     "Time Attack" : {
       "localizations" : {
         "he" : {
@@ -4764,6 +4945,17 @@
         }
       }
     },
+    "Victory" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ניצחון"
+          }
+        }
+      }
+    },
     "Vocab vacuum" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -4847,6 +5039,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "ברוך הבא!"
+          }
+        }
+      }
+    },
+    "Who starts?" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "מי מתחיל?"
           }
         }
       }
@@ -5042,6 +5244,16 @@
         }
       }
     },
+    "You" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אתה"
+          }
+        }
+      }
+    },
     "You %@" : {
       "localizations" : {
         "he" : {
@@ -5063,6 +5275,28 @@
         }
       }
     },
+    "You guessed the word first." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ניחשת את המילה ראשון."
+          }
+        }
+      }
+    },
+    "you lose" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הפסד"
+          }
+        }
+      }
+    },
     "You skipped linguistics" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -5070,6 +5304,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "דילגת על בלשנות"
+          }
+        }
+      }
+    },
+    "You start" : {
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "אתה מתחיל"
           }
         }
       }
@@ -5085,29 +5329,23 @@
         }
       }
     },
-    "YOU vs PLAYER 2" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "YOU vs Opponent"
-          }
-        },
-        "he" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "אתה נגד יריב"
-          }
-        }
-      }
-    },
     "You were invited by" : {
       "localizations" : {
         "he" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "הוזמנת על־ידי"
+          }
+        }
+      }
+    },
+    "You win" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ניצחון"
           }
         }
       }
@@ -5156,8 +5394,37 @@
         }
       }
     },
+    "Your opponent found the word before you." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "היריב ניחש את המילה לפניך."
+          }
+        }
+      }
+    },
+    "Your opponent guessed the word first." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "היריב ניחש את המילה ראשון."
+          }
+        }
+      }
+    },
     "Your opponent left the match." : {
-
+      "localizations" : {
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "היריב עזב את המשחק"
+          }
+        }
+      }
     },
     "Your tense is wrong" : {
       "extractionState" : "manual",
@@ -5235,9 +5502,6 @@
           }
         }
       }
-    },
-    "חזרה לתור" : {
-
     }
   },
   "version" : "1.1"

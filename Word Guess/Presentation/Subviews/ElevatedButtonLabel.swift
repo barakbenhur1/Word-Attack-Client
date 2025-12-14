@@ -27,7 +27,7 @@ public struct ElevatedButtonStyle: ButtonStyle {
             gradient: LinearGradient(
                 colors: [
                     Color(hue: 0.0, saturation: 0.0, brightness: 1.00),
-                    Color(hue: 0.0, saturation: 0.0, brightness: 0.96)
+                    Color(hue: 0.0, saturation: 0.0, brightness: 0.7)
                 ],
                 startPoint: .topLeading, endPoint: .bottomTrailing)
         )
@@ -35,8 +35,18 @@ public struct ElevatedButtonStyle: ButtonStyle {
         public static let googleLoginDark = Palette (
             gradient: LinearGradient(
                 colors: [
-                    Color(hue: 0.0, saturation: 0.0, brightness: 0.08),  // near black
+                    Color.gray,
                     Color(hue: 0.0, saturation: 0.0, brightness: 0.00)   // pure black
+                ],
+                startPoint: .topLeading, endPoint: .bottomTrailing)
+        )
+        
+        // Built-ins (✅ with start/end points)
+        public static let guestLogin = Palette (
+            gradient: LinearGradient(
+                colors: [
+                    Color.dynamicWhite,
+                    Color.dynamicWhite.opacity(0.98)
                 ],
                 startPoint: .topLeading, endPoint: .bottomTrailing)
         )
@@ -136,7 +146,7 @@ public struct ElevatedButtonStyle: ButtonStyle {
     public var compressScale: CGFloat = 0.985   // press scale
     public var depth: CGFloat = 10              // shadow y-offset
     
-    public init(palette: Palette = .clear, height: CGFloat = 92, corner: CGFloat = 34) {
+    public init(palette: Palette = .clear, height: CGFloat = 80, corner: CGFloat = 34) {
         self.palette = palette
         self.height = height
         self.corner = corner

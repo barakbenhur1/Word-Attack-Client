@@ -202,7 +202,7 @@ struct AIGameView<VM: AIGameViewModel>: View {
         gender = loginHandeler.model?.gender ?? "male"
         session.startNewRound(id: .ai)
         interstitialAdManager = AdProvider.interstitialAdsManager(id: "GameInterstitial")
-        if let interstitialAdManager {
+        if let interstitialAdManager, !interstitialAdManager.shouldShowInterstitial(for: vm.wordCount) {
             interstitialAdManager.displayInitialInterstitialAd {
                 guard guardVisible() else { return }
                 Task.detached(priority: .userInitiated) {

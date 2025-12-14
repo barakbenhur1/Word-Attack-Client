@@ -264,7 +264,7 @@ extension PremiumManager {
     
     private func clear() {
 #if DEBUG
-        isPremium = true
+        isPremium = false
 #else
         let active = false
         isPremium = active

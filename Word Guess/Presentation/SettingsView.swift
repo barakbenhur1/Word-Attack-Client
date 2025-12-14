@@ -8,7 +8,7 @@
 import SwiftUI
 
 enum SettingsOption: String {
-    case language = "language", sound = "sound", ai = "ai", premium = "Premium", share = "Share", update = "Update"
+    case language = "language", sound = "sound", ai = "ai", premium = "Premium", share = "Share", update = "Update", logout = "logout", login = "Login"
     
     @MainActor var stringValue: String { rawValue.localized }
 }
@@ -44,7 +44,10 @@ struct SettingsView: View {
     
     @State private var difficulty: String?
     
+    private let auth = Authentication()
+    
     var fromSideMenu = false
+    var login: (() -> ())? = nil
     
     private func action(item: SettingsOptionButton) {
         switch item.type {
@@ -53,7 +56,18 @@ struct SettingsView: View {
         case .ai:       showResetAI = difficulty != nil && difficulty != AIDifficulty.easy.name
         case .premium:  handlePremium()
         case .update:   handleUpdate()
+        case .logout:   logOut()
+        case .login:    login?()
         case .share:    break
+        }
+    }
+    
+    private func logOut() {
+        Task.detached(priority: .userInitiated) {
+            await MainActor.run {
+                auth.logout()
+                loginHandeler.model = nil
+            }
         }
     }
     
@@ -103,19 +117,26 @@ struct SettingsView: View {
         .onAppear {
             difficulty = UserDefaults.standard.string(forKey: "aiDifficulty")
             language = local.locale.identifier.components(separatedBy: "_").first
+            items = []
             
-            items = [
-                .init(type: .premium),
-                .init(type: .sound),
-                .init(type: .language),
-                .init(type: .ai)
-            ]
+            if loginHandeler.model != nil {
+                items.append(.init(type: .premium))
+            }
+           
+            items.append(.init(type: .sound))
+            items.append(.init(type: .language))
+            items.append(.init(type: .ai))
             
             if checker.needUpdate != nil {
                 items.append(.init(type: .update))
             }
             
-            items.append(.init(type: .share))
+            if loginHandeler.model != nil {
+                items.append(.init(type: .logout))
+                items.append(.init(type: .share))
+            } else if login != nil {
+                items.append(.init(type: .login))
+            }
         }
     }
     
@@ -235,9 +256,33 @@ struct SettingsView: View {
                         }
                         .frame(maxWidth: .infinity)
                     }
+                case .logout:
+                    HStack {
+                        Text(item.type.stringValue.localized)
+                            .font(.headline.bold())
+                            .foregroundStyle(Color.loguotRed)
+                        
+                        Spacer()
+                        
+                        Image(systemName: "rectangle.portrait.and.arrow.forward")
+                            .foregroundStyle(Color.loguotRed)
+                    }
+                case .login:
+                    HStack {
+                        Text(item.type.stringValue.localized)
+                            .font(.headline.bold())
+                            .foregroundStyle(Color.loginGreen)
+                        
+                        Spacer()
+                        
+                        Image(systemName: "rectangle.portrait.and.arrow.forward")
+                            .scaleEffect(x: -1, y: 1, anchor: .center)
+                            .foregroundStyle(Color.loginGreen)
+                    }
                 }
             }
             .padding()
+            
             if let itemSource, showShare {
                 ShareSheet(isPresented: $showShare,
                            itemSource: itemSource,
@@ -250,6 +295,8 @@ struct SettingsView: View {
 extension Color {
     static let activeSettingColor = Color(hue: 0.56, saturation: 0.55, brightness: 0.95)
     static let disabledSettingColor = Color(hue: 0.56, saturation: 0.05, brightness: 0.82)
+    static let loguotRed = Color(hue: 0.0, saturation: 0.60, brightness: 0.95)
+    static let loginGreen = Color(hue: 0.33, saturation: 0.60, brightness: 0.95)
     static let premiumPurple = Color(UIColor { trait in
         if trait.userInterfaceStyle == .dark { return UIColor(hue: 0.675, saturation: 0.26, brightness: 0.94, alpha: 1) }
         else { return UIColor(red: 0.30, green: 0.29, blue: 0.49, alpha: 1) }

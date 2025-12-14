@@ -17,6 +17,7 @@ public struct ServerLoadingView: View {
     
     public var body: some View {
         content()
+            .ignoresSafeArea()
             .ignoresSafeArea(.keyboard)
     }
     

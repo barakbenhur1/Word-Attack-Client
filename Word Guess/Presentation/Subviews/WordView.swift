@@ -223,6 +223,11 @@ struct WordView<VM: GameViewModel>: View {
         .onChange(of: isSolved) { _,solved in
             if solved { startWave(after: 0.35) }
         }
+        .onChange(of: word) { _,newRow in
+            if newRow.allSatisfy({ $0.isEmpty }) {
+                wordBakup = [String](repeating: "", count: newRow.count)
+            }
+        }
         .onAppear {
             guard !isAI else { return }
             fieldFocus = gainFocus ? .one : nil

@@ -357,7 +357,7 @@ final class PvPSocketClient {
     private var pendingQueueJoinPayload: [String: Any]?
     
     private init() {
-        let url = URL(string: "https://word-attack-server.onrender.com" /* prod URL here */)!
+        let url = URL(string: "https://word-attack-server.onrender.com")!
         manager = SocketManager(
             socketURL: url,
             config: [

@@ -60,10 +60,12 @@ struct DifficultyView: View {
     @EnvironmentObject private var router: Router
     @EnvironmentObject private var audio: AudioPlayer
     @EnvironmentObject private var loginHandeler: LoginHandeler
+    @EnvironmentObject private var deepLinker: DeepLinker
     @EnvironmentObject private var premium: PremiumManager
     
     @State private var isMenuOpen: Bool
     @State private var showPaywall: Bool
+    @State private var showLogin: (Bool, link: String)
     @State private var isOpen: Bool
     @State private var text: String
     
@@ -74,14 +76,15 @@ struct DifficultyView: View {
     init() {
         isMenuOpen = false
         showPaywall = false
+        showLogin = (false, "")
         isOpen = true
         text = ""
     }
     
     private let buttons: [DifficultyButton] = [
+        .init(type: .easy),
         .init(type: .medium),
         .init(type: .hard),
-        .init(type: .easy),
     ]
     
     private func onAppear() {
@@ -107,9 +110,25 @@ struct DifficultyView: View {
                             .fullScreenCover(isPresented: $showPaywall) {
                                 SubscriptionPaywallView(isPresented: $showPaywall)
                             }
+                            .fullScreenCover(isPresented: $showLogin.0) {
+                                LoginView {
+                                    showLogin = (false, "")
+                                } login: {
+                                    let url = showLogin.link
+                                    showLogin = (false, "")
+                                    guard let url = URL(string: url) else { return }
+                                    deepLinker.set(url: url)
+                                }
+                            }
                     }
-                    SideMenu(isOpen: $isMenuOpen,
-                             content: { SettingsView(fromSideMenu: true) })
+                    
+                    let login = {
+                        showLogin.0 = true
+                    }
+                    SideMenu(isOpen: $isMenuOpen) {
+                        SettingsView(fromSideMenu: true,
+                                     login: login)
+                    }
                     .id(menuManager.id)
                     .ignoresSafeArea()
                     .environmentObject(menuManager)
@@ -168,9 +187,18 @@ struct DifficultyView: View {
             
             TopTileButton(
                 title: "SCOREBOARD",
-                icon: Image(systemName: "person.3.fill"),
-                action: { router.navigateToSync(.score) }
+                icon: Image(systemName: "person.3.fill").grayscale(loginHandeler.model == nil ? 1 : 0),
+                action: {
+                    guard loginHandeler.model != nil else {
+                        showLogin.0 = true
+                        showLogin.link = "wordzap://scoreboard"
+                        return
+                    }
+                    router.navigateToSync(.score)
+                },
+                isLocked: loginHandeler.model == nil
             )
+            .tileAvailability(isEnabled: loginHandeler.model != nil) // sunken when locked
             .frame(maxWidth: .infinity)
             
             TopTileButton(
@@ -180,6 +208,11 @@ struct DifficultyView: View {
                     .grayscale(premium.isPremium ? 0 : 1)
                     .font(.system(size: 28, weight: .semibold)),
                 action: {
+                    guard loginHandeler.model != nil else {
+                        showLogin.0 = true
+                        return
+                    }
+                    
                     if premium.isPremium {
                         text = "Premium Hub  💎"
                         withAnimation(.interpolatingSpring(duration: 3)) {
@@ -192,13 +225,14 @@ struct DifficultyView: View {
                     }
                     else { showPaywall = true }
                 },
-                isLocked: !premium.isPremium // <-- locked style but still tappable
+                isLocked: !premium.isPremium || loginHandeler.model == nil // <-- locked style but still tappable
             )
-            .tileAvailability(isEnabled: premium.isPremium) // sunken when locked
+            .tileAvailability(isEnabled: premium.isPremium && loginHandeler.model != nil) // sunken when locked
             .shadow(color: .yellow.opacity(premium.isPremium ? 0.35 : 0.0),
                     radius: premium.isPremium ? 4 : 0, y: 3)
             .frame(maxWidth: .infinity)
             .attentionIfNew(isActive: $premium.justDone)
+            .opacity(loginHandeler.model != nil ? 1 : 0)
         }
         .padding(.horizontal, 4)
         .frame(maxHeight: 100)
@@ -217,19 +251,15 @@ struct DifficultyView: View {
                     title()
                         .padding(.top, 2)
                     
-                    ParallaxVerticalScroll(itemCount: buttons.count) { i in
-                        let button = buttons[i]
+                    ForEach(buttons) { button in
                         difficultyButton(type: button.type)
+                            .shadow(color: .black.opacity(0.12), radius: 8, y: 4)
                     }
                 }
                 .padding(14)
                 .padding(.vertical, 4)
             }
-            .padding(.top, 6)
-            
-            logoutButton()
-                .padding(.all, 10)
-                .shadow(color: .black.opacity(0.12), radius: 8, y: 4)
+            .padding(.bottom, 12)
         }
     }
     
@@ -249,19 +279,30 @@ struct DifficultyView: View {
     }
     
     @ViewBuilder private func difficultyButton(type: DifficultyType) -> some View {
+        let h = 68.0
         let style: ElevatedButtonStyle = {
             switch type {
-            case .easy:        ElevatedButtonStyle(palette: .green, height: 68)
-            case .medium:      ElevatedButtonStyle(palette: .amber, height: 68)
-            case .hard:        ElevatedButtonStyle(palette: .rose, height: 68)
-            case .ai:          ElevatedButtonStyle(palette: .teal, height: 68)
-            case .pvp:         ElevatedButtonStyle(palette: .purple, height: 68)
+            case .easy:        ElevatedButtonStyle(palette: .green, height: h)
+            case .medium:      ElevatedButtonStyle(palette: .amber, height: h)
+            case .hard:        ElevatedButtonStyle(palette: .rose, height: h)
+            case .ai:          ElevatedButtonStyle(palette: .teal, height: h)
+            case .pvp:         ElevatedButtonStyle(palette: .purple, height: h)
             default:           ElevatedButtonStyle()
             }
         }()
         
         Button {
-            router.navigateToSync(.game(diffculty: type))
+            if loginHandeler.model == nil {
+                showLogin.0 = true
+                switch type {
+                case .ai: showLogin.link = "wordzap://ai"
+                case .pvp: showLogin.link = "wordzap://pvp"
+                case .easy, .medium, .hard: showLogin.link = "wordzap://play?difficulty=\(type.rawValue)"
+                default: return
+                }
+            } else {
+                router.navigateToSync(.game(diffculty: type))
+            }
         } label: {
             ElevatedButtonLabel(LocalizedStringKey(type.rawValue))
                 .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))

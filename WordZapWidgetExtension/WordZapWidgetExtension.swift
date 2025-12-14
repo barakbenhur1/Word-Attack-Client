@@ -95,7 +95,7 @@ struct WordZapWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: "WordZapWidget", provider: WordZapProvider()) { entry in
             WordZapWidgetView(entry: entry)
-                .containerBackground(.fill.tertiary, for: .widget) // system-safe bg
+                .containerBackground(.clear, for: .widget) // system-safe bg
         }
         .configurationDisplayName("WordZap")
         .description("Daily stats and AI at a glance.")
@@ -120,10 +120,11 @@ struct WordZapWidgetView: View {
             case .systemSmall:      smallLayout
             case .systemMedium:     mediumLayout
             case .systemLarge:      largeLayout
-            case .systemExtraLarge: extraLargeLayout
+            case .systemExtraLarge: largeLayout
             default:                mediumLayout
             }
         }
+        .mask(ContainerRelativeShape())
     }
     
     // Dynamic background that respects Dark/Light
@@ -226,8 +227,8 @@ struct WordZapWidgetView: View {
     private var smallLayout: some View {
         let shortDate = entry.date.formatted(.dateTime.day().month(.abbreviated).locale(Locale.current))
         return VStack(spacing: 8) {
-            AppTitle(isWidget: true)
-                .font(.headline)
+            AppTitle(widgetType: .systemSmall)
+                .font(.title3).bold()
                 .foregroundStyle(.primary)
                 .frame(maxWidth: .infinity, alignment: .center)
             
@@ -246,13 +247,13 @@ struct WordZapWidgetView: View {
         let score     = entry.score.map { $0.formatted(.number.grouping(.automatic)) } ?? "—"
         let place     = entry.place.map { "#\($0)" } ?? "—"
         let diff      = d.rawValue.localized.capitalized
-        
-        return VStack(spacing: 4) {
-            AppTitle(isWidget: true)
-                .font(.headline)
+
+        return VStack(spacing: -8) {
+            AppTitle(widgetType: .systemMedium)
+                .font(.title3).bold()
                 .foregroundStyle(.primary)
                 .frame(maxWidth: .infinity, alignment: .center)
-            
+
             tapTarget("wordzap://play?difficulty=\(d.rawValue)") {
                 Grid(horizontalSpacing: 8, verticalSpacing: 6) {
                     HStack {
@@ -276,7 +277,8 @@ struct WordZapWidgetView: View {
                 .softGlass()
             }
         }
-        .padding(12)
+        .padding(6)
+        .padding(.vertical, -2)
     }
     
     // MARK: Large
@@ -285,7 +287,7 @@ struct WordZapWidgetView: View {
         let d         = entry.difficulty
         
         return VStack(spacing: 6) {
-            AppTitle(isWidget: true)
+            AppTitle(widgetType: .systemLarge)
                 .font(.title3).bold()
                 .foregroundStyle(.primary)
                 .frame(maxWidth: .infinity, alignment: .center)
@@ -338,71 +340,73 @@ struct WordZapWidgetView: View {
         let shortDate = entry.date.formatted(.dateTime.day().month(.abbreviated).locale(Locale.current))
         let d         = entry.difficulty
         
-        return VStack(spacing: 16) {
-            AppTitle(isWidget: true)
-                .font(.title2).bold()
+        return VStack(spacing: 6) {
+            AppTitle(widgetType: .systemExtraLarge)
+                .font(.title3).bold()
                 .foregroundStyle(.primary)
                 .frame(maxWidth: .infinity, alignment: .center)
             
-            Grid(horizontalSpacing: 10, verticalSpacing: 0) {
-                GridRow {
-                    VStack(alignment: .center, spacing: 0) {
-                        Spacer()
-                        tapTarget("wordzap://settings") {
-                            Image(systemName: "gearshape.fill")
-                                .resizable()
-                                .scaledToFill()
-                                .frame(width: 40, height: 40)
-                                .foregroundStyle(.primary)
-                        }
-                        Spacer()
-                        tapTarget("wordzap://scoreboard") {
-                            Image(systemName: "trophy.fill")
-                                .resizable()
-                                .scaledToFill()
-                                .frame(width: 40, height: 40)
-                                .foregroundStyle(.primary)
-                        }
-                        Spacer()
-                    }
-                    .padding(5)
-                    .softGlass()
-                    
-                    // Middle column: Play card (same content structure as Large)
-                    tapTarget("wordzap://play?difficulty=\(d.rawValue)") {
-                        VStack(alignment: .leading, spacing: 12) {
-                            chip("\("Diff".localized): \(d.rawValue.localized.capitalized)", icon: "flag.checkered", color: d.color)
-                            chip("\("Today".localized): \(shortDate)", icon: "calendar", color: .primary)
-                            
-                            if hasStats {
-                                chip("\("Place".localized): \(entry.place.map { "#\($0)" } ?? "—")", icon: "trophy", color: .primary)
-                                chip("\("Score".localized): \(entry.score.map(String.init) ?? "—")", icon: "sum", color: .primary)
-                                chip("\("Answers".localized): \(entry.answers.map(String.init) ?? "—")", icon: "text.cursor", color: .primary)
-                            } else {
-                                statsPlaceholderBlock()
+            GeometryReader { proxy in
+                Grid(horizontalSpacing: 4, verticalSpacing: 0) {
+                    GridRow {
+                        VStack(alignment: .center, spacing: 0) {
+                            Spacer()
+                            tapTarget("wordzap://settings") {
+                                Image(systemName: "gearshape.fill")
+                                    .resizable()
+                                    .scaledToFill()
+                                    .frame(width: 40, height: 40)
+                                    .foregroundStyle(.primary)
                             }
+                            Spacer()
+                            tapTarget("wordzap://scoreboard") {
+                                Image(systemName: "trophy.fill")
+                                    .resizable()
+                                    .scaledToFill()
+                                    .frame(width: 40, height: 40)
+                                    .foregroundStyle(.primary)
+                            }
+                            Spacer()
                         }
-                        .padding(16)
+                        .padding(5)
                         .softGlass()
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                    
-                    // Right column: AI card
-                    tapTarget("wordzap://ai") {
-                        AICardWithTooltip(
-                            name: entry.aiName ?? "AI Opponent",
-                            imageName: entry.aiImageName,
-                            tooltip: entry.aiName == nil ? "start your ai journey" : entry.aiTooltip,
-                            isExtraLarge: true
-                        )
-                        .frame(width: 300)
-                        .softGlass()
+                        
+                        tapTarget("wordzap://play?difficulty=\(d.rawValue)") {
+                            VStack(alignment: .leading, spacing: 12) {
+                                chip("\("Diff".localized): \(d.rawValue.localized.capitalized)", icon: "flag.checkered", color: d.color)
+                                chip("\("Today".localized): \(shortDate)", icon: "calendar", color: .primary)
+                                
+                                if hasStats {
+                                    chip("\("Place".localized): \(entry.place.map { "#\($0)" } ?? "—")", icon: "trophy", color: .primary)
+                                    chip("\("Score".localized): \(entry.score != nil ? "\(entry.score!)" : "—")", icon: "sum", color: .primary)
+                                    chip("\("Answers".localized): \(entry.answers != nil ? "\(entry.answers!)" : "—")", icon: "text.cursor", color: .primary)
+                                } else {
+                                    statsPlaceholderBlock()
+                                }
+                            }
+                            .padding(14)
+                            .frame(maxWidth: .infinity, alignment: .center)
+                            .frame(height: proxy.size.height)
+                            .softGlass()
+                        }
+                        
+                        tapTarget("wordzap://ai") {
+                            AICardWithTooltip(
+                                name: entry.aiName ?? "AI Opponent",
+                                imageName: entry.aiImageName,
+                                tooltip: entry.aiName == nil ? "start your ai journey" : entry.aiTooltip,
+                                isExtraLarge: false
+                            )
+                            .frame(maxWidth: 134)
+                            .frame(height: proxy.size.height)
+                            .softGlass()
+                        }
                     }
                 }
             }
+            .frame(maxWidth: .infinity)
         }
-        .padding(20)
-        .environment(\.layoutDirection, Locale.current.identifier.components(separatedBy: "_").first == "he" ? .rightToLeft : .leftToRight)
+        .padding(8)
     }
 }
 

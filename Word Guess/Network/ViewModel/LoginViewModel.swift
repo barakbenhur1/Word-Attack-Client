@@ -15,10 +15,11 @@ class LoginViewModel: ObservableObject {
         network = Network(root: .login)
     }
     
-    func login(uniqe: String, name: String, gender: String) async -> Bool {
+    func login(uniqe: String, email: String, name: String, gender: String) async -> Bool {
         guard let language = Locale.current.identifier.components(separatedBy: "_").first else { return false }
         let value: EmptyModel? = await network.send(route: .root,
                                                     parameters: ["uniqe": uniqe,
+                                                                 "email": email,
                                                                  "name": name,
                                                                  "gender": gender,
                                                                  "language": language])

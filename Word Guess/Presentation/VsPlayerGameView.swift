@@ -26,6 +26,8 @@ struct VsPlayerGameView<VM: VsPlayerGameViewModel>: View {
     @EnvironmentObject private var premium: PremiumManager
     //    @EnvironmentObject private var session: GameSessionManager
     
+    @State private var interstitialAdManager: InterstitialAdsManager?
+    
     // MARK: - Game configuration
     private let rows: Int = 5
     private var length: Int { DifficultyType.pvp.getLength() }
@@ -61,6 +63,7 @@ struct VsPlayerGameView<VM: VsPlayerGameViewModel>: View {
     
     // Turn + coin flip
     @State private var turn: PvPTurn
+    @State private var turnShow: PvPTurn
     @State private var showCoinFlip: Bool
     
     // Coin flip result from server
@@ -123,6 +126,7 @@ struct VsPlayerGameView<VM: VsPlayerGameViewModel>: View {
         _currentRow = State(initialValue: 0)
         
         _turn = State(initialValue: .player1)
+        _turnShow = State(initialValue: .player1)
         _showCoinFlip = State(initialValue: false)
         
         _coinFlipWinner = State(initialValue: nil)
@@ -190,22 +194,34 @@ struct VsPlayerGameView<VM: VsPlayerGameViewModel>: View {
                 handleOpponentRowComplete(row: prevRow)
             }
             
+            guard result == .none else { return }
+            
             guard nextRow >= 0 && nextRow < rows else {
                 disabled = true
                 return
             }
             
             turnOverlayTask?.cancel()
+           
+            currentRow = nextRow
+            disabled = !isMyTurn                    // only active player can type
+            
+            let currentTurn: PvPTurn = isMyTurn ? .player1 : .player2
+            
+            guard currentTurn != turn else { return }
+            turnShow = currentTurn
+            showTurnBanner()
+            
+            screenManager.keepScreenOn = currentTurn == .player2
             
             Task {
                 try? await Task.sleep(nanoseconds: 800_000_000)
-                withAnimation {
-                    turn = isMyTurn ? .player1 : .player2
+                await MainActor.run {
+                    withAnimation {
+                        turn = currentTurn
+                    }
                 }
             }
-            currentRow = nextRow
-            disabled = !isMyTurn                    // only active player can type
-            showTurnBanner(for: turn)
         }
     }
     
@@ -247,8 +263,10 @@ struct VsPlayerGameView<VM: VsPlayerGameViewModel>: View {
         endFetchAnimation = true
         // Wait for coinflip to decide who actually starts:
         disabled = true
+        isMatching = false
         showCoinFlip = true
         turn = .player1  // default; real value set after coinflip
+        turnShow = .player1
     }
     
     @MainActor
@@ -258,14 +276,18 @@ struct VsPlayerGameView<VM: VsPlayerGameViewModel>: View {
         showTurnOverlay = false
         
         switch result {
-        case .player1Win, .player2Win:
-            // Show popup and then back to queue on button tap.
-            showGameEndPopup = true
-        case .draw, .none:
-            // Tie: go straight back to queue (no popup).
-            showGameEndPopup = false
+        case .none:
             Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 4_000_000_000)
+                showGameEndPopup = false
                 await goBackToQueue()
+            }
+            
+        default:
+            // Show popup and then back to queue on button tap.
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 4_000_000_000)
+                showGameEndPopup = true
             }
         }
     }
@@ -273,11 +295,12 @@ struct VsPlayerGameView<VM: VsPlayerGameViewModel>: View {
     @MainActor
     private func animatedTurnSwitch(to next: PvPTurn) {
         turn = next
-        showTurnBanner(for: next)
+        turnShow = next
+        showTurnBanner()
     }
     
     @MainActor
-    private func showTurnBanner(for turn: PvPTurn) {
+    private func showTurnBanner() {
         guard result == .none, !showCoinFlip else { return }
         turnOverlayTask?.cancel()
         showTurnOverlay = true
@@ -294,9 +317,11 @@ struct VsPlayerGameView<VM: VsPlayerGameViewModel>: View {
     @MainActor
     private func applyStartingTurn(_ winner: PvPTurn) {
         turn = winner
+        turnShow = winner
         currentRow = 0
+        screenManager.keepScreenOn = winner == .player2
         disabled = (winner == .player2) // if opponent starts, lock our input
-        showTurnBanner(for: winner)
+        showTurnBanner()
     }
     
     // MARK: - Coin flip (through VM)
@@ -375,6 +400,7 @@ struct VsPlayerGameView<VM: VsPlayerGameViewModel>: View {
         }
         
         isMatching = true
+        screenManager.keepScreenOn = true
         
         vm.startMatchQueue(
             uniqe: uniqe,
@@ -387,7 +413,6 @@ struct VsPlayerGameView<VM: VsPlayerGameViewModel>: View {
             },
             onMatchFound: { matchId, _, opponentId in
                 Task { @MainActor in
-                    isMatching = false
                     print("[PVP] match found id=\(matchId) vs \(opponentId)")
                     vm.joinMatch(matchId: matchId, uniqe: uniqe)
                     await startGame(fetchNewWord: true)
@@ -410,8 +435,19 @@ struct VsPlayerGameView<VM: VsPlayerGameViewModel>: View {
             onError: { reason in
                 Task { @MainActor in
                     isMatching = false
+                    screenManager.keepScreenOn = false
                     print("[PVP] queue error:", reason ?? "unknown")
-                    showError = true
+                    
+                    // If server tells us the opponent left (for example when
+                    // they close the app while we are matching), show the
+                    // same "Opponent left" popup you already have for in-match.
+                    if let reason,
+                       reason.localizedCaseInsensitiveContains("opponent") {
+                        showOpponentLeftPopup = true
+                    } else {
+                        // Fallback: real network / server error
+                        showError = true
+                    }
                 }
             }
         )
@@ -429,8 +465,22 @@ struct VsPlayerGameView<VM: VsPlayerGameViewModel>: View {
         resetBoard()
         
         // Clean up any existing queue / match state before re-queueing
+        guard interstitialAdManager == nil || !interstitialAdManager!.shouldShowInterstitial(for: vm.wordCount) else {
+            disabled = true
+            interstitialAdManager?.loadInterstitialAd()
+            return
+        }
+        
         vm.leaveMatchQueue()
         beginMatching()
+    }
+    
+    private func handleInterstitial() {
+        guard let interstitialAdManager = interstitialAdManager, interstitialAdManager.interstitialAdLoaded else { return }
+        interstitialAdManager.displayInterstitialAd {
+            vm.leaveMatchQueue()
+            beginMatching()
+        }
     }
     
     // MARK: - Back / navigation
@@ -454,7 +504,9 @@ struct VsPlayerGameView<VM: VsPlayerGameViewModel>: View {
         
         delayedNavTask?.cancel()
         delayedNavTask = Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 100_000_000)
+            if endFetchAnimation {
+                try? await Task.sleep(nanoseconds: 100_000_000)
+            }
             router.navigateBack()
         }
     }
@@ -488,23 +540,18 @@ struct VsPlayerGameView<VM: VsPlayerGameViewModel>: View {
             Task { @MainActor in
                 audio.stop()
                 audio.playSound(sound: "success", type: "wav")
-                try? await Task.sleep(nanoseconds: 4_000_000_000)
                 finishRound(as: .player1Win)
+                vm.notifyRowDone(uniqe: uniqe, row: i)
             }
         } else {
             // Tell server this row is done; it will emit pvp:turn with nextRow
             Task { @MainActor in
                 disabled = true
                 if i == rows - 1 && p2Matrix[p2Matrix.count - 1].allSatisfy({ !$0.isEmpty }) {
-                    try? await Task.sleep(nanoseconds: 4_000_000_000)
                     finishRound(as: .draw)
                 }
+                vm.notifyRowDone(uniqe: uniqe, row: i)
             }
-        }
-        
-        Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 2_000_000_000)
-            vm.notifyRowDone(uniqe: uniqe, row: i)
         }
     }
     
@@ -523,7 +570,6 @@ struct VsPlayerGameView<VM: VsPlayerGameViewModel>: View {
             audio.stop()
             audio.playSound(sound: "fail", type: "wav")
             Task { @MainActor in
-                try? await Task.sleep(nanoseconds: 2_000_000_000)
                 finishRound(as: .player2Win)
             }
         } else if i == rows - 1 {
@@ -532,7 +578,6 @@ struct VsPlayerGameView<VM: VsPlayerGameViewModel>: View {
             audio.playSound(sound: "fail", type: "wav")
             if p1Matrix[p1Matrix.count - 1].allSatisfy({ !$0.isEmpty }) {
                 Task { @MainActor in
-                    try? await Task.sleep(nanoseconds: 2_000_000_000)
                     finishRound(as: .draw)
                 }
             }
@@ -544,6 +589,7 @@ struct VsPlayerGameView<VM: VsPlayerGameViewModel>: View {
     var body: some View {
         ZStack {
             content()
+                .onChange(of: interstitialAdManager?.interstitialAdLoaded, handleInterstitial)
             
             // Matching / queue overlay (FULL SCREEN, with back button)
             if isMatching {
@@ -604,7 +650,19 @@ struct VsPlayerGameView<VM: VsPlayerGameViewModel>: View {
                 return
             }
             
-            beginMatching()
+            guard !didStart && (interstitialAdManager == nil || !interstitialAdManager!.initialInterstitialAdLoaded) else { return }
+            interstitialAdManager = AdProvider.interstitialAdsManager(id: "GameInterstitial")
+            if let interstitialAdManager, !interstitialAdManager.shouldShowInterstitial(for: vm.wordCount)  {
+                interstitialAdManager.displayInitialInterstitialAd {
+                    Task {
+                        await MainActor.run {
+                            beginMatching()
+                        }
+                    }
+                }
+            } else {
+                beginMatching()
+            }
         }
         .onDisappear {
             isVisible = false
@@ -654,7 +712,7 @@ struct VsPlayerGameView<VM: VsPlayerGameViewModel>: View {
                 
                 PvPTurnChangeOverlay(
                     isPresented: $showTurnOverlay,
-                    isPlayer2: turn == .player2,
+                    isPlayer2: turnShow == .player2,
                     language: language
                 )
             }
@@ -707,7 +765,7 @@ struct VsPlayerGameView<VM: VsPlayerGameViewModel>: View {
                                     .shadow(radius: 4)
                                     .frame(width: 46, height: 46)
                                 
-                                Text("You".localized)
+                                Text("You")
                                     .font(.system(.footnote, design: .rounded).weight(.semibold))
                                     .foregroundStyle(Color.dynamicBlack)
                             }
@@ -730,7 +788,7 @@ struct VsPlayerGameView<VM: VsPlayerGameViewModel>: View {
                                     .shadow(radius: 4)
                                     .frame(width: 46, height: 46)
                                 
-                                Text("Opponent".localized)
+                                Text("Opponent")
                                     .font(.system(.footnote, design: .rounded).weight(.semibold))
                                     .foregroundStyle(Color.dynamicBlack)
                             }
@@ -879,15 +937,11 @@ fileprivate struct PvPMatchingOverlay: View {
     @Environment(\.colorScheme) private var scheme
     
     private var title: String {
-        language == "he" ? "מחפש יריב..." : "Searching for opponent…"
+        "Searching for opponent…".localized
     }
     
     private var subtitle: String {
-        if language == "he" {
-            return "נחפש שחקן אחר באותה שפה.\nאפשר לבטל בכל רגע."
-        } else {
-            return "Looking for another player in the same language.\nYou can cancel at any time."
-        }
+        "Looking for another player in the same language You can cancel at any time.".localized
     }
     
     var body: some View {
@@ -900,7 +954,7 @@ fileprivate struct PvPMatchingOverlay: View {
             VStack(spacing: 20) {
                 HStack {
                     Button(action: onBack) {
-                        Image(systemName: "chevron.left")
+                        Image(systemName: language == "he" ? "chevron.right" : "chevron.left")
                             .font(.system(size: 17, weight: .semibold))
                             .padding(8)
                             .background(.ultraThickMaterial, in: Circle())
@@ -1071,7 +1125,7 @@ fileprivate struct CoinFlipOverlay: View {
                 .ignoresSafeArea()
             
             VStack(spacing: 22) {
-                Text("Who starts?".localized)
+                Text("Who starts?")
                     .font(.system(size: 24, weight: .heavy, design: .rounded))
                 
                 HStack(spacing: 40) {
@@ -1081,7 +1135,7 @@ fileprivate struct CoinFlipOverlay: View {
                             .scaledToFill()
                             .frame(width: 60, height: 60)
                             .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                        Text("You".localized)
+                        Text("You")
                             .font(.system(.caption, design: .rounded).weight(.medium))
                     }
                     
@@ -1091,7 +1145,7 @@ fileprivate struct CoinFlipOverlay: View {
                             .scaledToFill()
                             .frame(width: 60, height: 60)
                             .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                        Text("Opponent".localized)
+                        Text("Opponent")
                             .font(.system(.caption, design: .rounded).weight(.medium))
                     }
                 }
@@ -1117,15 +1171,15 @@ fileprivate struct CoinFlipOverlay: View {
                         )
                     
                     if let winner {
-                        Text(winner == .player1 ? "You start".localized : "Opponent starts".localized)
+                        Text(winner == .player1 ? "You start" : "Opponent starts")
                             .font(.system(size: 16, weight: .bold, design: .rounded))
                             .multilineTextAlignment(.center)
                             .padding(.horizontal, 8)
                     } else if isRequesting {
-                        Text("Deciding…".localized)
+                        Text("Deciding…")
                             .font(.system(size: 14, weight: .medium, design: .rounded))
                     } else {
-                        Text("Preparing…".localized)
+                        Text("Preparing…")
                             .font(.system(size: 14, weight: .medium, design: .rounded))
                     }
                 }
@@ -1187,63 +1241,166 @@ fileprivate struct PvPGameResultOverlay: View {
     var result: PvPResult
     var language: String?
     var onDone: () -> Void
-    
+
     @Environment(\.colorScheme) private var scheme
-    
+
+    // MARK: - Copy
+
     private var title: String {
         switch result {
-        case .player1Win: return "You win".localized
-        case .player2Win: return "You lose".localized
-        case .draw, .none: return "Tie".localized
+        case .player1Win: return "You Win"
+        case .player2Win: return "You Lose"
+        case .draw, .none: return "It's a Tie"
         }
     }
-    
-    private var message: String {
+
+    private var subtitle: String {
         switch result {
-        case .player1Win:
-            return "You guessed the word first."
-        case .player2Win:
-            return "Your opponent guessed the word first."
-        case .draw, .none:
-            return "No one guessed the word."
+        case .player1Win: return "Nice! You cracked the word first."
+        case .player2Win: return "Your opponent found the word before you."
+        case .draw, .none: return "No one managed to guess the word this time."
         }
     }
-    
+
+    // MARK: - Style helpers
+
+    private var accent: Color {
+        switch result {
+        case .player1Win: return Color.green
+        case .player2Win: return Color.red
+        case .draw, .none: return Color.orange
+        }
+    }
+
+    private var symbolName: String {
+        switch result {
+        case .player1Win: return "crown.fill"
+        case .player2Win: return "xmark.octagon.fill"
+        case .draw, .none: return "equal.circle.fill"
+        }
+    }
+
+    private var bannerText: String {
+        switch result {
+        case .player1Win: return "Victory"
+        case .player2Win: return "Defeat"
+        case .draw, .none: return "Draw"
+        }
+    }
+
     var body: some View {
         ZStack {
+            // Dimmed background
             Rectangle()
-                .fill(.ultraThinMaterial)
-                .opacity(scheme == .dark ? 0.98 : 0.98)
+                .fill(.black.opacity(0.35))
                 .ignoresSafeArea()
-            
+
             VStack(spacing: 18) {
-                Text(title)
-                    .font(.system(size: 24, weight: .heavy, design: .rounded))
-                
-                Text(message.localized)
-                    .font(.system(.body, design: .rounded))
-                    .multilineTextAlignment(.center)
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal, 16)
-                
-                Button(action: onDone) {
-                    Text(language == "he" ? "חזרה לתור" : "Back to queue")
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 10)
-                        .background(Color.accentColor.opacity(0.90))
+                // Icon + banner
+                ZStack {
+                    Circle()
+                        .fill(
+                            RadialGradient(
+                                colors: [
+                                    accent.opacity(0.15),
+                                    accent.opacity(scheme == .dark ? 0.85 : 0.75)
+                                ],
+                                center: .center,
+                                startRadius: 4,
+                                endRadius: 46
+                            )
+                        )
+                        .frame(width: 92, height: 92)
+                        .shadow(color: accent.opacity(0.55), radius: 16, y: 10)
+
+                    Image(systemName: symbolName)
+                        .font(.system(size: 40, weight: .bold))
                         .foregroundStyle(.white)
-                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        .shadow(radius: 6)
+
+                    VStack {
+                        Spacer()
+                        Text(bannerText)
+                            .font(.caption.bold())
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 4)
+                            .background(
+                                Capsule(style: .continuous)
+                                    .fill(.ultraThinMaterial)
+                            )
+                            .overlay(
+                                Capsule()
+                                    .stroke(accent.opacity(0.7), lineWidth: 1)
+                            )
+                            .foregroundStyle(accent)
+                            .offset(y: 24)
+                    }
+                    .frame(height: 92)
                 }
+                .padding(.top, 6)
+                .padding(.bottom, 6)
+
+                // Title & subtitle
+                VStack(spacing: 6) {
+                    Text(title)
+                        .font(.system(size: 24, weight: .heavy, design: .rounded))
+                        .kerning(language == "he" ? 0 : 0.3)
+
+                    Text(subtitle)
+                        .font(.system(.body, design: .rounded))
+                        .multilineTextAlignment(.center)
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 8)
+                }
+
+                // Button
+                Button(action: onDone) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "arrow.uturn.left.circle.fill")
+                            .font(.headline)
+                        Text("Back to queue".localized)
+                            .font(.headline)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 11)
+                    .background(
+                        LinearGradient(
+                            colors: [
+                                accent.opacity(0.95),
+                                accent.opacity(0.80)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .foregroundStyle(Color.white)
+                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .shadow(color: accent.opacity(0.6), radius: 12, y: 6)
+                }
+                .padding(.top, 4)
             }
-            .padding(24)
+            .padding(22)
             .background(
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .fill(.ultraThickMaterial)
-                    .shadow(color: .black.opacity(0.35), radius: 24, y: 12)
+                RoundedRectangle(cornerRadius: 28, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color(.systemBackground).opacity(scheme == .dark ? 0.85 : 0.95),
+                                Color(.secondarySystemBackground).opacity(scheme == .dark ? 0.9 : 0.9)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
             )
-            .padding(32)
+            .overlay(
+                RoundedRectangle(cornerRadius: 28, style: .continuous)
+                    .strokeBorder(accent.opacity(0.35), lineWidth: 1.2)
+            )
+            .padding(.horizontal, 32)
+            .shadow(color: .black.opacity(0.45), radius: 26, y: 18)
         }
-        .transition(.opacity.combined(with: .scale))
-        .animation(.spring(response: 0.45, dampingFraction: 0.9), value: result)
+        .transition(.opacity.combined(with: .scale(scale: 0.9)))
+        .animation(.spring(response: 0.45, dampingFraction: 0.88), value: result)
     }
 }
