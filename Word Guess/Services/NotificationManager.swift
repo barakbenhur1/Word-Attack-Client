@@ -12,7 +12,13 @@ import UserNotifications
 
 enum LocalNotifID {
     static let dailyInactivity = "com.wordzap.dailyInactivity"
-    static func resumeGame(id: String) -> String { "com.zordzap.resumeGame.\(id)" }
+    private static let resumePrefix = "com.wordzap.resumeGame"
+    // Remove legacy identifiers from older builds that used a misspelled prefix.
+    private static let legacyResumePrefix = "com.zordzap.resumeGame"
+
+    static func resumeGame(id: String) -> String { "\(resumePrefix).\(id)" }
+    static func legacyResumeGame(id: String) -> String { "\(legacyResumePrefix).\(id)" }
+    static func allResumeIDs(id: String) -> [String] { [resumeGame(id: id), legacyResumeGame(id: id)] }
 }
 
 enum NotifCategory {
@@ -127,7 +133,7 @@ struct NotificationManager {
         body: String = "Come back and finish your round."
     ) async {
         let center = UNUserNotificationCenter.current()
-        center.removePendingNotificationRequests(withIdentifiers: [LocalNotifID.resumeGame(id: gameID)])
+        center.removePendingNotificationRequests(withIdentifiers: LocalNotifID.allResumeIDs(id: gameID))
         
         let content = UNMutableNotificationContent()
         content.title = title
@@ -145,10 +151,10 @@ struct NotificationManager {
         let req = UNNotificationRequest(identifier: LocalNotifID.resumeGame(id: gameID), content: content, trigger: trigger)
         do { try await center.add(req) } catch { print("❌ scheduleResumeGameReminder failed: \(error)") }
     }
-    
+
     /// Cancel any scheduled resume reminder for a specific game (e.g., when the round finishes or user returns).
     func cancelResumeGameReminder(gameID: String) async {
-        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [LocalNotifID.resumeGame(id: gameID)])
+        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: LocalNotifID.allResumeIDs(id: gameID))
     }
     
     // MARK: - Debug helpers (optional)
