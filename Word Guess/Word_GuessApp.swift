@@ -60,9 +60,8 @@ struct WordGuessApp: App {
                 guard let uniqe = loginHandeler.model?.uniqe else { return }
                 Task.detached(priority: .high) { await login.changeLanguage(uniqe: uniqe) }
             }
-            .onChange(of: deepLinker.inviteRef) {
-                guard deepLinker.inviteRef != nil else { return }
-                isInvite = true
+            .onChange(of: deepLinker.inviteRef) { _, newValue in
+                isInvite = newValue != nil
             }
             .task {
                 SharedStore.wipeGroupOnFreshInstall()
@@ -102,6 +101,7 @@ struct WordGuessApp: App {
             .glassFullScreen(isPresented: $isInvite) {
                 if let ref = deepLinker.inviteRef {
                     InviteJoinView(ref: ref) { _ in
+                        deepLinker.inviteRef = nil
                         isInvite = false
                     }
                 }
