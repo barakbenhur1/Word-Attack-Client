@@ -26,6 +26,7 @@ final class NativePvPWebSocketClient: NSObject, URLSessionWebSocketDelegate, @un
     private var disconnectRequested = false
     private var pendingEvents: [(String, [String: Any])] = []
     private var desiredQueuePayload: [String: Any]?
+    private var activeMatchPayload: [String: Any]?
 
     private var queueMatchHandler: ((String, String, String) -> Void)?
     private var queueWaitingHandler: ((Bool) -> Void)?
@@ -45,11 +46,13 @@ final class NativePvPWebSocketClient: NSObject, URLSessionWebSocketDelegate, @un
     func join(matchId: String, playerId: String) {
         stateQueue.async { [weak self] in
             guard let self else { return }
-            connectIfNeededLocked()
-            sendEventLocked("pvp:join", [
+            let payload: [String: Any] = [
                 "matchId": matchId,
                 "playerId": playerId
-            ])
+            ]
+            activeMatchPayload = payload
+            connectIfNeededLocked()
+            sendEventLocked("pvp:join", payload)
         }
     }
 
@@ -170,7 +173,8 @@ final class NativePvPWebSocketClient: NSObject, URLSessionWebSocketDelegate, @un
             guard let self else { return }
 
             desiredQueuePayload = nil
-            pendingEvents.removeAll { $0.0 == "pvp:queue:join" }
+            activeMatchPayload = nil
+            pendingEvents.removeAll { $0.0 == "pvp:queue:join" || $0.0 == "pvp:join" }
 
             if isConnected {
                 sendEventLocked("pvp:queue:leave", [:])
@@ -255,16 +259,23 @@ final class NativePvPWebSocketClient: NSObject, URLSessionWebSocketDelegate, @un
         print("[PVP/native] receive failed:", error.localizedDescription)
 
         if let payload = desiredQueuePayload {
-            // Match legacy Socket.IO behavior while waiting: reconnect without
-            // surfacing a fatal queue error and re-join exactly once.
-            pendingEvents.removeAll { $0.0 == "pvp:queue:join" }
-            pendingEvents.append(("pvp:queue:join", payload))
-            stateQueue.asyncAfter(deadline: .now() + 2) { [weak self] in
-                guard let self, !disconnectRequested, webSocketTask == nil else { return }
-                connectIfNeededLocked()
-            }
+            scheduleReconnectLocked(event: "pvp:queue:join", payload: payload)
+        } else if let payload = activeMatchPayload {
+            // The Durable Object keeps the match alive for a short grace
+            // window. Reconnect with the stable match/player identity so the
+            // new WebSocket replaces the stale peer without restarting PVP.
+            scheduleReconnectLocked(event: "pvp:join", payload: payload)
         } else {
             queueErrorHandler?("Connection lost")
+        }
+    }
+
+    private func scheduleReconnectLocked(event: String, payload: [String: Any]) {
+        pendingEvents.removeAll { $0.0 == event }
+        pendingEvents.append((event, payload))
+        stateQueue.asyncAfter(deadline: .now() + 2) { [weak self] in
+            guard let self, !disconnectRequested, webSocketTask == nil else { return }
+            connectIfNeededLocked()
         }
     }
 
@@ -344,6 +355,12 @@ final class NativePvPWebSocketClient: NSObject, URLSessionWebSocketDelegate, @un
             desiredQueuePayload = nil
             queueMatchHandler?(matchId, you, opponentId)
 
+        case "pvp:reconnected":
+            print("[PVP/native] match reconnected:", payload["matchId"] as? String ?? "unknown")
+
+        case "pvp:peerReconnecting":
+            print("[PVP/native] opponent reconnect grace:", payload)
+
         case "pvp:coinflipResult":
             guard let matchId = payload["matchId"] as? String,
                   matchId == coinFlipMatchId,
@@ -421,12 +438,9 @@ final class NativePvPWebSocketClient: NSObject, URLSessionWebSocketDelegate, @un
             let reasonText = reason.flatMap { String(data: $0, encoding: .utf8) }
             print("[PVP/native] closed code=\(closeCode.rawValue) reason=\(reasonText ?? "none")")
             if let payload = desiredQueuePayload {
-                pendingEvents.removeAll { $0.0 == "pvp:queue:join" }
-                pendingEvents.append(("pvp:queue:join", payload))
-                stateQueue.asyncAfter(deadline: .now() + 2) { [weak self] in
-                    guard let self, !disconnectRequested, self.webSocketTask == nil else { return }
-                    connectIfNeededLocked()
-                }
+                scheduleReconnectLocked(event: "pvp:queue:join", payload: payload)
+            } else if let payload = activeMatchPayload {
+                scheduleReconnectLocked(event: "pvp:join", payload: payload)
             } else {
                 queueErrorHandler?("Connection lost")
             }
