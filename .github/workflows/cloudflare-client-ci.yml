@@ -12,6 +12,10 @@ on:
       - "tools/verify-cloudflare-cutover.mjs"
       - ".github/workflows/cloudflare-client-ci.yml"
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   verify:
     runs-on: ubuntu-latest
