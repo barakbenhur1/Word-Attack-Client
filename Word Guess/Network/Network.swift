@@ -68,7 +68,7 @@ class Network: Networkble {
     // MARK: init
     //    "http://localhost:3000"
     //    "https://word-attack-server.onrender.com"
-    internal init(root: APIRoot, base: String = "https://word-attack-server.onrender.com") {
+    internal init(root: APIRoot, base: String = BackendConfiguration.apiBaseString) {
         self.root = root.rawValue
         Network.base = base
     }
