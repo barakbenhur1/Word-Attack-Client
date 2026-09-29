@@ -236,8 +236,8 @@ class VsPlayerGameViewModel: GameViewModel {
         )
     }
     
-    func leaveMatchQueue() {
-        pvpSocket.leaveQueue()
+    func leaveMatchQueue(disconnect: Bool = false) {
+        pvpSocket.leaveQueue(disconnect: disconnect)
         currentMatchId = nil
         opponentId = nil
     }
@@ -660,11 +660,32 @@ final class PvPSocketClient {
         }
     }
     
-    func leaveQueue() {
-        connectIfNeeded()
+    func leaveQueue(disconnect: Bool = false) {
         pendingQueueJoinPayload = nil
-        print("[PVP] emit pvp:queue:leave")
-        socket.emit("pvp:queue:leave")
+
+        // Do not create a new connection just to leave. That used to restart the
+        // Socket.IO reconnect loop while the PVP screen was already closing.
+        if socket.status == .connected {
+            print("[PVP] emit pvp:queue:leave")
+            socket.emit("pvp:queue:leave")
+        }
+
+        if disconnect {
+            queueMatchHandler = nil
+            queueWaitingHandler = nil
+            queueErrorHandler = nil
+            typingHandler = nil
+            turnHandler = nil
+            playerLeftHandler = nil
+
+            // Explicitly stop Socket.IO's infinite reconnect policy when PVP is
+            // no longer visible. A future joinQueue() will reconnect on demand.
+            if socket.status == .connected || socket.status == .connecting {
+                print("[PVP] disconnecting idle socket")
+                socket.disconnect()
+            }
+            isConnected = false
+        }
     }
 }
 
