@@ -82,7 +82,7 @@ internal enum HttpMethod: String {
 // MARK: Network
 class Network: Networkble {
     enum APIRoot: String { case login, score, words, ai, pvp }
-    static private var base: String = ""
+    static private var base: String = BackendConfiguration.apiBaseString
     
     var baseURL: String {
 #if DEBUG
