@@ -1,7 +1,6 @@
 import fs from "node:fs";
 
 const files = {
-  config: fs.readFileSync("Word Guess/Network/BackendConfiguration.swift", "utf8"),
   network: fs.readFileSync("Word Guess/Network/Network.swift", "utf8"),
   pvp: fs.readFileSync("Word Guess/Network/ViewModel/VsPlayerGameViewModel.swift", "utf8"),
   native: fs.readFileSync("Word Guess/Network/NativePvPWebSocketClient.swift", "utf8")
@@ -13,10 +12,10 @@ function requireFragment(name, fragment) {
   }
 }
 
-requireFragment("config", "BackendConfiguration");
-requireFragment("config", "WORDZAP_API_BASE_URL");
-requireFragment("config", "WORDZAP_NATIVE_PVP");
-requireFragment("config", "/pvp/socket");
+requireFragment("network", "BackendConfiguration");
+requireFragment("network", "WORDZAP_API_BASE_URL");
+requireFragment("network", "WORDZAP_NATIVE_PVP");
+requireFragment("network", "/pvp/socket");
 requireFragment("network", "BackendConfiguration.apiBaseString");
 requireFragment("pvp", "BackendConfiguration.apiBaseURL.appendingPathComponent(\"pvp/word\")");
 requireFragment("pvp", "BackendConfiguration.usesNativePVP");
@@ -31,7 +30,11 @@ requireFragment("native", "pvp:opponentLeft");
 // The legacy host is intentionally allowed only in the central fallback config.
 // This prevents a partial cutover where REST and PVP silently point at different backends.
 for (const [name, body] of Object.entries(files)) {
-  if (name === "config") continue;
+  if (name === "network") {
+    const occurrences = body.split("word-attack-server.onrender.com").length - 1;
+    if (occurrences > 1) throw new Error("Legacy Render URL appears outside the central fallback in network");
+    continue;
+  }
   if (body.includes("word-attack-server.onrender.com")) {
     throw new Error("Legacy Render URL is still hard-coded in " + name);
   }
