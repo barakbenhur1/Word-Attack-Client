@@ -1,0 +1,30 @@
+name: iOS build
+
+on:
+  push:
+    paths:
+      - "Word Guess/Network/**"
+      - "Word Guess.xcodeproj/**"
+      - ".github/workflows/ios-build.yml"
+  pull_request:
+    paths:
+      - "Word Guess/Network/**"
+      - "Word Guess.xcodeproj/**"
+      - ".github/workflows/ios-build.yml"
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build WordZap for iOS Simulator
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -project "Word Guess.xcodeproj" \
+            -scheme "Word Guess" \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO \
+            build | xcpretty
