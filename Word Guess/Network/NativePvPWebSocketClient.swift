@@ -253,13 +253,18 @@ final class NativePvPWebSocketClient: NSObject, URLSessionWebSocketDelegate, @un
         guard !disconnectRequested else { return }
 
         print("[PVP/native] receive failed:", error.localizedDescription)
-        queueErrorHandler?("Connection lost")
 
-        if desiredQueuePayload != nil {
+        if let payload = desiredQueuePayload {
+            // Match legacy Socket.IO behavior while waiting: reconnect without
+            // surfacing a fatal queue error and re-join exactly once.
+            pendingEvents.removeAll { $0.0 == "pvp:queue:join" }
+            pendingEvents.append(("pvp:queue:join", payload))
             stateQueue.asyncAfter(deadline: .now() + 2) { [weak self] in
                 guard let self, !disconnectRequested, webSocketTask == nil else { return }
                 connectIfNeededLocked()
             }
+        } else {
+            queueErrorHandler?("Connection lost")
         }
     }
 
@@ -415,16 +420,15 @@ final class NativePvPWebSocketClient: NSObject, URLSessionWebSocketDelegate, @un
 
             let reasonText = reason.flatMap { String(data: $0, encoding: .utf8) }
             print("[PVP/native] closed code=\(closeCode.rawValue) reason=\(reasonText ?? "none")")
-            queueErrorHandler?("Connection lost")
-
-            if desiredQueuePayload != nil {
+            if let payload = desiredQueuePayload {
+                pendingEvents.removeAll { $0.0 == "pvp:queue:join" }
+                pendingEvents.append(("pvp:queue:join", payload))
                 stateQueue.asyncAfter(deadline: .now() + 2) { [weak self] in
                     guard let self, !disconnectRequested, self.webSocketTask == nil else { return }
                     connectIfNeededLocked()
-                    if let payload = desiredQueuePayload {
-                        sendEventLocked("pvp:queue:join", payload)
-                    }
                 }
+            } else {
+                queueErrorHandler?("Connection lost")
             }
         }
     }
