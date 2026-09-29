@@ -159,8 +159,13 @@ class VsPlayerGameViewModel: GameViewModel {
             
             if let pvpValue {
                 value = pvpValue
+            } else if BackendConfiguration.usesNativePVP {
+                // Cloudflare PVP must never fall back to a per-user word:
+                // both devices have to share the exact match-scoped word.
+                Trace.log("🛟", "PVP shared-word fetch failed for matchId=\(matchId)", Fancy.red)
+                value = nil
             } else {
-                // Soft failure: log and fall back to legacy path
+                // Keep the legacy Render fallback until the final cutover.
                 Trace.log("🛟", "PVP fetch failed for matchId=\(matchId), falling back to normal word()", Fancy.yellow)
                 value = await provider.word(uniqe: uniqe)
             }
