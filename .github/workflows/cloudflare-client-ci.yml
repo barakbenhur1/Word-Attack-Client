@@ -5,11 +5,13 @@ on:
     paths:
       - "Word Guess/Network/**"
       - "tools/verify-cloudflare-cutover.mjs"
+      - "tools/set-cloudflare-backend.mjs"
       - ".github/workflows/cloudflare-client-ci.yml"
   pull_request:
     paths:
       - "Word Guess/Network/**"
       - "tools/verify-cloudflare-cutover.mjs"
+      - "tools/set-cloudflare-backend.mjs"
       - ".github/workflows/cloudflare-client-ci.yml"
 
 concurrency:
