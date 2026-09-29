@@ -499,7 +499,7 @@ struct VsPlayerGameView<VM: VsPlayerGameViewModel>: View {
         cancelAllTasks()
         screenManager.keepScreenOn = false
         audio.stop()
-        vm.leaveMatchQueue()
+        vm.leaveMatchQueue(disconnect: true)
         //        session.finishRound()
         
         delayedNavTask?.cancel()
@@ -669,7 +669,7 @@ struct VsPlayerGameView<VM: VsPlayerGameViewModel>: View {
             screenManager.keepScreenOn = false
             audio.stop()
             cancelAllTasks()
-            vm.leaveMatchQueue()
+            vm.leaveMatchQueue(disconnect: true)
         }
         .onChange(of: vm.numberOfErrors) { handleError() }
         .onChange(of: vm.word) { handleWordChange() }
