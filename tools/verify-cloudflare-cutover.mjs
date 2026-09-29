@@ -26,6 +26,10 @@ requireFragment("native", "pvp:typing");
 requireFragment("native", "pvp:rowDone");
 requireFragment("native", "pvp:turn");
 requireFragment("native", "pvp:opponentLeft");
+requireFragment("native", "activeMatchPayload");
+requireFragment("native", "scheduleReconnectLocked");
+requireFragment("native", "pvp:reconnected");
+requireFragment("native", "pvp:peerReconnecting");
 
 // The legacy host is intentionally allowed only in the central fallback config.
 // This prevents a partial cutover where REST and PVP silently point at different backends.
