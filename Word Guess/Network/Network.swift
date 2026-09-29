@@ -67,7 +67,7 @@ class Network: Networkble {
     
     // MARK: init
     //    "http://localhost:3000"
-    //    "https://word-attack-server.onrender.com"
+    // Production base URL comes from BackendConfiguration.
     internal init(root: APIRoot, base: String = BackendConfiguration.apiBaseString) {
         self.root = root.rawValue
         Network.base = base
@@ -76,7 +76,7 @@ class Network: Networkble {
     enum DeviceTokenService {
         static var apiBase: String {
             // Point to your Node server (https + real host in production)
-            // e.g., "https://word-attack-server.onrender.com"
+            // Production base URL comes from BackendConfiguration.
             return BaseUrl.value
         }
         
