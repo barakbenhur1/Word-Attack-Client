@@ -3,7 +3,8 @@ import fs from "node:fs";
 const files = {
   network: fs.readFileSync("Word Guess/Network/Network.swift", "utf8"),
   pvp: fs.readFileSync("Word Guess/Network/ViewModel/VsPlayerGameViewModel.swift", "utf8"),
-  native: fs.readFileSync("Word Guess/Network/NativePvPWebSocketClient.swift", "utf8")
+  native: fs.readFileSync("Word Guess/Network/NativePvPWebSocketClient.swift", "utf8"),
+  cutover: fs.readFileSync("tools/set-cloudflare-backend.mjs", "utf8")
 };
 
 function requireFragment(name, fragment) {
@@ -30,6 +31,12 @@ requireFragment("native", "activeMatchPayload");
 requireFragment("native", "scheduleReconnectLocked");
 requireFragment("native", "pvp:reconnected");
 requireFragment("native", "pvp:peerReconnecting");
+requireFragment("cutover", '"/healthz"');
+requireFragment("cutover", '"/ready"');
+requireFragment("cutover", '"/ai/health"');
+requireFragment("cutover", '"cloudflare-workers"');
+requireFragment("cutover", '"durable-object-websocket"');
+requireFragment("cutover", "refusing to modify production plist");
 
 // The legacy host is intentionally allowed only in the central fallback config.
 // This prevents a partial cutover where REST and PVP silently point at different backends.
