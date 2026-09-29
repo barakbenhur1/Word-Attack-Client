@@ -43,6 +43,47 @@ if (url.username || url.password || url.search || url.hash) {
 url.pathname = url.pathname.replace(/\/+$/, "");
 const normalized = url.toString().replace(/\/$/, "");
 
+const skipLiveCheck = process.argv.includes("--skip-live-check");
+
+async function fetchJson(pathname) {
+  const response = await fetch(normalized + pathname, {
+    headers: {accept:"application/json"},
+    signal: AbortSignal.timeout(15000)
+  });
+  const text = await response.text();
+  let body;
+  try { body = JSON.parse(text); }
+  catch { throw new Error(pathname + " returned non-JSON: " + text.slice(0,200)); }
+  if (!response.ok) {
+    throw new Error(pathname + " returned HTTP " + response.status + ": " + text.slice(0,300));
+  }
+  return body;
+}
+
+if (!skipLiveCheck) {
+  const health = await fetchJson("/healthz");
+  if (
+    health?.ok !== true ||
+    health?.hosting !== "cloudflare-workers" ||
+    health?.storage !== "d1" ||
+    health?.pvp !== "durable-object-websocket"
+  ) {
+    throw new Error("Cloudflare backend health contract failed; refusing to modify production plist.");
+  }
+
+  const ready = await fetchJson("/ready");
+  if (ready?.ok !== true || ready?.storage !== "ready") {
+    throw new Error("Cloudflare D1 readiness failed; refusing to modify production plist.");
+  }
+
+  const aiHealth = await fetchJson("/ai/health");
+  if (aiHealth?.ok !== true) {
+    throw new Error("Cloudflare AI health failed; refusing to modify production plist.");
+  }
+
+  console.log("Live Cloudflare acceptance passed before client cutover.");
+}
+
 const xmlEscape = value => String(value)
   .replaceAll("&", "&amp;")
   .replaceAll("<", "&lt;")
