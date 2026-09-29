@@ -89,7 +89,7 @@ class VsPlayerGameViewModel: GameViewModel {
         length: Int,
         languageCode: String?
     ) async -> SimpleWord? {
-        guard var components = URLComponents(string: "https://word-attack-server.onrender.com/pvp/word") else {
+        guard var components = URLComponents(url: BackendConfiguration.apiBaseURL.appendingPathComponent("pvp/word"), resolvingAgainstBaseURL: false) else {
             return nil
         }
         
@@ -357,7 +357,7 @@ final class PvPSocketClient {
     private var pendingQueueJoinPayload: [String: Any]?
     
     private init() {
-        let url = URL(string: "https://word-attack-server.onrender.com")!
+        let url = BackendConfiguration.legacyRenderBaseURL
         manager = SocketManager(
             socketURL: url,
             config: [
@@ -409,6 +409,10 @@ final class PvPSocketClient {
     }
     
     func join(matchId: String, playerId: String) {
+        if BackendConfiguration.usesNativePVP {
+            NativePvPWebSocketClient.shared.join(matchId: matchId, playerId: playerId)
+            return
+        }
         connectIfNeeded()
         
         let payload: [String: Any] = [
@@ -421,7 +425,10 @@ final class PvPSocketClient {
     }
     
     func coinFlip(matchId: String, uniqe: String) async -> PvPTurn? {
-        await withCheckedContinuation { continuation in
+        if BackendConfiguration.usesNativePVP {
+            return await NativePvPWebSocketClient.shared.coinFlip(matchId: matchId, uniqe: uniqe)
+        }
+        return await withCheckedContinuation { continuation in
             var didResume = false
             func resumeOnce(_ value: PvPTurn?) {
                 guard !didResume else { return }
@@ -472,6 +479,15 @@ final class PvPSocketClient {
         rowIndex: Int,
         guess: String
     ) {
+        if BackendConfiguration.usesNativePVP {
+            NativePvPWebSocketClient.shared.sendTyping(
+                matchId: matchId,
+                playerId: playerId,
+                rowIndex: rowIndex,
+                guess: guess
+            )
+            return
+        }
         connectIfNeeded()
         
         let payload: [String: Any] = [
@@ -488,6 +504,10 @@ final class PvPSocketClient {
     func observeTypingEvents(
         _ handler: @escaping (_ matchId: String, _ fromPlayerId: String, _ rowIndex: Int, _ guess: String) -> Void
     ) {
+        if BackendConfiguration.usesNativePVP {
+            NativePvPWebSocketClient.shared.observeTypingEvents(handler)
+            return
+        }
         connectIfNeeded()
         typingHandler = handler
         
@@ -519,6 +539,14 @@ final class PvPSocketClient {
         playerId: String,
         rowIndex: Int
     ) {
+        if BackendConfiguration.usesNativePVP {
+            NativePvPWebSocketClient.shared.sendRowDone(
+                matchId: matchId,
+                playerId: playerId,
+                rowIndex: rowIndex
+            )
+            return
+        }
         connectIfNeeded()
         
         let payload: [String: Any] = [
@@ -534,6 +562,10 @@ final class PvPSocketClient {
     func observeTurnEvents(
         _ handler: @escaping (_ matchId: String, _ nextPlayerId: String?, _ nextRow: Int) -> Void
     ) {
+        if BackendConfiguration.usesNativePVP {
+            NativePvPWebSocketClient.shared.observeTurnEvents(handler)
+            return
+        }
         connectIfNeeded()
         turnHandler = handler
         
@@ -558,6 +590,10 @@ final class PvPSocketClient {
     func observePlayerLeft(
         _ handler: @escaping (_ playerId: String) -> Void
     ) {
+        if BackendConfiguration.usesNativePVP {
+            NativePvPWebSocketClient.shared.observePlayerLeft(handler)
+            return
+        }
         connectIfNeeded()
         playerLeftHandler = handler
         
@@ -587,6 +623,16 @@ final class PvPSocketClient {
         onMatchFound: @escaping (_ matchId: String, _ youId: String, _ opponentId: String) -> Void,
         onError: ((String?) -> Void)? = nil
     ) {
+        if BackendConfiguration.usesNativePVP {
+            NativePvPWebSocketClient.shared.joinQueue(
+                playerId: playerId,
+                languageCode: languageCode,
+                onWaiting: onWaiting,
+                onMatchFound: onMatchFound,
+                onError: onError
+            )
+            return
+        }
         connectIfNeeded()
         
         queueMatchHandler = onMatchFound
@@ -661,6 +707,10 @@ final class PvPSocketClient {
     }
     
     func leaveQueue(disconnect: Bool = false) {
+        if BackendConfiguration.usesNativePVP {
+            NativePvPWebSocketClient.shared.leaveQueue(disconnect: disconnect)
+            return
+        }
         pendingQueueJoinPayload = nil
 
         // Do not create a new connection just to leave. That used to restart the
