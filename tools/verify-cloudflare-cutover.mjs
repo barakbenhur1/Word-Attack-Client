@@ -4,7 +4,8 @@ const files = {
   network: fs.readFileSync("Word Guess/Network/Network.swift", "utf8"),
   pvp: fs.readFileSync("Word Guess/Network/ViewModel/VsPlayerGameViewModel.swift", "utf8"),
   native: fs.readFileSync("Word Guess/Network/NativePvPWebSocketClient.swift", "utf8"),
-  cutover: fs.readFileSync("tools/set-cloudflare-backend.mjs", "utf8")
+  cutover: fs.readFileSync("tools/set-cloudflare-backend.mjs", "utf8"),
+  plist: fs.readFileSync("Word-Guess-Info.plist", "utf8")
 };
 
 function requireFragment(name, fragment) {
@@ -36,6 +37,10 @@ requireFragment("cutover", '"/ready"');
 requireFragment("cutover", '"/ai/health"');
 requireFragment("cutover", '"/push/health"');
 requireFragment("cutover", "Cloudflare APNs readiness failed");
+
+requireFragment("plist", "<key>WORDZAP_API_BASE_URL</key>");
+requireFragment("plist", "<string>https://wordzap-api.yamora-training-collector.workers.dev</string>");
+requireFragment("plist", "<key>WORDZAP_NATIVE_PVP</key>");
 requireFragment("cutover", '"cloudflare-workers"');
 requireFragment("cutover", '"durable-object-websocket"');
 requireFragment("cutover", "refusing to modify production plist");
@@ -43,6 +48,7 @@ requireFragment("cutover", "refusing to modify production plist");
 // The legacy host is intentionally allowed only in the central fallback config.
 // This prevents a partial cutover where REST and PVP silently point at different backends.
 for (const [name, body] of Object.entries(files)) {
+  if (name === "plist") continue;
   if (name === "network") {
     const occurrences = body.split("word-attack-server.onrender.com").length - 1;
     if (occurrences > 1) throw new Error("Legacy Render URL appears outside the central fallback in network");
