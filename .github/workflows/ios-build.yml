@@ -4,12 +4,14 @@ on:
   push:
     paths:
       - "Word Guess/Network/**"
+      - "Word Guess/AppDelegate.swift"
       - "Word Guess.xcodeproj/**"
       - "Word-Guess-Info.plist"
       - ".github/workflows/ios-build.yml"
   pull_request:
     paths:
       - "Word Guess/Network/**"
+      - "Word Guess/AppDelegate.swift"
       - "Word Guess.xcodeproj/**"
       - "Word-Guess-Info.plist"
       - ".github/workflows/ios-build.yml"
