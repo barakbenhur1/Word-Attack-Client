@@ -6,12 +6,14 @@ on:
       - "Word Guess/Network/**"
       - "tools/verify-cloudflare-cutover.mjs"
       - "tools/set-cloudflare-backend.mjs"
+      - "Word-Guess-Info.plist"
       - ".github/workflows/cloudflare-client-ci.yml"
   pull_request:
     paths:
       - "Word Guess/Network/**"
       - "tools/verify-cloudflare-cutover.mjs"
       - "tools/set-cloudflare-backend.mjs"
+      - "Word-Guess-Info.plist"
       - ".github/workflows/cloudflare-client-ci.yml"
 
 concurrency:
