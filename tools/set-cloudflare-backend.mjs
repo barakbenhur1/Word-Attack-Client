@@ -81,6 +81,14 @@ if (!skipLiveCheck) {
     throw new Error("Cloudflare AI health failed; refusing to modify production plist.");
   }
 
+  const pushHealth = await fetchJson("/push/health");
+  if (pushHealth?.ok !== true || pushHealth?.configured !== true) {
+    const missing = Array.isArray(pushHealth?.missing) && pushHealth.missing.length
+      ? " Missing: " + pushHealth.missing.join(", ")
+      : "";
+    throw new Error("Cloudflare APNs readiness failed; refusing to modify production plist." + missing);
+  }
+
   console.log("Live Cloudflare acceptance passed before client cutover.");
 }
 
