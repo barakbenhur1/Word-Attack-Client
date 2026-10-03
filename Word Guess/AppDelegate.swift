@@ -17,6 +17,10 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
     
     // Add with your other public callbacks
     var backgroundCompletionHandler: (() -> Void)?
+
+    private var latestAPNSToken: String?
+    private var latestAPNSEnvironment: String?
+    private var authStateHandle: AuthStateDidChangeListenerHandle?
     
     
     // MARK: - Launch
@@ -42,6 +46,13 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
             
             // Firebase
             FirebaseApp.configure()
+
+            // APNs can register before Firebase Auth has restored the signed-in user.
+            // Keep the token and retry backend registration as soon as auth is ready.
+            authStateHandle = Auth.auth().addStateDidChangeListener { [weak self] _, user in
+                guard user != nil else { return }
+                self?.registerLatestDeviceTokenIfPossible()
+            }
             
             // Register for APNs (needed for silent background pushes)
             application.registerForRemoteNotifications()
@@ -104,12 +115,28 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
             
             // Convert to hex string & send to your server (to trigger silent pushes later)
             let token = deviceToken.map { String(format: "%02x", $0) }.joined()
-            
-            Task {
-                guard let uniqe = Auth.auth().currentUser?.uid else { return }
-                await Network.DeviceTokenService.register(uniqe: uniqe, token: token, environment: env, userId: Auth.auth().currentUser?.uid)
-            }
+
+            latestAPNSToken = token
+            latestAPNSEnvironment = env
+            registerLatestDeviceTokenIfPossible()
         }
+
+    private func registerLatestDeviceTokenIfPossible() {
+        guard
+            let token = latestAPNSToken,
+            let environment = latestAPNSEnvironment,
+            let uniqe = Auth.auth().currentUser?.uid
+        else { return }
+
+        Task {
+            await Network.DeviceTokenService.register(
+                uniqe: uniqe,
+                token: token,
+                environment: environment,
+                userId: uniqe
+            )
+        }
+    }
     
     func application(
         _ application: UIApplication,
