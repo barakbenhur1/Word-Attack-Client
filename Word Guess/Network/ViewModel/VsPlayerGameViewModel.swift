@@ -443,7 +443,8 @@ final class PvPSocketClient {
 
             let ticket = Int.random(in: 0 ... Int.max)
 
-            let handlerId = socket.on("pvp:coinflipResult") { [weak self] data, _ in
+            var handlerId: UUID?
+            handlerId = socket.on("pvp:coinflipResult") { [weak self] data, _ in
                 guard let self else { return }
                 guard let dict = data.first as? [String: Any] else { return }
                 guard let resMatchId = dict["matchId"] as? String,
@@ -455,7 +456,9 @@ final class PvPSocketClient {
                 }
 
                 print("[PVP] coinflipResult match=\(resMatchId) youStart=\(youStart)")
-                self.socket.off(id: handlerId)
+                if let handlerId {
+                    self.socket.off(id: handlerId)
+                }
 
                 let turn: PvPTurn = youStart ? .player1 : .player2
                 resumeOnce(turn)
@@ -472,7 +475,9 @@ final class PvPSocketClient {
 
             let socket = self.socket
             DispatchQueue.main.asyncAfter(deadline: .now() + 8) {
-                socket.off(id: handlerId)
+                if let handlerId {
+                    socket.off(id: handlerId)
+                }
                 resumeOnce(nil)
             }
         }
