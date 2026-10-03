@@ -5,11 +5,13 @@ on:
     paths:
       - "Word Guess/Network/**"
       - "Word Guess.xcodeproj/**"
+      - "Word-Guess-Info.plist"
       - ".github/workflows/ios-build.yml"
   pull_request:
     paths:
       - "Word Guess/Network/**"
       - "Word Guess.xcodeproj/**"
+      - "Word-Guess-Info.plist"
       - ".github/workflows/ios-build.yml"
 
 concurrency:
