@@ -34,6 +34,8 @@ requireFragment("native", "pvp:peerReconnecting");
 requireFragment("cutover", '"/healthz"');
 requireFragment("cutover", '"/ready"');
 requireFragment("cutover", '"/ai/health"');
+requireFragment("cutover", '"/push/health"');
+requireFragment("cutover", "Cloudflare APNs readiness failed");
 requireFragment("cutover", '"cloudflare-workers"');
 requireFragment("cutover", '"durable-object-websocket"');
 requireFragment("cutover", "refusing to modify production plist");
