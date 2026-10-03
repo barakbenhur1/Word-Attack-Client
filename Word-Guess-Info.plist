@@ -20,7 +20,11 @@
 			<array>
 				<string>com.googleusercontent.apps.708945301461-3dgphqfg3ogp5n9q30057hhb68b2n98f</string>
 			</array>
-		</dict>
+			<key>WORDZAP_API_BASE_URL</key>
+	<string>https://wordzap-api.yamora-training-collector.workers.dev</string>
+	<key>WORDZAP_NATIVE_PVP</key>
+	<true/>
+</dict>
 	</array>
 	<key>FacebookAdvertiserIDCollectionEnabled</key>
 	<true/>
